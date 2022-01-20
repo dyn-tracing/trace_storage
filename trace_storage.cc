@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "google/cloud/storage/client.h"
 #include <iostream>
+#include "google/cloud/storage/client.h"
 
 int main(int argc, char* argv[]) {
   if (argc != 2) {
