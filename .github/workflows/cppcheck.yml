@@ -13,6 +13,7 @@ jobs:
     - run: pip install cpplint
     - run: cpplint --recursive .
   build:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - uses: bazelbuild/setup-bazelisk@v1
@@ -23,6 +24,7 @@ jobs:
         key: bazel
       - run: bazel build //...
   test:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - uses: bazelbuild/setup-bazelisk@v1
