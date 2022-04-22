@@ -15,6 +15,45 @@
 #include "google/cloud/storage/client.h"
 #include <iostream>
 
+const std::string trace_struct_bucket = "dyntraces-snicket2";
+// Create aliases to make the code easier to read.
+namespace gcs = ::google::cloud::storage;
+
+// Gets a trace by trace ID and given timespan
+int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* client) {
+    bool trace_found = false;
+    for (int i=0; i<10; i++) {
+        if (trace_found) {
+            break;
+        }
+        for (int j=0; j<10; j++) {
+          if (trace_found) {
+            break;
+          }
+          std::string obj_name = std::to_string(i) + std::to_string(j) + "-";
+          obj_name += std::to_string(start_time) + "-" + std::to_string(end_time);
+          auto reader = client->ReadObject(trace_struct_bucket, obj_name);
+          if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
+            continue;
+          } else if (!reader) {
+            std::cerr << "Error reading object: " << reader.status() << "\n";
+            return 1;
+          } else {
+            std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+            int traceID_location = contents.find(traceID);
+            if (traceID_location) {
+                trace_found = true;
+                int end = contents.find("Trace ID", traceID_location+1);
+                std::string spans = contents.substr(traceID_location, end);
+                std::cout << spans << std::endl;
+            }
+            
+          }
+        }
+    }
+    return 0;
+}
+
 int main(int argc, char* argv[]) {
   if (argc != 2) {
     std::cerr << "Missing bucket name.\n";
@@ -23,8 +62,6 @@ int main(int argc, char* argv[]) {
   }
   std::string const bucket_name = argv[1];
 
-  // Create aliases to make the code easier to read.
-  namespace gcs = ::google::cloud::storage;
 
   // Create a client to communicate with Google Cloud Storage. This client
   // uses the default configuration for authentication and project id.
@@ -49,6 +86,8 @@ int main(int argc, char* argv[]) {
 
   std::string contents{std::istreambuf_iterator<char>{reader}, {}};
   std::cout << contents << "\n";
+
+  get_trace("d64c8acc182c277ac6f78620bca62310", 1650574264, 1650574264, &client);
 
   return 0;
 }
