@@ -11,11 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// Examples: https://github.com/googleapis/google-cloud-cpp/tree/main/google/cloud/storage/examples
 
 #include "google/cloud/storage/client.h"
 #include <iostream>
 
 const std::string trace_struct_bucket = "dyntraces-snicket2";
+const std::string trace_hashes_bucket = "tracehashes-snicket2";
 // Create aliases to make the code easier to read.
 namespace gcs = ::google::cloud::storage;
 
@@ -54,40 +57,49 @@ int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* cl
     return 0;
 }
 
+int get_traces_by_structure(std::string parent_service, std::string child_service, int start_time, int end_time, gcs::Client* client) {
+	/**
+	 * @brief Steps:
+	 * (i) List each hash folder
+	 * (ii) For each hash folder, get an examplar from trace structure bucket
+	 * (iii) Run isomorphism on every exampler
+	 * (iv) For each examplar that matches, go look up entire trace and return
+	 */
+	std::cout << "Its vibin'" << std::endl;
+	return 0;
+}
+
 int main(int argc, char* argv[]) {
-  if (argc != 2) {
-    std::cerr << "Missing bucket name.\n";
-    std::cerr << "Usage: quickstart <bucket-name>\n";
-    return 1;
-  }
-  std::string const bucket_name = argv[1];
+	if (argc != 2) {
+		std::cerr << "Missing bucket name.\n";
+		std::cerr << "Usage: quickstart <bucket-name>\n";
+		return 1;
+	}
+	std::string const bucket_name = argv[1];
 
+	// Create a client to communicate with Google Cloud Storage. This client
+	// uses the default configuration for authentication and project id.
+	auto client = gcs::Client();
 
-  // Create a client to communicate with Google Cloud Storage. This client
-  // uses the default configuration for authentication and project id.
-  auto client = gcs::Client();
+	auto writer = client.WriteObject(bucket_name, "quickstart.txt");
+	writer << "Hello World!";
+	writer.Close();
+	if (writer.metadata()) {
+		std::cout << "Successfully created object: " << writer.metadata()->name() << "\n";
+	} else {
+		std::cerr << "Error creating object: " << writer.metadata().status()<< "\n";
+		return 1;
+	}
 
-  auto writer = client.WriteObject(bucket_name, "quickstart.txt");
-  writer << "Hello World!";
-  writer.Close();
-  if (writer.metadata()) {
-    std::cout << "Successfully created object: " << *writer.metadata() << "\n";
-  } else {
-    std::cerr << "Error creating object: " << writer.metadata().status()
-              << "\n";
-    return 1;
-  }
+	auto reader = client.ReadObject(bucket_name, "quickstart.txt");
+	if (!reader) {
+		std::cerr << "Error reading object: " << reader.status() << "\n";
+		return 1;
+	}
 
-  auto reader = client.ReadObject(bucket_name, "quickstart.txt");
-  if (!reader) {
-    std::cerr << "Error reading object: " << reader.status() << "\n";
-    return 1;
-  }
+	std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+	std::cout << contents << " <<<<==" << std::endl;
 
-  std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-  std::cout << contents << "\n";
-
-  get_trace("d64c8acc182c277ac6f78620bca62310", 1650574264, 1650574264, &client);
-
-  return 0;
+	return get_traces_by_structure("checkoutservice", "cartservice", 1650574264, 1650574264, &client);
+	// return get_trace("d64c8acc182c277ac6f78620bca62310", 1650574264, 1650574264, &client);
 }
