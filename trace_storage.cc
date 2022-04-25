@@ -12,68 +12,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <iostream>
-#include <string>
 #include "google/cloud/storage/client.h"
+#include <iostream>
 
+const std::string trace_struct_bucket = "dyntraces-snicket2";
+// Create aliases to make the code easier to read.
 namespace gcs = ::google::cloud::storage;
 
-int write_object(gcs::Client &client, std::string bucket_name, std::string object_name, std::string content) {
-    auto writer = client.WriteObject(bucket_name, object_name);
-    writer << content;
-    writer.Close();
-    if (!writer.metadata()) {
-      std::cerr << "Error creating object: " << writer.metadata().status()
-                << "\n";
-      return 1;
+// Gets a trace by trace ID and given timespan
+int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* client) {
+    bool trace_found = false;
+    for (int i=0; i<10; i++) {
+        if (trace_found) {
+            break;
+        }
+        for (int j=0; j<10; j++) {
+          if (trace_found) {
+            break;
+          }
+          std::string obj_name = std::to_string(i) + std::to_string(j) + "-";
+          obj_name += std::to_string(start_time) + "-" + std::to_string(end_time);
+          auto reader = client->ReadObject(trace_struct_bucket, obj_name);
+          if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
+            continue;
+          } else if (!reader) {
+            std::cerr << "Error reading object: " << reader.status() << "\n";
+            return 1;
+          } else {
+            std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+            int traceID_location = contents.find(traceID);
+            if (traceID_location) {
+                trace_found = true;
+                int end = contents.find("Trace ID", traceID_location+1);
+                std::string spans = contents.substr(traceID_location, end);
+                std::cout << spans << std::endl;
+            }
+            
+          }
+        }
     }
     return 0;
 }
-
-std::string read_object(gcs::Client &client, std::string bucket_name, std::string object_name) {
-  auto reader = client.ReadObject(bucket_name, object_name);
-  if (!reader) {
-    std::cerr << "Error reading object: " << reader.status() << "\n";
-  }
-
-  std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-  std::cout << contents << "\n";
-  return contents;
-}
-
-int delete_object(gcs::Client &client, std::string bucket_name, std::string object_name) {
-  google::cloud::Status status =
-        client.DeleteObject(bucket_name, object_name);
-  if (!status.ok()) {
-    std::cerr << "Error deleting object: " << status << "\n";
-  }
-  return 0;
-}
-
-int create_bucket(gcs::Client &client, std::string bucket_name, std::string project_id) {
-  google::cloud::StatusOr<gcs::BucketMetadata> bucket_metadata =
-      client.CreateBucketForProject(
-          bucket_name, project_id,
-          gcs::BucketMetadata()
-              .set_location("us-east1")
-              .set_storage_class(gcs::storage_class::Regional()));
-  if (!bucket_metadata) {
-    std::cerr << "Error creating bucket " << bucket_name
-              << ", status=" << bucket_metadata.status() << "\n";
-    return 1;
-  }
-  return 0;
-
-}
-
-int delete_bucket(gcs::Client &client, std::string bucket_name) {
-  google::cloud::Status status = client.DeleteBucket(bucket_name);
-  if (!status.ok()) {
-    throw std::runtime_error(status.message());
-  }
-  return 0;
-}
-
 
 int main(int argc, char* argv[]) {
   if (argc != 2) {
@@ -83,23 +62,32 @@ int main(int argc, char* argv[]) {
   }
   std::string const bucket_name = argv[1];
 
-  // Create aliases to make the code easier to read.
 
   // Create a client to communicate with Google Cloud Storage. This client
   // uses the default configuration for authentication and project id.
   auto client = gcs::Client();
-  create_bucket(client, "trace_storage_bucket", "dynamic-tracing");
-  write_object(client, "trace_storage_bucket", "new_object", "Here is a sentence"); 
-  std::string written = read_object(client, "trace_storage_bucket", "new_object");
-  if (written == "Here is a sentence") {
-    std::cout << "Got correct bucket data" << std::endl;
-  } else {
-    std::cout << "Bucket data was instead " << written << std::endl;
-  }
-  delete_object(client, "trace_storage_bucket", "new_object");
-  delete_bucket(client, "trace_storage_bucket");
-  std::cout << "All actions done" << std::endl;
 
+  auto writer = client.WriteObject(bucket_name, "quickstart.txt");
+  writer << "Hello World!";
+  writer.Close();
+  if (writer.metadata()) {
+    std::cout << "Successfully created object: " << *writer.metadata() << "\n";
+  } else {
+    std::cerr << "Error creating object: " << writer.metadata().status()
+              << "\n";
+    return 1;
+  }
+
+  auto reader = client.ReadObject(bucket_name, "quickstart.txt");
+  if (!reader) {
+    std::cerr << "Error reading object: " << reader.status() << "\n";
+    return 1;
+  }
+
+  std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+  std::cout << contents << "\n";
+
+  get_trace("d64c8acc182c277ac6f78620bca62310", 1650574264, 1650574264, &client);
 
   return 0;
 }
