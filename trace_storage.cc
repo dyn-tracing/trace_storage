@@ -16,7 +16,6 @@
 
 #include "google/cloud/storage/client.h"
 #include <iostream>
-#include <vector>
 
 const std::string trace_struct_bucket = "dyntraces-snicket2";
 const std::string trace_hashes_bucket = "tracehashes-snicket2";
@@ -47,14 +46,17 @@ int main(int argc, char* argv[]) {
 	// return get_trace("d64c8acc182c277ac6f78620bca62310", 1650574264, 1650574264, &client);
 }
 
+/**
+ * @brief Get the traces that conform to the given structure
+ * 
+ * @param parent_service 
+ * @param child_service 
+ * @param start_time 
+ * @param end_time 
+ * @param client 
+ * @return int 
+ */
 int get_traces_by_structure(std::string parent_service, std::string child_service, int start_time, int end_time, gcs::Client* client) {
-	/**
-	 * @brief Steps:
-	 * (i) List each hash folder
-	 * (ii) For each hash folder, that is within query timespan, get an examplar from trace structure bucket
-	 * (iii) Run isomorphism on every exampler
-	 * (iv) For each examplar that matches, go look up entire trace and return
-	 */
 
 	std::vector<std::string> response;
 
