@@ -16,13 +16,130 @@
 
 #include "google/cloud/storage/client.h"
 #include <iostream>
+#include <vector>
 
 const std::string trace_struct_bucket = "dyntraces-snicket2";
 const std::string trace_hashes_bucket = "tracehashes-snicket2";
-// Create aliases to make the code easier to read.
+
 namespace gcs = ::google::cloud::storage;
 
-// Gets a trace by trace ID and given timespan
+bool does_trace_structure_conform_to_graph_query( std::string trace_id, std::string parent_service, std::string child_service, gcs::Client* client);
+std::vector<std::string> split_by_line(const std::string& str);
+bool is_object_within_timespan(std::string object_name, int start_time, int end_time);
+std::string read_object(std::string bucket, std::string object, gcs::Client* client);
+std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client);
+int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* client); 
+int get_traces_by_structure(std::string parent_service, std::string child_service, int start_time, int end_time, gcs::Client* client);
+
+int main(int argc, char* argv[]) {
+	if (argc != 2) {
+		std::cerr << "Missing bucket name.\n";
+		std::cerr << "Usage: quickstart <bucket-name>\n";
+		return 1;
+	}
+	std::string const bucket_name = argv[1];
+
+	auto client = gcs::Client();
+
+	int total = get_traces_by_structure("checkoutservice", "cartservice", 1650574264, 1650574264, &client);
+	std::cout << "Total results: " << total << std::endl;
+	return 0;
+	// return get_trace("d64c8acc182c277ac6f78620bca62310", 1650574264, 1650574264, &client);
+}
+
+int get_traces_by_structure(std::string parent_service, std::string child_service, int start_time, int end_time, gcs::Client* client) {
+	/**
+	 * @brief Steps:
+	 * (i) List each hash folder
+	 * (ii) For each hash folder, that is within query timespan, get an examplar from trace structure bucket
+	 * (iii) Run isomorphism on every exampler
+	 * (iv) For each examplar that matches, go look up entire trace and return
+	 */
+
+	std::vector<std::string> response;
+
+	for (auto&& object_metadata : client->ListObjects(trace_hashes_bucket)) {
+		if (!object_metadata) {
+			std::cerr << object_metadata.status().message() << std::endl;
+		}
+
+		std::string object_name = object_metadata->name();
+
+		if (false == is_object_within_timespan(object_name, start_time, end_time)) {
+			continue;
+		}
+
+		std::vector<std::string> trace_ids = get_trace_ids_from_trace_hashes_object(object_name, client);
+		if (trace_ids.size() < 1) {
+			continue;
+		}
+
+		if (false == does_trace_structure_conform_to_graph_query(trace_ids[0], parent_service, child_service, client)) {
+			continue;
+		}
+		
+		response.insert(response.end(), trace_ids.begin(), trace_ids.end());
+
+		break;
+	}
+
+	return response.size();
+}
+
+bool does_trace_structure_conform_to_graph_query( std::string trace_id, std::string parent_service, std::string child_service, gcs::Client* client ) {
+	/** 
+	 * TODO: 
+	 * */
+	return true;
+}
+
+std::vector<std::string> split_by_line(const std::string& str) {
+    std::vector<std::string> tokens;
+ 
+    std::string::size_type pos = 0;
+    std::string::size_type prev = 0;
+	std::string ele;
+
+    while ((pos = str.find('\n', prev)) != std::string::npos) {
+		ele = str.substr(prev, pos - prev);
+		if (ele.length() > 0) {
+        	tokens.push_back(ele);
+		}
+        prev = pos + 1;
+    }
+	
+	ele = str.substr(prev);
+	if (ele.length() > 0) {
+		tokens.push_back(ele);
+	}
+
+    return tokens;
+}
+
+bool is_object_within_timespan(std::string object_name, int start_time, int end_time) {
+	/** 
+	 * TODO: 
+	 * */
+	return true;
+}
+
+std::string read_object(std::string bucket, std::string object, gcs::Client* client) {
+	auto reader = client->ReadObject(bucket, object);
+	if (!reader) {
+		std::cerr << "Error reading object: " << reader.status() << "\n";
+		exit(1);
+	}
+
+	std::string object_content{std::istreambuf_iterator<char>{reader}, {}};
+	return object_content;
+}
+
+std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client) {
+	std::string object_content = read_object(trace_hashes_bucket, object_name, client);
+	std::vector<std::string> trace_ids = split_by_line(object_content);
+	return trace_ids;
+}
+
 int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* client) {
     bool trace_found = false;
     for (int i=0; i<10; i++) {
@@ -55,51 +172,4 @@ int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* cl
         }
     }
     return 0;
-}
-
-int get_traces_by_structure(std::string parent_service, std::string child_service, int start_time, int end_time, gcs::Client* client) {
-	/**
-	 * @brief Steps:
-	 * (i) List each hash folder
-	 * (ii) For each hash folder, get an examplar from trace structure bucket
-	 * (iii) Run isomorphism on every exampler
-	 * (iv) For each examplar that matches, go look up entire trace and return
-	 */
-	std::cout << "Its vibin'" << std::endl;
-	return 0;
-}
-
-int main(int argc, char* argv[]) {
-	if (argc != 2) {
-		std::cerr << "Missing bucket name.\n";
-		std::cerr << "Usage: quickstart <bucket-name>\n";
-		return 1;
-	}
-	std::string const bucket_name = argv[1];
-
-	// Create a client to communicate with Google Cloud Storage. This client
-	// uses the default configuration for authentication and project id.
-	auto client = gcs::Client();
-
-	auto writer = client.WriteObject(bucket_name, "quickstart.txt");
-	writer << "Hello World!";
-	writer.Close();
-	if (writer.metadata()) {
-		std::cout << "Successfully created object: " << writer.metadata()->name() << "\n";
-	} else {
-		std::cerr << "Error creating object: " << writer.metadata().status()<< "\n";
-		return 1;
-	}
-
-	auto reader = client.ReadObject(bucket_name, "quickstart.txt");
-	if (!reader) {
-		std::cerr << "Error reading object: " << reader.status() << "\n";
-		return 1;
-	}
-
-	std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-	std::cout << contents << " <<<<==" << std::endl;
-
-	return get_traces_by_structure("checkoutservice", "cartservice", 1650574264, 1650574264, &client);
-	// return get_trace("d64c8acc182c277ac6f78620bca62310", 1650574264, 1650574264, &client);
 }

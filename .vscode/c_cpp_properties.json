@@ -3,7 +3,7 @@
         {
             "name": "Mac",
             "includePath": [
-                "${workspaceFolder}/bazel-bin/external/**"
+                "${workspaceFolder}/bazel-trace_storage/external/com_github_googleapis_google_cloud_cpp/google/cloud/**"
             ],
             "defines": [],
             "macFrameworkPath": [
