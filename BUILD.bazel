@@ -32,7 +32,17 @@ cc_binary(
 cc_binary(
     name = "graph_example",
     srcs = [
-        "graph_example.cc",
+        "isomorphism_examples/graph_example.cc",
+    ],
+    deps = [
+        "@boost//:graph"
+    ],
+)
+
+cc_binary(
+    name = "graph_example_complex",
+    srcs = [
+        "isomorphism_examples/graph_example_complex.cc",
     ],
     deps = [
         "@boost//:graph"
