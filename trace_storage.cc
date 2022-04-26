@@ -44,7 +44,6 @@ int get_traces_by_structure(std::string parent_service, std::string child_servic
 		}
 
 		std::vector<std::string> trace_ids = get_trace_ids_from_trace_hashes_object(object_name, client);
-		std::cout << object_name << std::endl;
 		if (trace_ids.size() < 1) {
 			continue;
 		}
@@ -62,8 +61,10 @@ int get_traces_by_structure(std::string parent_service, std::string child_servic
 }
 
 bool does_trace_structure_conform_to_graph_query(std::string traces_object, std::string trace_id, std::string parent_service, std::string child_service, gcs::Client* client ) {
+	std::string object_content = read_object(trace_struct_bucket, traces_object, client);
+	std::string trace = extract_trace_from_traces_object(trace_id, object_content);
 	
-	std::cout << traces_object << std::endl;
+
 	return true;
 }
 
@@ -189,6 +190,23 @@ std::pair<int, int> extract_batch_timestamps(std::string batch_name) {
 	return std::make_pair(std::stoi(result[1]), std::stoi(result[2]));
 }
 
+std::string extract_trace_from_traces_object(std::string trace_id, std::string object_content) {
+	int start_ind = object_content.find("Trace ID: " + trace_id + ":");
+	if (start_ind == std::string::npos) {
+		std::cerr << "trace_id (" << trace_id << ") not found in the object_content" << std::endl;
+		exit(1);
+	}
+
+	int end_ind = object_content.find("Trace ID", start_ind+1);
+	if (end_ind == std::string::npos) {
+		// not necessarily required as end_ind=npos does the same thing, but for clarity:
+		end_ind = object_content.length() - start_ind;
+	}
+	
+	std::string trace = object_content.substr(start_ind, end_ind-start_ind);
+	return trace;
+}
+
 int dummy_tests() {
 	std::cout << is_object_within_timespan("12-123-125", 123, 124) << ":1" << std::endl;
 	std::cout << is_object_within_timespan("12-123-125", 124, 128) << ":1" << std::endl;
@@ -198,5 +216,7 @@ int dummy_tests() {
 	std::cout << is_object_within_timespan("12-123-125", 121, 122) << ":0" << std::endl;
 	std::cout << is_object_within_timespan("12-123-125", 126, 126) << ":0" << std::endl;
 	std::cout << is_object_within_timespan("12-123-125", 126, 127) << ":0" << std::endl;
+
+	std::cout << extract_trace_from_traces_object("123", "Trace ID: 1234: abcd def Trace ID: 123: thats complete! Trace ID") << std::endl;
 	return 0;
 }

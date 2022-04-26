@@ -18,7 +18,6 @@ workspace(name = "storage_quickstart")
 
 # Add the necessary Starlark functions to fetch google-cloud-cpp.
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 
 # Fetch the Google Cloud C++ libraries.
 # NOTE: Update this version and SHA256 as needed.

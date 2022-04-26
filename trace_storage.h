@@ -1,12 +1,15 @@
 #include "google/cloud/storage/client.h"
 #include <boost/algorithm/string.hpp>
+#include <boost/graph/vf2_sub_graph_iso.hpp>
 #include <iostream>
 
 const std::string trace_struct_bucket = "dyntraces-snicket2";
 const std::string trace_hashes_bucket = "tracehashes-snicket2";
 
 namespace gcs = ::google::cloud::storage;
+namespace bg = boost::graph;
 
+std::string extract_trace_from_traces_object(std::string trace_id, std::string object_content);
 std::pair<int, int> extract_batch_timestamps(std::string batch_name); 
 std::string extract_batch_name(std::string object_name);
 bool does_trace_structure_conform_to_graph_query( std::string traces_object, std::string trace_id, std::string parent_service, std::string child_service, gcs::Client* client);

@@ -24,7 +24,18 @@ cc_binary(
     ],
     deps = [
         "@com_github_googleapis_google_cloud_cpp//:storage",
-        "@boost//:algorithm"
+        "@boost//:algorithm",
+        "@boost//:graph"
+    ],
+)
+
+cc_binary(
+    name = "graph_example",
+    srcs = [
+        "graph_example.cc",
+    ],
+    deps = [
+        "@boost//:graph"
     ],
 )
 
