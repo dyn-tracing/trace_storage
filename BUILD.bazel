@@ -20,8 +20,19 @@ cc_binary(
     name = "trace_storage",
     srcs = [
         "trace_storage.cc",
+        "trace_storage.h"
     ],
     deps = [
         "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:algorithm"
     ],
+)
+
+cc_test(
+  name = "unit_tests",
+  srcs = ["test_trace_storage.cc"],
+  deps = [
+      "@com_google_googletest//:gtest_main",
+      "//:trace_storage"
+  ],
 )
