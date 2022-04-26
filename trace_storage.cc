@@ -94,26 +94,26 @@ bool does_trace_structure_conform_to_graph_query( std::string trace_id, std::str
 }
 
 std::vector<std::string> split_by_line(const std::string& str) {
-    std::vector<std::string> tokens;
- 
-    std::string::size_type pos = 0;
-    std::string::size_type prev = 0;
+	std::vector<std::string> tokens;
+
+	std::string::size_type pos = 0;
+	std::string::size_type prev = 0;
 	std::string ele;
 
-    while ((pos = str.find('\n', prev)) != std::string::npos) {
+	while ((pos = str.find('\n', prev)) != std::string::npos) {
 		ele = str.substr(prev, pos - prev);
 		if (ele.length() > 0) {
-        	tokens.push_back(ele);
+			tokens.push_back(ele);
 		}
-        prev = pos + 1;
-    }
-	
+		prev = pos + 1;
+	}
+
 	ele = str.substr(prev);
 	if (ele.length() > 0) {
 		tokens.push_back(ele);
 	}
 
-    return tokens;
+	return tokens;
 }
 
 bool is_object_within_timespan(std::string object_name, int start_time, int end_time) {
