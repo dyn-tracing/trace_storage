@@ -21,15 +21,40 @@
 
 
 
-const std::string trace_struct_bucket = "dyntraces-snicket2";
+const std::string trace_struct_bucket = "dyntraces-snicket3";
+const std::string ending = "-snicket3";
 // Create aliases to make the code easier to read.
 namespace gcs = ::google::cloud::storage;
 
-std::vector<std::string> split_string(const std::string& str)
+std::vector<std::string> split_string_by_newline(const std::string& str)
 {
     std::vector<std::string> tokens;
     split_regex(tokens, str, boost::regex("(\n)+"));
     return tokens;
+}
+
+std::vector<std::string> split_string_by_colon(const std::string& str)
+{
+    std::vector<std::string> tokens;
+    split_regex(tokens, str, boost::regex("(:)+"));
+    return tokens;
+}
+
+
+std::string get_span(int hash1, int hash2, std::string microservice, std::string start_time, std::string end_time, gcs::Client* client) {
+    std::string obj_name = std::to_string(hash1) + std::to_string(hash2) + "-" + start_time + "-" + end_time;
+    auto reader = client->ReadObject(microservice+ending, obj_name);
+    if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
+        std::cerr << "span object not found " << obj_name << "in microservice " << microservice << std::endl;
+    } else if (!reader) {
+        std::cerr << "Error reading object: " << reader.status() << "\n";
+        // there's gotta be a better thing to return here
+        return "";
+    } else {
+        std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+        return contents;
+    }
+    return "";
 }
 
 // Gets a trace by trace ID and given timespan
@@ -60,15 +85,21 @@ int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* cl
                 if (end) {
                     std::string spans = contents.substr(traceID_location, end-traceID_location);
                     std::cout << spans << std::endl;
-                    std::vector<std::string> split_spans = split_string(spans);
+                    std::vector<std::string> split_spans = split_string_by_newline(spans);
                     // start at 1 because first line will be trace ID
                     for (int k = 1; k < split_spans.size(); k++) {
                         std::cout << "token " << split_spans[k] << std::endl;
+                        if (split_spans[k] != "") {
+                            std::vector<std::string> span_info = split_string_by_colon(split_spans[k]);
+                            std::cout << "span info 2 is " << span_info[2] << std::endl;
+                            std::string span = get_span(i, j, span_info[2], std::to_string(start_time), std::to_string(end_time), client);
+                            std::cout << "span " << span << std::endl << std::endl;
+                        }
 
                     }
 
 
-                }
+                } else { std::cout << "couldn't find Trace ID" << std::endl; }
             }
             
           }
@@ -110,7 +141,7 @@ int main(int argc, char* argv[]) {
   std::string contents{std::istreambuf_iterator<char>{reader}, {}};
   std::cout << contents << "\n";
 
-  get_trace("d64c8acc182c277ac6f78620bca62310", 1650574264, 1650574264, &client);
+  get_trace("366ada8fbc705fbddf0468d1df1e746f", 1651073970, 1651073970, &client);
 
   return 0;
 }
