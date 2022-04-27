@@ -52,6 +52,20 @@ std::string get_span(int hash1, int hash2, std::string microservice, std::string
         return "";
     } else {
         std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+        opentelemetry::proto::trace::v1::TracesData trace_data;
+        bool ret = trace_data.ParseFromString(contents);
+        if (ret) {
+        std::cout << "not parsed" << std::endl;
+        } else {
+            std::cout << " parsed! " << std::endl;
+        }
+/*
+        if (opentelemetry::proto::trace::v1::ResourceSpans::ParseFromString(contents)) {
+            std::cout << "parsed!" << std::endl;
+        } else {
+            std::cout << "oh no" << std::endl;
+        }
+        */
         return contents;
     }
     return "";
@@ -93,7 +107,7 @@ int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* cl
                             std::vector<std::string> span_info = split_string_by_colon(split_spans[k]);
                             std::cout << "span info 2 is " << span_info[2] << std::endl;
                             std::string span = get_span(i, j, span_info[2], std::to_string(start_time), std::to_string(end_time), client);
-                            std::cout << "span " << span << std::endl << std::endl;
+                            //std::cout << "span " << span << std::endl << std::endl;
                         }
 
                     }
