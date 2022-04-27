@@ -21,6 +21,7 @@ const std::string trace_hashes_bucket = "tracehashes-snicket2";
 namespace gcs = ::google::cloud::storage;
 namespace bg = boost::graph;
 
+graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph);
 void print_trace_structure(trace_structure trace);
 std::string extract_trace_from_traces_object(std::string trace_id, std::string object_content);
 std::pair<int, int> extract_batch_timestamps(std::string batch_name); 

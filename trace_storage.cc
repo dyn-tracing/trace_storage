@@ -1,8 +1,8 @@
 #include "trace_storage.h"
 
 int main(int argc, char* argv[]) {
-	dummy_tests();
-	exit(1);
+	// dummy_tests();
+	// exit(1);
 
 	if (argc != 2) {
 		std::cerr << "Missing bucket name.\n";
@@ -14,12 +14,12 @@ int main(int argc, char* argv[]) {
 	// Building a query trace where checkoutservice calls cartservice
 	trace_structure query_trace;
 	query_trace.num_nodes = 2;
-	query_trace.node_names.insert(std::make_pair(0, "checkoutservice"));
-	query_trace.node_names.insert(std::make_pair(1, "cartservice"));
+	query_trace.node_names.insert(std::make_pair(0, "frontend"));
+	query_trace.node_names.insert(std::make_pair(1, "adservice"));
 	query_trace.edges.insert(std::make_pair(0, 1));
 
 	auto client = gcs::Client();
-	int total = get_traces_by_structure(query_trace, 1650574264, 1650574264, &client);
+	int total = get_traces_by_structure(query_trace, 1650574225, 1650574225, &client);
 	std::cout << "Total results: " << total << std::endl;
 	return 0;
 }
@@ -44,8 +44,16 @@ int get_traces_by_structure(trace_structure query_trace, int start_time, int end
 		std::string object_name = object_metadata->name();
 		std::string batch_name = extract_batch_name(object_name);
 
+		//Progress logs
+		std::cout << "Processing " << object_name;;
+
 		if (false == is_object_within_timespan(batch_name, start_time, end_time)) {
+			//Progress logs
+			std::cout << "." << std::endl;
 			continue;
+		} else {
+			//Progress logs
+			std::cout << std::endl;
 		}
 
 		std::vector<std::string> trace_ids = get_trace_ids_from_trace_hashes_object(object_name, client);
@@ -58,8 +66,6 @@ int get_traces_by_structure(trace_structure query_trace, int start_time, int end
 		}
 		
 		response.insert(response.end(), trace_ids.begin(), trace_ids.end());
-
-		break;
 	}
 
 	return response.size();
@@ -298,28 +304,31 @@ bool is_isomorphic(trace_structure query_trace, trace_structure candidate_trace)
 	// std::cout << "Candidate Trace" << std::endl;
 	// print_trace_structure(candidate_trace);
 
-	graph_type graph1;
-	boost::add_vertex(vertex_property("a", 0), graph1);
-	boost::add_vertex(vertex_property("b", 1), graph1);
-	boost::add_vertex(vertex_property("c", 2), graph1);
-	boost::add_edge(0, 1, graph1);
-	boost::add_edge(1, 2, graph1);
+	graph_type query_graph = morph_trace_structure_to_boost_graph_type(query_trace);
+	graph_type candidate_graph = morph_trace_structure_to_boost_graph_type(candidate_trace);
 
-	graph_type graph2;
-	boost::add_vertex(vertex_property("a", 0), graph2);
-	boost::add_vertex(vertex_property("b", 1), graph2);
-	boost::add_vertex(vertex_property("c", 2), graph2);
-	boost::add_edge(0, 1, graph2);
-	boost::add_edge(1, 2, graph2);
+	vertex_comp_t vertex_comp = boost::make_property_map_equivalent(boost::get(boost::vertex_name_t::vertex_name, query_graph), boost::get(boost::vertex_name_t::vertex_name, candidate_graph));
 
-	vertex_comp_t vertex_comp = boost::make_property_map_equivalent(boost::get(boost::vertex_name_t::vertex_name, graph1), boost::get(boost::vertex_name_t::vertex_name, graph2));
+	boost::vf2_print_callback<graph_type, graph_type> callback(query_graph, candidate_graph);
+	bool res = boost::vf2_subgraph_iso(query_graph, candidate_graph, callback, boost::vertex_order_by_mult(query_graph), boost::vertices_equivalent(vertex_comp));
 
-	boost::vf2_print_callback<graph_type, graph_type> callback(graph1, graph2);
-	bool res = boost::vf2_subgraph_iso(graph1, graph2, callback, boost::vertex_order_by_mult(graph1), boost::vertices_equivalent(vertex_comp));
-
+	//std::cout << "iso response: " << res << std::endl;
 	return res;
 }
 
+graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph) {
+	graph_type output_graph;
+
+	for (int i = 0; i < input_graph.num_nodes; i++) {
+		boost::add_vertex(vertex_property(input_graph.node_names[i], i), output_graph);
+	}
+
+	for (const auto& elem : input_graph.edges) {
+		boost::add_edge(elem.first, elem.second, output_graph);
+	}
+
+	return output_graph;
+}
 int dummy_tests() {
 	// std::cout << is_object_within_timespan("12-123-125", 123, 124) << ":1" << std::endl;
 	// std::cout << is_object_within_timespan("12-123-125", 124, 128) << ":1" << std::endl;
@@ -334,8 +343,19 @@ int dummy_tests() {
 
 	// auto response = morph_trace_object_to_trace_structure("Trace ID: 123:\n1:2:a\n1:3:b\n:1:f\n2:4:c\n4:5:b");
 
-	trace_structure a;
-	trace_structure b;
-	std::cout << is_isomorphic(a, b) << std::endl;
+	// trace_structure a;
+	// a.num_nodes = 3;
+	// a.node_names.insert(std::make_pair(0, "a"));
+	// a.node_names.insert(std::make_pair(1, "b"));
+	// a.node_names.insert(std::make_pair(2, "c"));
+
+
+	// trace_structure b;
+	// b.num_nodes = 3;
+	// b.node_names.insert(std::make_pair(0, "a"));
+	// b.node_names.insert(std::make_pair(1, "b"));
+	// b.node_names.insert(std::make_pair(2, "c"));
+
+	// std::cout << is_isomorphic(a, b) << std::endl;
 	return 0;
 }
