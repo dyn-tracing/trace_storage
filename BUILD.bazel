@@ -20,13 +20,13 @@ cc_binary(
     name = "trace_storage",
     srcs = [
         "trace_storage.cc",
-        #"opentelemetry-proto/gen/cpp/opentelemetry/proto/trace/v1/trace.pb.h"
+        "opentelemetry-proto/gen/cpp/opentelemetry/proto/trace/v1/trace.pb.h",
+        "opentelemetry-proto/gen/cpp/opentelemetry/proto/common/v1/common.pb.h",
     ],
     deps = [
         "@com_github_googleapis_google_cloud_cpp//:storage",
         "@boost//:regex",
-        "@boost//:algorithm"
-        #"@boost//:algorithm/string/regex"
-        #"@com_google_protobuf"
+        "@boost//:algorithm",
+        "@com_google_protobuf//:protobuf",
     ],
 )
