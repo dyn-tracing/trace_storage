@@ -13,16 +13,16 @@ int main() {
   
   
   // Build graph1
-  graph_type graph1;
-  add_vertex(vertex_property("a", 0), graph1);
-  add_vertex(vertex_property("b", 1), graph1);
+  graph_type graph1(2);
+  // add_vertex(vertex_property("a", 0), graph1);
+  // add_vertex(vertex_property("b", 1), graph1);
   add_edge(0, 1, graph1);
 
   // Build graph2
-  graph_type graph2;
-  add_vertex(vertex_property("a", 0), graph2);
-  add_vertex(vertex_property("b", 1), graph2);
-  add_vertex(vertex_property("c", 2), graph2);
+  graph_type graph2(3);
+  // add_vertex(vertex_property("a", 0), graph2);
+  // add_vertex(vertex_property("b", 1), graph2);
+  // add_vertex(vertex_property("c", 2), graph2);
   add_edge(0, 1, graph2);
   add_edge(0, 2, graph2);
   add_edge(1, 2, graph2);

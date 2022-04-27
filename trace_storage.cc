@@ -13,10 +13,13 @@ int main(int argc, char* argv[]) {
 
 	// Building a query trace where checkoutservice calls cartservice
 	trace_structure query_trace;
-	query_trace.num_nodes = 2;
+	query_trace.num_nodes = 3;
 	query_trace.node_names.insert(std::make_pair(0, "frontend"));
-	query_trace.node_names.insert(std::make_pair(1, "adservice"));
+	query_trace.node_names.insert(std::make_pair(1, ASTERIK_SERVICE));
+	query_trace.node_names.insert(std::make_pair(2, "emailservice"));
+
 	query_trace.edges.insert(std::make_pair(0, 1));
+	query_trace.edges.insert(std::make_pair(1, 2));
 
 	auto client = gcs::Client();
 	int total = get_traces_by_structure(query_trace, 1650574225, 1650574225, &client);
@@ -298,21 +301,17 @@ void print_trace_structure(trace_structure trace) {
 }
 
 bool is_isomorphic(trace_structure query_trace, trace_structure candidate_trace) {
-	// std::cout << "Query Trace" << std::endl;
-	// print_trace_structure(query_trace);
-
-	// std::cout << "Candidate Trace" << std::endl;
-	// print_trace_structure(candidate_trace);
 
 	graph_type query_graph = morph_trace_structure_to_boost_graph_type(query_trace);
 	graph_type candidate_graph = morph_trace_structure_to_boost_graph_type(candidate_trace);
-
-	vertex_comp_t vertex_comp = boost::make_property_map_equivalent(boost::get(boost::vertex_name_t::vertex_name, query_graph), boost::get(boost::vertex_name_t::vertex_name, candidate_graph));
-
+	vertex_comp_t vertex_comp = make_property_map_equivalent_custom(boost::get(boost::vertex_name_t::vertex_name, query_graph), boost::get(boost::vertex_name_t::vertex_name, candidate_graph));
 	boost::vf2_print_callback<graph_type, graph_type> callback(query_graph, candidate_graph);
 	bool res = boost::vf2_subgraph_iso(query_graph, candidate_graph, callback, boost::vertex_order_by_mult(query_graph), boost::vertices_equivalent(vertex_comp));
-
-	//std::cout << "iso response: " << res << std::endl;
+	// std::cout << "Query Trace" << std::endl;
+	// print_trace_structure(query_trace);
+	// std::cout << "Candidate Trace" << std::endl;
+	// print_trace_structure(candidate_trace);
+	// std::cout << "iso response: " << res << std::endl;
 	return res;
 }
 

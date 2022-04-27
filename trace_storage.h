@@ -4,16 +4,49 @@
 #include <boost/graph/vf2_sub_graph_iso.hpp>
 #include <iostream>
 
+const std::string ASTERIK_SERVICE = "NONE";
 struct trace_structure {
 	int num_nodes;
 	std::unordered_map<int, std::string> node_names;
 	std::multimap<int, int> edges;
 };
 
+// Binary function object that returns true if the values for item1
+// in property_map1 and item2 in property_map2 are equivalent.
+template < typename PropertyMapFirst, typename PropertyMapSecond >
+struct property_map_equivalent_custom {
+
+    property_map_equivalent_custom(const PropertyMapFirst property_map1,
+        const PropertyMapSecond property_map2)
+    : m_property_map1(property_map1), m_property_map2(property_map2) {
+    }
+
+    template < typename ItemFirst, typename ItemSecond >
+    bool operator()(const ItemFirst item1, const ItemSecond item2) {
+        if (get(m_property_map1, item1) == ASTERIK_SERVICE || get(m_property_map2, item2) == ASTERIK_SERVICE) {
+            return true;
+        }
+
+        return (get(m_property_map1, item1) == get(m_property_map2, item2));
+    }
+
+private:
+    const PropertyMapFirst m_property_map1;
+    const PropertyMapSecond m_property_map2;
+};
+
+template < typename PropertyMapFirst, typename PropertyMapSecond >
+property_map_equivalent_custom< PropertyMapFirst, PropertyMapSecond > make_property_map_equivalent_custom(
+    const PropertyMapFirst property_map1, const PropertyMapSecond property_map2
+) {
+    return (property_map_equivalent_custom< PropertyMapFirst, PropertyMapSecond >(
+        property_map1, property_map2));
+}
+
 typedef boost::property<boost::vertex_name_t, std::string, boost::property<boost::vertex_index_t, int> > vertex_property;
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, vertex_property> graph_type;
 typedef boost::property_map<graph_type, boost::vertex_name_t>::type vertex_name_map_t;
-typedef boost::property_map_equivalent<vertex_name_map_t, vertex_name_map_t> vertex_comp_t;
+typedef property_map_equivalent_custom<vertex_name_map_t, vertex_name_map_t> vertex_comp_t;
 
 const std::string trace_struct_bucket = "dyntraces-snicket2";
 const std::string trace_hashes_bucket = "tracehashes-snicket2";
