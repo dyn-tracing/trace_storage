@@ -17,6 +17,7 @@
 workspace(name = "storage_quickstart")
 
 # Add the necessary Starlark functions to fetch google-cloud-cpp.
+
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # Fetch the Google Cloud C++ libraries.
@@ -42,6 +43,7 @@ switched_rules_by_language(
     grpc = True,
 )
 
+# grpc
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 
 grpc_deps()
@@ -52,22 +54,8 @@ grpc_extra_deps()
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-http_archive(
-    name = "com_google_protobuf",
-    sha256 = "d0f5f605d0d656007ce6c8b5a82df3037e1d8fe8b121ed42e536f569dec16113",
-    strip_prefix = "protobuf-3.14.0",
-    urls = [
-        "https://mirror.bazel.build/github.com/protocolbuffers/protobuf/archive/v3.14.0.tar.gz",
-        "https://github.com/protocolbuffers/protobuf/archive/v3.14.0.tar.gz",
-    ],
-)
-
-load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
-
-protobuf_deps()
-
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
+# boost
+# copied from here:  https://github.com/nelhage/rules_boost
 _RULES_BOOST_COMMIT = "652b21e35e4eeed5579e696da0facbe8dba52b1f"
 
 http_archive(
@@ -81,3 +69,26 @@ http_archive(
 
 load("@com_github_nelhage_rules_boost//:boost/boost.bzl", "boost_deps")
 boost_deps()
+
+# otel
+http_archive(
+        name = "io_opentelemetry_cpp",
+        strip_prefix = "opentelemetry-cpp-main",
+        urls = ["https://github.com/open-telemetry/opentelemetry-cpp/archive/main.zip"],
+)
+
+load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
+
+# OTLP Protocol definition
+maybe(
+    http_archive,
+    name = "com_github_opentelemetry_proto",
+    build_file = "@io_opentelemetry_cpp//bazel:opentelemetry_proto.BUILD",
+    sha256 = "08f090570e0a112bfae276ba37e9c45bf724b64d902a7a001db33123b840ebd6",
+    strip_prefix = "opentelemetry-proto-0.6.0",
+    urls = [
+        "https://github.com/open-telemetry/opentelemetry-proto/archive/v0.6.0.tar.gz",
+    ],
+)
+
+# used https://github.com/GoogleCloudPlatform/opentelemetry-operations-cpp/blob/main/WORKSPACE

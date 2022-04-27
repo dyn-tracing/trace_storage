@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "google/cloud/storage/client.h"
-//#include "opentelemetry-proto/gen/cpp/opentelemetry/proto/trace/v1/trace.pb.h"
+#include "opentelemetry/proto/trace/v1/trace.pb.h"
 #include <iostream>
 #include <regex>
 #include <boost/regex.hpp>
