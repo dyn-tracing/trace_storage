@@ -54,18 +54,13 @@ std::string get_span(int hash1, int hash2, std::string microservice, std::string
         std::string contents{std::istreambuf_iterator<char>{reader}, {}};
         opentelemetry::proto::trace::v1::TracesData trace_data;
         bool ret = trace_data.ParseFromString(contents);
+        std::cout << "trace_data.resourcespans_size() " << trace_data.resource_spans_size() << std::endl;
+        std::cout << "trace_data.resource(0).scope_spans(0).spans_size() " << trace_data.resource_spans(0).scope_spans(0).spans_size() << std::endl;
         if (ret) {
         std::cout << "not parsed" << std::endl;
         } else {
             std::cout << " parsed! " << std::endl;
         }
-/*
-        if (opentelemetry::proto::trace::v1::ResourceSpans::ParseFromString(contents)) {
-            std::cout << "parsed!" << std::endl;
-        } else {
-            std::cout << "oh no" << std::endl;
-        }
-        */
         return contents;
     }
     return "";
