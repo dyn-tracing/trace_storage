@@ -4,7 +4,8 @@
 #include <boost/graph/vf2_sub_graph_iso.hpp>
 #include <iostream>
 
-const std::string ASTERIK_SERVICE = "NONE";
+const std::string ASTERISK_SERVICE = "NONE";
+
 struct trace_structure {
 	int num_nodes;
 	std::unordered_map<int, std::string> node_names;
@@ -23,7 +24,7 @@ struct property_map_equivalent_custom {
 
     template < typename ItemFirst, typename ItemSecond >
     bool operator()(const ItemFirst item1, const ItemSecond item2) {
-        if (get(m_property_map1, item1) == ASTERIK_SERVICE || get(m_property_map2, item2) == ASTERIK_SERVICE) {
+        if (get(m_property_map1, item1) == ASTERISK_SERVICE || get(m_property_map2, item2) == ASTERISK_SERVICE) {
             return true;
         }
 
@@ -42,6 +43,33 @@ property_map_equivalent_custom< PropertyMapFirst, PropertyMapSecond > make_prope
     return (property_map_equivalent_custom< PropertyMapFirst, PropertyMapSecond >(
         property_map1, property_map2));
 }
+
+template < typename Graph1, typename Graph2 > 
+struct vf2_callback_custom {
+    vf2_callback_custom(const Graph1& graph1, const Graph2& graph2)
+    : graph1_(graph1), graph2_(graph2)
+    {
+    }
+
+    /**
+     * @brief Returning false so that the isomorphism finding process stops after finding 
+     * a single isomorphism evidence. 
+     * 
+     * @tparam CorrespondenceMap1To2 
+     * @tparam CorrespondenceMap2To1 
+     * @param f 
+     * @return true 
+     * @return false 
+     */
+    template < typename CorrespondenceMap1To2, typename CorrespondenceMap2To1 >
+    bool operator()(CorrespondenceMap1To2 f, CorrespondenceMap2To1) const {
+        return false;
+    }
+
+private:
+    const Graph1& graph1_;
+    const Graph2& graph2_;
+};
 
 typedef boost::property<boost::vertex_name_t, std::string, boost::property<boost::vertex_index_t, int> > vertex_property;
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, vertex_property> graph_type;
