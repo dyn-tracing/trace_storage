@@ -1,4 +1,4 @@
-#include "trace_storage.h"
+#include "graph_query.h"
 
 int main(int argc, char* argv[]) {
 	// dummy_tests();
@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
 	query_trace.edges.insert(std::make_pair(0, 1));
 
 	auto client = gcs::Client();
-	int total = get_traces_by_structure(query_trace, 1550574225, 1750574225, &client);
+	int total = get_traces_by_structure(query_trace, 1650574225, 1650574225, &client);
 	std::cout << "Total results: " << total << std::endl;
 	return 0;
 }
@@ -55,7 +55,6 @@ int get_traces_by_structure(trace_structure query_trace, int start_time, int end
 		}
 
 		if (false == does_trace_structure_conform_to_graph_query(batch_name, trace_ids[0], query_trace, client)) {
-			std::cout << object_name << std::endl;
 			continue;
 		}
 		

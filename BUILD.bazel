@@ -17,43 +17,14 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])  # Apache 2.0
 
 cc_binary(
-    name = "trace_storage",
+    name = "graph_query",
     srcs = [
-        "trace_storage.cc",
-        "trace_storage.h"
+        "graph_query.cc",
+        "graph_query.h"
     ],
     deps = [
         "@com_github_googleapis_google_cloud_cpp//:storage",
         "@boost//:algorithm",
         "@boost//:graph"
     ],
-)
-
-cc_binary(
-    name = "graph_example",
-    srcs = [
-        "isomorphism_examples/graph_example.cc",
-    ],
-    deps = [
-        "@boost//:graph"
-    ],
-)
-
-cc_binary(
-    name = "graph_example_complex",
-    srcs = [
-        "isomorphism_examples/graph_example_complex.cc",
-    ],
-    deps = [
-        "@boost//:graph"
-    ],
-)
-
-cc_test(
-  name = "unit_tests",
-  srcs = ["test_trace_storage.cc"],
-  deps = [
-      "@com_google_googletest//:gtest_main",
-      "//:trace_storage"
-  ],
 )
