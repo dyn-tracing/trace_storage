@@ -1,8 +1,8 @@
 #include "trace_storage.h"
 
 int main(int argc, char* argv[]) {
-	// dummy_tests();
-	// exit(1);
+	dummy_tests();
+	exit(1);
 
 	if (argc != 2) {
 		std::cerr << "Missing bucket name.\n";
@@ -11,24 +11,29 @@ int main(int argc, char* argv[]) {
 	}
 	std::string const bucket_name = argv[1];
 
-	auto client = gcs::Client();
+	// Building a query trace where checkoutservice calls cartservice
+	trace_structure query_trace;
+	query_trace.num_nodes = 2;
+	query_trace.node_names.insert(std::make_pair(0, "checkoutservice"));
+	query_trace.node_names.insert(std::make_pair(1, "cartservice"));
+	query_trace.edges.insert(std::make_pair(0, 1));
 
-	int total = get_traces_by_structure("checkoutservice", "cartservice", 1650574264, 1650574264, &client);
+	auto client = gcs::Client();
+	int total = get_traces_by_structure(query_trace, 1650574264, 1650574264, &client);
 	std::cout << "Total results: " << total << std::endl;
 	return 0;
 }
 
 /**
- * @brief Get the traces that conform to the given structure
+ * @brief Get the traces by structure. 
  * 
- * @param parent_service 
- * @param child_service 
+ * @param query_trace 
  * @param start_time 
  * @param end_time 
  * @param client 
  * @return int 
  */
-int get_traces_by_structure(std::string parent_service, std::string child_service, int start_time, int end_time, gcs::Client* client) {
+int get_traces_by_structure(trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
 	std::vector<std::string> response;
 
 	for (auto&& object_metadata : client->ListObjects(trace_hashes_bucket)) {
@@ -48,7 +53,7 @@ int get_traces_by_structure(std::string parent_service, std::string child_servic
 			continue;
 		}
 
-		if (false == does_trace_structure_conform_to_graph_query(batch_name, trace_ids[0], parent_service, child_service, client)) {
+		if (false == does_trace_structure_conform_to_graph_query(batch_name, trace_ids[0], query_trace, client)) {
 			continue;
 		}
 		
@@ -60,17 +65,17 @@ int get_traces_by_structure(std::string parent_service, std::string child_servic
 	return response.size();
 }
 
-bool does_trace_structure_conform_to_graph_query(std::string traces_object, std::string trace_id, std::string parent_service, std::string child_service, gcs::Client* client ) {
+bool does_trace_structure_conform_to_graph_query(std::string traces_object, std::string trace_id, trace_structure query_trace, gcs::Client* client ) {
 	std::string object_content = read_object(trace_struct_bucket, traces_object, client);
 	std::string trace = extract_trace_from_traces_object(trace_id, object_content);
-	
 
-	return true;
+	trace_structure candidate_trace = morph_trace_object_to_trace_structure(trace);
+	bool response = is_isomorphic(query_trace, candidate_trace);
+	return response;
 }
 
 std::vector<std::string> split_by_line(std::string input) {
-	std::vector<std::string> result;
-	boost::split(result, input, boost::is_any_of("\n"));
+	std::vector<std::string> result = split_by(input, "\n");
 	if (result[result.size()-1].length() < 1) {
 		result.pop_back();
 	}
@@ -80,7 +85,7 @@ std::vector<std::string> split_by_line(std::string input) {
 
 /**
  * @brief Right now this function only calculates whether the batch timestamps have some overlap with the 
- * timespan provided in the query. TODO: Don't find just the overlap, calculate whether the object
+ * timespan provided in the query. TODO: To be accurate, calculate whether the object
  * is really between the provided timespan by reading the timestamps of the object rather than just using the 
  * timespans of the batch. 
  * 
@@ -202,21 +207,135 @@ std::string extract_trace_from_traces_object(std::string trace_id, std::string o
 		// not necessarily required as end_ind=npos does the same thing, but for clarity:
 		end_ind = object_content.length() - start_ind;
 	}
-	
+
 	std::string trace = object_content.substr(start_ind, end_ind-start_ind);
+	trace = strip_from_the_end(trace, '\n');
 	return trace;
 }
 
-int dummy_tests() {
-	std::cout << is_object_within_timespan("12-123-125", 123, 124) << ":1" << std::endl;
-	std::cout << is_object_within_timespan("12-123-125", 124, 128) << ":1" << std::endl;
-	std::cout << is_object_within_timespan("12-123-125", 119, 124) << ":1" << std::endl;
-	std::cout << is_object_within_timespan("12-123-125", 123, 123) << ":1" << std::endl;
-	std::cout << is_object_within_timespan("12-123-125", 125, 125) << ":1" << std::endl;
-	std::cout << is_object_within_timespan("12-123-125", 121, 122) << ":0" << std::endl;
-	std::cout << is_object_within_timespan("12-123-125", 126, 126) << ":0" << std::endl;
-	std::cout << is_object_within_timespan("12-123-125", 126, 127) << ":0" << std::endl;
+std::string strip_from_the_end(std::string object, char stripper) {
+	if (!object.empty() && object[object.length()-1] == stripper) {
+		object.erase(object.length()-1);
+	}
+	return object;
+}
 
-	std::cout << extract_trace_from_traces_object("123", "Trace ID: 1234: abcd def Trace ID: 123: thats complete! Trace ID") << std::endl;
+trace_structure morph_trace_object_to_trace_structure(std::string trace) {
+	trace_structure response;
+	
+	std::vector<std::string> trace_lines = split_by_line(trace);
+	std::unordered_map<std::string, std::string> span_to_service;
+	std::unordered_map<std::string, int> reverse_node_names;
+	std::multimap<std::string, std::string> edges;
+
+	for (auto line: trace_lines) {
+		if (line.substr(0, 10) == "Trace ID: ") {
+			continue;
+		}
+
+		std::vector<std::string> span_info = split_by(line, ":");
+		if (span_info.size() != 3) {
+			std::cerr << "Malformed trace found: \n" << trace << std::endl;
+			exit(1);
+		}
+		
+		span_to_service.insert(std::make_pair(span_info[1], span_info[2]+"-"+span_info[1]));
+
+		if (span_info[0].length() > 0) {
+			edges.insert(std::make_pair(span_info[0], span_info[1]));
+		}
+	}
+
+	response.num_nodes = span_to_service.size();
+
+	/**
+	 * TODO: Make sure that the traces with multiple spans of a single
+	 * service are catered properly. Seems like it is already handled
+	 * properly, just mako suro!
+	 */
+
+	// Filling response.node_names
+	int count = 0;
+	for(const auto& elem : span_to_service) {
+		response.node_names.insert(make_pair(count, split_by(elem.second, "-")[0]));
+		reverse_node_names.insert(make_pair(elem.second, count));
+		count++;
+	}
+
+	// Filling response.edges
+	for(const auto& elem : edges) {
+		response.edges.insert(std::make_pair(
+			reverse_node_names[span_to_service[elem.first]],
+			reverse_node_names[span_to_service[elem.second]]
+		));
+	}
+
+	return response;
+}
+
+std::vector<std::string> split_by(std::string input, std::string splitter) {
+	std::vector<std::string> result;
+	boost::split(result, input, boost::is_any_of(splitter));
+	return result;
+}
+
+void print_trace_structure(trace_structure trace) {
+	std::cout << "n: " << trace.num_nodes << std::endl;
+	std::cout << "node names:" << std::endl;
+	for (const auto& elem : trace.node_names) {
+		std::cout << elem.first << " : " << elem.second << std::endl;
+	}
+	std::cout << "edges:" << std::endl;
+	for (const auto& elem : trace.edges) {
+		std::cout << elem.first << " : " << elem.second << std::endl;
+	}
+}
+
+bool is_isomorphic(trace_structure query_trace, trace_structure candidate_trace) {
+	// std::cout << "Query Trace" << std::endl;
+	// print_trace_structure(query_trace);
+
+	// std::cout << "Candidate Trace" << std::endl;
+	// print_trace_structure(candidate_trace);
+
+	graph_type graph1;
+	boost::add_vertex(vertex_property("a", 0), graph1);
+	boost::add_vertex(vertex_property("b", 1), graph1);
+	boost::add_vertex(vertex_property("c", 2), graph1);
+	boost::add_edge(0, 1, graph1);
+	boost::add_edge(1, 2, graph1);
+
+	graph_type graph2;
+	boost::add_vertex(vertex_property("a", 0), graph2);
+	boost::add_vertex(vertex_property("b", 1), graph2);
+	boost::add_vertex(vertex_property("c", 2), graph2);
+	boost::add_edge(0, 1, graph2);
+	boost::add_edge(1, 2, graph2);
+
+	vertex_comp_t vertex_comp = boost::make_property_map_equivalent(boost::get(boost::vertex_name_t::vertex_name, graph1), boost::get(boost::vertex_name_t::vertex_name, graph2));
+
+	boost::vf2_print_callback<graph_type, graph_type> callback(graph1, graph2);
+	bool res = boost::vf2_subgraph_iso(graph1, graph2, callback, boost::vertex_order_by_mult(graph1), boost::vertices_equivalent(vertex_comp));
+
+	return res;
+}
+
+int dummy_tests() {
+	// std::cout << is_object_within_timespan("12-123-125", 123, 124) << ":1" << std::endl;
+	// std::cout << is_object_within_timespan("12-123-125", 124, 128) << ":1" << std::endl;
+	// std::cout << is_object_within_timespan("12-123-125", 119, 124) << ":1" << std::endl;
+	// std::cout << is_object_within_timespan("12-123-125", 123, 123) << ":1" << std::endl;
+	// std::cout << is_object_within_timespan("12-123-125", 125, 125) << ":1" << std::endl;
+	// std::cout << is_object_within_timespan("12-123-125", 121, 122) << ":0" << std::endl;
+	// std::cout << is_object_within_timespan("12-123-125", 126, 126) << ":0" << std::endl;
+	// std::cout << is_object_within_timespan("12-123-125", 126, 127) << ":0" << std::endl;
+
+	// std::cout << extract_trace_from_traces_object("123", "Trace ID: 1234: abcd def Trace ID: 123: thats complete! Trace ID") << std::endl;
+
+	// auto response = morph_trace_object_to_trace_structure("Trace ID: 123:\n1:2:a\n1:3:b\n:1:f\n2:4:c\n4:5:b");
+
+	trace_structure a;
+	trace_structure b;
+	std::cout << is_isomorphic(a, b) << std::endl;
 	return 0;
 }

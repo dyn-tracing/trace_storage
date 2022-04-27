@@ -3,8 +3,8 @@
 using namespace boost;
 
 int main() {
-  typedef property<edge_name_t, char> edge_property;
-  typedef property<vertex_name_t, char, property<vertex_index_t, int> > vertex_property;
+  typedef property<edge_name_t, std::string> edge_property;
+  typedef property<vertex_name_t, std::string, property<vertex_index_t, int> > vertex_property;
 
   // Using a vecS graphs => the index maps are implicit.
   typedef adjacency_list<vecS, vecS, bidirectionalS, vertex_property, edge_property> graph_type;
@@ -12,49 +12,49 @@ int main() {
   // Build graph1
   graph_type graph1;
   
-  add_vertex(vertex_property('a'), graph1);
-  add_vertex(vertex_property('a'), graph1);
-  add_vertex(vertex_property('a'), graph1);
+  add_vertex(vertex_property("a", 2), graph1);
+  add_vertex(vertex_property("a", 0), graph1);
+  add_vertex(vertex_property("a", 1), graph1);
   
-  add_edge(0, 1, edge_property('b'), graph1); 
-  add_edge(0, 1, edge_property('b'), graph1); 
-  add_edge(0, 1, edge_property('d'), graph1); 
+  add_edge(0, 1, edge_property("b"), graph1); 
+  add_edge(0, 1, edge_property("b"), graph1); 
+  add_edge(0, 1, edge_property("d"), graph1); 
   
-  add_edge(1, 2, edge_property('s'), graph1); 
+  add_edge(1, 2, edge_property("s"), graph1); 
   
-  add_edge(2, 2, edge_property('l'), graph1); 
-  add_edge(2, 2, edge_property('l'), graph1); 
+  add_edge(2, 2, edge_property("l"), graph1); 
+  add_edge(2, 2, edge_property("l"), graph1); 
   
   // Build graph2
   graph_type graph2;
   
-  add_vertex(vertex_property('a'), graph2);
-  add_vertex(vertex_property('a'), graph2);
-  add_vertex(vertex_property('a'), graph2);
-  add_vertex(vertex_property('a'), graph2);
-  add_vertex(vertex_property('a'), graph2);
-  add_vertex(vertex_property('a'), graph2);
+  add_vertex(vertex_property("a"), graph2);
+  add_vertex(vertex_property("a"), graph2);
+  add_vertex(vertex_property("a"), graph2);
+  add_vertex(vertex_property("a"), graph2);
+  add_vertex(vertex_property("a"), graph2);
+  add_vertex(vertex_property("a"), graph2);
   
-  add_edge(0, 1, edge_property('a'), graph2); 
-  add_edge(0, 1, edge_property('a'), graph2); 
-  add_edge(0, 1, edge_property('b'), graph2); 
+  add_edge(0, 1, edge_property("a"), graph2); 
+  add_edge(0, 1, edge_property("a"), graph2); 
+  add_edge(0, 1, edge_property("b"), graph2); 
 
-  add_edge(1, 2, edge_property('s'), graph2); 
+  add_edge(1, 2, edge_property("s"), graph2); 
   
-  add_edge(2, 3, edge_property('b'), graph2); 
-  add_edge(2, 3, edge_property('d'), graph2); 
-  add_edge(2, 3, edge_property('b'), graph2); 
+  add_edge(2, 3, edge_property("b"), graph2); 
+  add_edge(2, 3, edge_property("d"), graph2); 
+  add_edge(2, 3, edge_property("b"), graph2); 
   
-  add_edge(3, 4, edge_property('s'), graph2); 
+  add_edge(3, 4, edge_property("s"), graph2); 
   
-  add_edge(4, 4, edge_property('l'), graph2); 
-  add_edge(4, 4, edge_property('l'), graph2); 
+  add_edge(4, 4, edge_property("l"), graph2); 
+  add_edge(4, 4, edge_property("l"), graph2); 
 
-  add_edge(4, 5, edge_property('c'), graph2); 
-  add_edge(4, 5, edge_property('c'), graph2); 
-  add_edge(4, 5, edge_property('c'), graph2); 
+  add_edge(4, 5, edge_property("c"), graph2); 
+  add_edge(4, 5, edge_property("c"), graph2); 
+  add_edge(4, 5, edge_property("c"), graph2); 
   
-  add_edge(5, 0, edge_property('s'), graph2); 
+  add_edge(5, 0, edge_property("s"), graph2); 
   
   // create predicates
   typedef property_map<graph_type, vertex_name_t>::type vertex_name_map_t;
