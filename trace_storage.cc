@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "google/cloud/storage/client.h"
+#include "opentelemetry-proto/gen/cpp/opentelemetry/proto/trace/v1/trace.pb.h"
 #include <iostream>
 
 const std::string trace_struct_bucket = "dyntraces-snicket2";
@@ -43,9 +44,12 @@ int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* cl
             int traceID_location = contents.find(traceID);
             if (traceID_location) {
                 trace_found = true;
-                int end = contents.find("Trace ID", traceID_location+1);
-                std::string spans = contents.substr(traceID_location, end);
-                std::cout << spans << std::endl;
+                int end = contents.find("Trace ID", traceID_location);
+                if (end) {
+                    std::string spans = contents.substr(traceID_location, end);
+                    std::cout << spans << std::endl;
+                    std::cout << "trace id loc " << traceID_location << " end " << end << std::endl;
+                }
             }
             
           }
