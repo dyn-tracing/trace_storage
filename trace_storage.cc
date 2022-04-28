@@ -20,9 +20,7 @@
 #include <boost/regex.hpp>
 #include <boost/algorithm/string/regex.hpp>
 
-
-
-const char trace_struct_bucket[] trace_struct_bucket = "dyntraces-snicket3";
+const char trace_struct_bucket[] = "dyntraces-snicket3";
 const char ending[] = "-snicket3";
 // Create aliases to make the code easier to read.
 namespace gcs = ::google::cloud::storage;
@@ -74,7 +72,7 @@ opentelemetry::proto::trace::v1::Span get_span(
             std::cerr << " not parsed! " << std::endl;
             throw std::runtime_error("could not parse span data");
         }
-        int sp_size = trace_data.resource_spans(0).scope_spans(0).spans_size()
+        int sp_size = trace_data.resource_spans(0).scope_spans(0).spans_size();
         for (int i=0; i < sp_size; i++) {
             opentelemetry::proto::trace::v1::Span sp =
                 trace_data.resource_spans(0).scope_spans(0).spans(i);
@@ -149,4 +147,4 @@ int main(int argc, char* argv[]) {
     auto client = gcs::Client();
     return get_trace("366ada8fbc705fbddf0468d1df1e746f",
                      1651073970, 1651073970, &client);
-
+}
