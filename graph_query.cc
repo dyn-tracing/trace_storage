@@ -1,8 +1,7 @@
 #include "graph_query.h"
 
 int main(int argc, char* argv[]) {
-	// dummy_tests();
-	// exit(1);
+	dummy_tests();
 
 	if (argc != 2) {
 		std::cerr << "Missing bucket name.\n";
@@ -45,7 +44,8 @@ int get_traces_by_structure(trace_structure query_trace, int start_time, int end
 		std::string object_name = object_metadata->name();
 		std::string batch_name = extract_batch_name(object_name);
 
-		if (false == is_object_within_timespan(batch_name, start_time, end_time)) {
+		std::pair<int, int> batch_time = extract_batch_timestamps(batch_name);
+		if (false == is_object_within_timespan(batch_time, start_time, end_time)) {
 			continue;
 		}
 
@@ -60,7 +60,7 @@ int get_traces_by_structure(trace_structure query_trace, int start_time, int end
 			continue;
 		}
 
-		trace_ids = filter_trace_ids_based_on_query_timestamp(trace_ids, batch_name, object_content, start_time, end_time);
+		trace_ids = filter_trace_ids_based_on_query_timestamp(trace_ids, batch_name, object_content, start_time, end_time, client);
 		
 		response.insert(response.end(), trace_ids.begin(), trace_ids.end());
 	}
@@ -90,19 +90,11 @@ std::vector<std::string> split_by_line(std::string input) {
 
 /**
  * @brief Right now this function only calculates whether the batch timestamps have some overlap with the 
- * timespan provided in the query. TODO: To be accurate, calculate whether the object
- * is really between the provided timespan by reading the timestamps of the object rather than just using the 
- * timespans of the batch. 
+ * timespan provided in the query. 
  * 
- * @param object_name 
- * @param start_time 
- * @param end_time 
  * @return bool 
  */
-bool is_object_within_timespan(std::string object_name, int start_time, int end_time) {
-
-	// Making pairs just for the sake of readability
-	std::pair<int, int> batch_time = extract_batch_timestamps(object_name);
+bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, int end_time) {
 	std::pair<int, int> query_timespan = std::make_pair(start_time, end_time); 
 	
 	// query timespan between object timespan
@@ -306,10 +298,45 @@ graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph
 	return output_graph;
 }
 
-std::vector<std::string> filter_trace_ids_based_on_query_timestamp(std::vector<std::string> trace_ids, std::string batch_name, std::string object_content, int start_time, int end_time) {
-	std::map<std::string, std::string> root_services_map = get_trace_id_to_root_service_map(object_content);
+/**
+ * @brief This is the place to do filtering of the trace_ids. RN I am filetering just on the start and end timestamp but it can
+ * be generalized to cater to other filtering objectives. 
+ * 
+ * @param trace_ids 
+ * @param batch_name 
+ * @param object_content 
+ * @param start_time 
+ * @param end_time 
+ * @return std::vector<std::string> 
+ */
+std::vector<std::string> filter_trace_ids_based_on_query_timestamp(std::vector<std::string> trace_ids, std::string batch_name, std::string object_content, int start_time, int end_time, gcs::Client* client) {
+	std::vector<std::string> response;
+
+	std::map<std::string, std::string> trace_id_to_root_service_map = get_trace_id_to_root_service_map(object_content);
+	std::map<std::string, std::vector<std::string>> root_service_to_trace_ids_map = get_root_service_to_trace_ids_map(trace_id_to_root_service_map);
 	
-	return trace_ids;
+	for (auto const& elem : root_service_to_trace_ids_map) {
+		std::string bucket = elem.first + SERVICES_BUCKETS_SUFFIX;
+		std::string spans_data = read_object(bucket, batch_name, client);
+		
+		std::map<std::string, std::pair<int, int>> trace_id_to_timestamp_map = get_timestamp_map_for_trace_ids(spans_data, trace_ids);
+		
+		std::vector<std::string> successful_trace_ids;
+		for(auto const& trace_id: elem.second) {
+			std::pair<int, int> trace_timestamp = trace_id_to_timestamp_map[trace_id];
+			if (is_object_within_timespan(trace_timestamp, start_time, end_time)) {
+				successful_trace_ids.push_back(trace_id);
+			}
+		}
+
+		response.insert(response.end(), successful_trace_ids.begin(), successful_trace_ids.end());
+	}
+
+	return response;
+}
+
+std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(std::string spans_data, std::vector<std::string> trace_ids) {
+	
 }
 
 std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string object_content) {
@@ -332,6 +359,15 @@ std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string 
 	return response;
 }
 
+std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_map(std::map<std::string, std::string> trace_id_to_root_service_map) {
+	std::map<std::string, std::vector<std::string>> response;
+
+	for (auto const& elem : trace_id_to_root_service_map) {
+		response[elem.second].push_back(elem.first);
+	}
+
+	return response;
+}
 int dummy_tests() {
 	// std::cout << is_object_within_timespan("12-123-125", 123, 124) << ":1" << std::endl;
 	// std::cout << is_object_within_timespan("12-123-125", 124, 128) << ":1" << std::endl;
@@ -351,14 +387,31 @@ int dummy_tests() {
 	// a.node_names.insert(std::make_pair(0, "a"));
 	// a.node_names.insert(std::make_pair(1, "b"));
 	// a.node_names.insert(std::make_pair(2, "c"));
-
-
 	// trace_structure b;
 	// b.num_nodes = 3;
 	// b.node_names.insert(std::make_pair(0, "a"));
 	// b.node_names.insert(std::make_pair(1, "b"));
 	// b.node_names.insert(std::make_pair(2, "c"));
-
 	// std::cout << is_isomorphic(a, b) << std::endl;
+
+	// std::map<std::string, std::string> m;
+	// m["A"] = "B";
+	// m["B"] = "B";
+	// m["C"] = "B";
+	// m["D"] = "B";
+	// m["AA"] = "BB";
+	// m["BB"] = "BB";
+	// m["CC"] = "BB";
+	// m["DD"] = "BB";
+	// std::map<std::string, std::vector<std::string>> res = get_root_service_to_trace_ids_map(m);
+	// for (auto const& elem : res) {
+	// 	std::cout << elem.first << ": ";
+	// 	for (auto const& vec_elem: elem.second) {
+	// 		std::cout << vec_elem << ",";
+	// 	}
+	// 	std::cout << std::endl;
+	// }
+
+	// exit(1);
 	return 0;
 }
