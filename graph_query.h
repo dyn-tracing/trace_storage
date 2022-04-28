@@ -4,7 +4,15 @@
 #include <boost/graph/vf2_sub_graph_iso.hpp>
 #include <iostream>
 
+const std::string TRACE_STRUCT_BUCKET = "dyntraces-snicket2";
+const std::string TRACE_HASHES_BUCKET = "tracehashes-snicket2";
 const std::string ASTERISK_SERVICE = "NONE";
+
+const int TRACE_ID_LENGTH = 32;
+const int SPAN_ID_LENGTH = 16;
+
+namespace gcs = ::google::cloud::storage;
+namespace bg = boost::graph;
 
 struct trace_structure {
 	int num_nodes;
@@ -54,12 +62,6 @@ struct vf2_callback_custom {
     /**
      * @brief Returning false so that the isomorphism finding process stops after finding 
      * a single isomorphism evidence. 
-     * 
-     * @tparam CorrespondenceMap1To2 
-     * @tparam CorrespondenceMap2To1 
-     * @param f 
-     * @return true 
-     * @return false 
      */
     template < typename CorrespondenceMap1To2, typename CorrespondenceMap2To1 >
     bool operator()(CorrespondenceMap1To2 f, CorrespondenceMap2To1) const {
@@ -76,19 +78,15 @@ typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, v
 typedef boost::property_map<graph_type, boost::vertex_name_t>::type vertex_name_map_t;
 typedef property_map_equivalent_custom<vertex_name_map_t, vertex_name_map_t> vertex_comp_t;
 
-const std::string trace_struct_bucket = "dyntraces-snicket2";
-const std::string trace_hashes_bucket = "tracehashes-snicket2";
-
-namespace gcs = ::google::cloud::storage;
-namespace bg = boost::graph;
-
+std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string object_content);
+std::vector<std::string> filter_trace_ids_based_on_query_timestamp(std::vector<std::string> trace_ids, std::string batch_name, std::string object_content, int start_time, int end_time);
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph);
 void print_trace_structure(trace_structure trace);
 std::string extract_trace_from_traces_object(std::string trace_id, std::string object_content);
 std::pair<int, int> extract_batch_timestamps(std::string batch_name); 
 std::string extract_batch_name(std::string object_name);
-bool does_trace_structure_conform_to_graph_query( std::string traces_object, std::string trace_id, trace_structure query_trace, gcs::Client* client);
-std::vector<std::string> split_by(std::string input, std::string splitter);
+bool does_trace_structure_conform_to_graph_query( std::string object_content, std::string trace_id, trace_structure query_trace, gcs::Client* client);
+std::vector<std::string> split_by_char(std::string input, std::string splitter);
 std::vector<std::string> split_by_line(std::string input);
 bool is_object_within_timespan(std::string object_name, int start_time, int end_time);
 std::string read_object(std::string bucket, std::string object, gcs::Client* client);

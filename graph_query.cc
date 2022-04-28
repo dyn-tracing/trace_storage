@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
 int get_traces_by_structure(trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
 	std::vector<std::string> response;
 
-	for (auto&& object_metadata : client->ListObjects(trace_hashes_bucket)) {
+	for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET)) {
 		if (!object_metadata) {
 			std::cerr << object_metadata.status().message() << std::endl;
 		}
@@ -54,9 +54,13 @@ int get_traces_by_structure(trace_structure query_trace, int start_time, int end
 			continue;
 		}
 
-		if (false == does_trace_structure_conform_to_graph_query(batch_name, trace_ids[0], query_trace, client)) {
+		std::string object_content = read_object(TRACE_STRUCT_BUCKET, batch_name, client);
+
+		if (false == does_trace_structure_conform_to_graph_query(object_content, trace_ids[0], query_trace, client)) {
 			continue;
 		}
+
+		trace_ids = filter_trace_ids_based_on_query_timestamp(trace_ids, batch_name, object_content, start_time, end_time);
 		
 		response.insert(response.end(), trace_ids.begin(), trace_ids.end());
 	}
@@ -64,8 +68,10 @@ int get_traces_by_structure(trace_structure query_trace, int start_time, int end
 	return response.size();
 }
 
-bool does_trace_structure_conform_to_graph_query(std::string traces_object, std::string trace_id, trace_structure query_trace, gcs::Client* client ) {
-	std::string object_content = read_object(trace_struct_bucket, traces_object, client);
+/**
+ * TODO: maybe pass a pointer to object_content only, would that be more performant?
+ */
+bool does_trace_structure_conform_to_graph_query(std::string object_content, std::string trace_id, trace_structure query_trace, gcs::Client* client ) {
 	std::string trace = extract_trace_from_traces_object(trace_id, object_content);
 
 	trace_structure candidate_trace = morph_trace_object_to_trace_structure(trace);
@@ -74,7 +80,7 @@ bool does_trace_structure_conform_to_graph_query(std::string traces_object, std:
 }
 
 std::vector<std::string> split_by_line(std::string input) {
-	std::vector<std::string> result = split_by(input, "\n");
+	std::vector<std::string> result = split_by_char(input, "\n");
 	if (result[result.size()-1].length() < 1) {
 		result.pop_back();
 	}
@@ -136,45 +142,10 @@ std::string read_object(std::string bucket, std::string object, gcs::Client* cli
 }
 
 std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client) {
-	std::string object_content = read_object(trace_hashes_bucket, object_name, client);
+	std::string object_content = read_object(TRACE_HASHES_BUCKET, object_name, client);
 	std::vector<std::string> trace_ids = split_by_line(object_content);
 
 	return trace_ids;
-}
-
-int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* client) {
-    bool trace_found = false;
-    for (int i=0; i<10; i++) {
-        if (trace_found) {
-            break;
-        }
-        for (int j=0; j<10; j++) {
-          if (trace_found) {
-            break;
-          }
-          std::string obj_name = std::to_string(i) + std::to_string(j) + "-";
-          obj_name += std::to_string(start_time) + "-" + std::to_string(end_time);
-          auto reader = client->ReadObject(trace_struct_bucket, obj_name);
-          if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
-            continue;
-          } else if (!reader) {
-            std::cerr << "Error reading object: " << reader.status() << "\n";
-            return 1;
-          } else {
-            std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-            int traceID_location = contents.find(traceID);
-            if (traceID_location) {
-                trace_found = true;
-                int end = contents.find("Trace ID", traceID_location+1);
-                std::string spans = contents.substr(traceID_location, end);
-                std::cout << spans << std::endl;
-            }
-            
-          }
-        }
-    }
-
-    return 0;
 }
 
 std::string extract_batch_name(std::string object_name) {
@@ -232,7 +203,7 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
 			continue;
 		}
 
-		std::vector<std::string> span_info = split_by(line, ":");
+		std::vector<std::string> span_info = split_by_char(line, ":");
 		if (span_info.size() != 3) {
 			std::cerr << "Malformed trace found: \n" << trace << std::endl;
 			exit(1);
@@ -256,7 +227,7 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
 	// Filling response.node_names
 	int count = 0;
 	for(const auto& elem : span_to_service) {
-		response.node_names.insert(make_pair(count, split_by(elem.second, "-")[0]));
+		response.node_names.insert(make_pair(count, split_by_char(elem.second, "-")[0]));
 		reverse_node_names.insert(make_pair(elem.second, count));
 		count++;
 	}
@@ -272,7 +243,29 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
 	return response;
 }
 
-std::vector<std::string> split_by(std::string input, std::string splitter) {
+std::vector<std::string> split_by_string(std::string input, std::string splitter) {
+	std::vector<std::string> result;
+
+	size_t pos = 0;
+	std::string token;
+	while ((pos = input.find(splitter)) != std::string::npos) {
+		token = input.substr(0, pos);
+		token = strip_from_the_end(token, '\n');
+		if (token.length() > 0) {
+			result.push_back(token);
+		}
+		input.erase(0, pos + splitter.length());
+	}
+
+	input = strip_from_the_end(input, '\n');
+	if (input.length() > 0) {
+		result.push_back(input);
+	} 
+
+	return result;
+}
+
+std::vector<std::string> split_by_char(std::string input, std::string splitter) {
 	std::vector<std::string> result;
 	boost::split(result, input, boost::is_any_of(splitter));
 	return result;
@@ -312,6 +305,33 @@ graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph
 
 	return output_graph;
 }
+
+std::vector<std::string> filter_trace_ids_based_on_query_timestamp(std::vector<std::string> trace_ids, std::string batch_name, std::string object_content, int start_time, int end_time) {
+	std::map<std::string, std::string> root_services_map = get_trace_id_to_root_service_map(object_content);
+	
+	return trace_ids;
+}
+
+std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string object_content) {
+	std::map<std::string, std::string> response;
+	std::vector<std::string> all_traces = split_by_string(object_content, "Trace ID: ");
+	
+	for (std::string i: all_traces) {
+		std::vector<std::string> trace = split_by_char(i, "\n");
+		std::string trace_id = trace[0].substr(0, TRACE_ID_LENGTH);
+		for (int ind = 1; ind < trace.size(); ind ++) {
+			if (trace[ind].substr(0, 1) == ":") {
+				std::vector<std::string> root_span_info = split_by_char(trace[ind], ":");
+				std::string root_service = root_span_info[root_span_info.size()-1];
+				response.insert(std::make_pair(trace_id, root_service));
+				break;
+			}
+		}
+	}
+
+	return response;
+}
+
 int dummy_tests() {
 	// std::cout << is_object_within_timespan("12-123-125", 123, 124) << ":1" << std::endl;
 	// std::cout << is_object_within_timespan("12-123-125", 124, 128) << ":1" << std::endl;
