@@ -149,4 +149,4 @@ int main(int argc, char* argv[]) {
     auto client = gcs::Client();
     return get_trace("366ada8fbc705fbddf0468d1df1e746f",
                      1651073970, 1651073970, &client);
-}
+
