@@ -18,6 +18,7 @@
 #include <regex>
 #include <boost/regex.hpp>
 #include <boost/algorithm/string/regex.hpp>
+#include <stdexcept>
 
 
 
@@ -60,14 +61,17 @@ opentelemetry::proto::trace::v1::Span get_span(int hash1, int hash2, std::string
     auto reader = client->ReadObject(microservice+ending, obj_name);
     if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
         std::cerr << "span object not found " << obj_name << "in microservice " << microservice << std::endl;
+        throw std::runtime_error("span object not found");
     } else if (!reader) {
         std::cerr << "Error reading object: " << reader.status() << "\n";
+        throw std::runtime_error("Error reading trace object");
     } else {
         std::string contents{std::istreambuf_iterator<char>{reader}, {}};
         opentelemetry::proto::trace::v1::TracesData trace_data;
         bool ret = trace_data.ParseFromString(contents);
         if (!ret) {
             std::cerr << " not parsed! " << std::endl;
+            throw std::runtime_error("could not parse span data");
         }
         for (int i=0; i<trace_data.resource_spans(0).scope_spans(0).spans_size(); i++) {
             opentelemetry::proto::trace::v1::Span sp = trace_data.resource_spans(0).scope_spans(0).spans(i);
@@ -78,6 +82,7 @@ opentelemetry::proto::trace::v1::Span get_span(int hash1, int hash2, std::string
         }
     }
     std::cerr << "did not find span object " << span_id << std::endl;
+    throw std::runtime_error("did not find span object");
 }
 
 // Gets a trace by trace ID and given timespan
@@ -97,7 +102,8 @@ int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* cl
           if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
             continue;
           } else if (!reader) {
-            std::cerr << "Error reading object: " << reader.status() << "\n";
+            std::cerr << "Error reading trace object: " << reader.status() << "\n";
+            throw std::runtime_error("error reading trace object");
             return 1;
           } else {
             std::string contents{std::istreambuf_iterator<char>{reader}, {}};
@@ -118,7 +124,7 @@ int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* cl
                     }
 
 
-                } else { std::cerr << "couldn't find Trace ID" << std::endl; }
+                } else { throw std::runtime_error("couldn't find trace ID"); }
             }
             
           }
