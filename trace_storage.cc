@@ -55,34 +55,29 @@ std::string hex_str(std::string data, int len)
 }
 
 
-std::string get_span(int hash1, int hash2, std::string microservice, std::string start_time, std::string end_time, gcs::Client* client, std::string span_id) {
+opentelemetry::proto::trace::v1::Span get_span(int hash1, int hash2, std::string microservice, std::string start_time, std::string end_time, gcs::Client* client, std::string span_id) {
     std::string obj_name = std::to_string(hash1) + std::to_string(hash2) + "-" + start_time + "-" + end_time;
     auto reader = client->ReadObject(microservice+ending, obj_name);
     if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
         std::cerr << "span object not found " << obj_name << "in microservice " << microservice << std::endl;
     } else if (!reader) {
         std::cerr << "Error reading object: " << reader.status() << "\n";
-        // there's gotta be a better thing to return here
-        return "";
     } else {
         std::string contents{std::istreambuf_iterator<char>{reader}, {}};
         opentelemetry::proto::trace::v1::TracesData trace_data;
         bool ret = trace_data.ParseFromString(contents);
         if (!ret) {
-            std::cout << " not parsed! " << std::endl;
-            return "";
+            std::cerr << " not parsed! " << std::endl;
         }
-        std::cout << "trace_data.resource(0).scope_spans(0).spans_size() " << trace_data.resource_spans(0).scope_spans(0).spans_size() << std::endl;
         for (int i=0; i<trace_data.resource_spans(0).scope_spans(0).spans_size(); i++) {
             opentelemetry::proto::trace::v1::Span sp = trace_data.resource_spans(0).scope_spans(0).spans(i);
-            //std::cout << "hex_str(sp.span_id()) " << hex_str(sp.span_id(), sp.span_id().length() ) << "span id " << span_id << std::endl;
             if (hex_str(sp.span_id(), sp.span_id().length()) == span_id) {
-                std::cout << "got span id" << std::endl;
+                return sp;
+
             }
         }
-        return contents;
     }
-    return "";
+    std::cerr << "did not find span object " << span_id << std::endl;
 }
 
 // Gets a trace by trace ID and given timespan
@@ -112,19 +107,18 @@ int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* cl
                 int end = contents.find("Trace ID", traceID_location-1);
                 if (end) {
                     std::string spans = contents.substr(traceID_location, end-traceID_location);
-                    std::cout << spans << std::endl;
                     std::vector<std::string> split_spans = split_string_by_newline(spans);
                     // start at 1 because first line will be trace ID
                     for (int k = 1; k < split_spans.size(); k++) {
                         if (split_spans[k] != "") {
                             std::vector<std::string> span_info = split_string_by_colon(split_spans[k]);
-                            std::string span = get_span(i, j, span_info[2], std::to_string(start_time), std::to_string(end_time), client, span_info[1]);
+                            opentelemetry::proto::trace::v1::Span sp = get_span(i, j, span_info[2], std::to_string(start_time), std::to_string(end_time), client, span_info[1]);
                         }
 
                     }
 
 
-                } else { std::cout << "couldn't find Trace ID" << std::endl; }
+                } else { std::cerr << "couldn't find Trace ID" << std::endl; }
             }
             
           }
