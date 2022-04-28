@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
 	query_trace.edges.insert(std::make_pair(0, 1));
 
 	auto client = gcs::Client();
-	int total = get_traces_by_structure(query_trace, 1650574225, 1650574225, &client);
+	int total = get_traces_by_structure(query_trace, 1650574225, 1650574226, &client);
 	std::cout << "Total results: " << total << std::endl;
 	return 0;
 }
@@ -335,8 +335,41 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(std::vector<s
 	return response;
 }
 
+std::string hex_str(std::string data, int len) {
+	constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
+	std::string s(len * 2, ' ');
+	for (int i = 0; i < len; ++i) {
+		s[2 * i]     = hexmap[(data[i] & 0xF0) >> 4];
+		s[2 * i + 1] = hexmap[data[i] & 0x0F];
+	}
+
+	return s;
+}
+
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(std::string spans_data, std::vector<std::string> trace_ids) {
-	
+	std::map<std::string, std::pair<int, int>> response;
+
+	opentelemetry::proto::trace::v1::TracesData trace_data;
+	bool ret = trace_data.ParseFromString(spans_data);
+	if (false == ret) {
+		std::cerr << "Error in ParseFromString" << std::endl;
+		exit(1);
+	}
+
+	for (int i=0; i<trace_data.resource_spans(0).scope_spans(0).spans_size(); i++) {
+		opentelemetry::proto::trace::v1::Span sp = trace_data.resource_spans(0).scope_spans(0).spans(i);
+
+		std::string trace_id = hex_str(sp.trace_id(), sp.trace_id().length());
+
+		// getting timestamps and converting from nanosecond precision to seconds precision
+		int start_time = std::stoi(std::to_string(sp.start_time_unix_nano()).substr(0, 10));
+		int end_time = std::stoi(std::to_string(sp.end_time_unix_nano()).substr(0, 10));
+
+		response.insert(std::make_pair(trace_id, std::make_pair(start_time, end_time)));
+	}
+
+	return response;
 }
 
 std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string object_content) {
@@ -368,6 +401,8 @@ std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_ma
 
 	return response;
 }
+
+
 int dummy_tests() {
 	// std::cout << is_object_within_timespan("12-123-125", 123, 124) << ":1" << std::endl;
 	// std::cout << is_object_within_timespan("12-123-125", 124, 128) << ":1" << std::endl;

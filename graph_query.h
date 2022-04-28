@@ -1,4 +1,5 @@
 #include "google/cloud/storage/client.h"
+#include "opentelemetry/proto/trace/v1/trace.pb.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/vf2_sub_graph_iso.hpp>
@@ -79,6 +80,7 @@ typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, v
 typedef boost::property_map<graph_type, boost::vertex_name_t>::type vertex_name_map_t;
 typedef property_map_equivalent_custom<vertex_name_map_t, vertex_name_map_t> vertex_comp_t;
 
+std::string hex_str(std::string data, int len);
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(std::string spans_data, std::vector<std::string> trace_ids);
 std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_map(std::map<std::string, std::string> trace_id_to_root_service_map);
 std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string object_content);
