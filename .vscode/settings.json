@@ -96,6 +96,7 @@
         "span": "cpp",
         "strstream": "cpp",
         "*.ipp": "cpp",
-        "*.inc": "cpp"
+        "*.inc": "cpp",
+        "filesystem": "cpp"
     }
 }

@@ -32,36 +32,48 @@ int get_traces_by_structure(trace_structure query_trace, int start_time, int end
 	std::vector<std::string> response;
 
 	for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET)) {
-		if (!object_metadata) {
-			std::cerr << object_metadata.status().message() << std::endl;
-		}
-
-		std::string object_name = object_metadata->name();
-		std::string batch_name = extract_batch_name(object_name);
-		std::cout << "Processing " << object_name << std::endl;
-
-		std::pair<int, int> batch_time = extract_batch_timestamps(batch_name);
-		if (false == is_object_within_timespan(batch_time, start_time, end_time)) {
-			continue;
-		}
-
-		std::vector<std::string> trace_ids = get_trace_ids_from_trace_hashes_object(object_name, client);
-		if (trace_ids.size() < 1) {
-			continue;
-		}
-
-		std::string object_content = read_object(TRACE_STRUCT_BUCKET, batch_name, client);
-
-		if (false == does_trace_structure_conform_to_graph_query(object_content, trace_ids[0], query_trace, client)) {
-			continue;
-		}
-
-		trace_ids = filter_trace_ids_based_on_query_timestamp(trace_ids, batch_name, object_content, start_time, end_time, client);
 		
+		std::vector<std::string> trace_ids = process_trace_hashes_object_and_retrieve_relevant_trace_ids(
+			object_metadata, query_trace, start_time, end_time, client
+		);
 		response.insert(response.end(), trace_ids.begin(), trace_ids.end());
 	}
 
 	return response.size();
+}
+
+std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace_ids(
+	StatusOr<gcs::ObjectMetadata> object_metadata, trace_structure query_trace, int start_time, int end_time, gcs::Client* client
+) {
+	if (!object_metadata) {
+		std::cerr << object_metadata.status().message() << std::endl;
+		exit(1);
+	}
+
+	std::vector<std::string> response_trace_ids;
+
+	std::string object_name = object_metadata->name();
+	std::string batch_name = extract_batch_name(object_name);
+	std::cout << "Processing " << object_name << std::endl;
+
+	std::pair<int, int> batch_time = extract_batch_timestamps(batch_name);
+	if (false == is_object_within_timespan(batch_time, start_time, end_time)) {
+		return response_trace_ids;
+	}
+
+	response_trace_ids = get_trace_ids_from_trace_hashes_object(object_name, client);
+	if (response_trace_ids.size() < 1) {
+		return response_trace_ids;
+	}
+
+	std::string object_content = read_object(TRACE_STRUCT_BUCKET, batch_name, client);
+
+	if (false == does_trace_structure_conform_to_graph_query(object_content, response_trace_ids[0], query_trace, client)) {
+		return response_trace_ids;
+	}
+
+	response_trace_ids = filter_trace_ids_based_on_query_timestamp(response_trace_ids, batch_name, object_content, start_time, end_time, client);
+	return response_trace_ids;
 }
 
 /**

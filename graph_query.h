@@ -14,6 +14,7 @@ const int TRACE_ID_LENGTH = 32;
 const int SPAN_ID_LENGTH = 16;
 
 namespace gcs = ::google::cloud::storage;
+using ::google::cloud::StatusOr;
 namespace bg = boost::graph;
 
 struct trace_structure {
@@ -80,6 +81,7 @@ typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, v
 typedef boost::property_map<graph_type, boost::vertex_name_t>::type vertex_name_map_t;
 typedef property_map_equivalent_custom<vertex_name_map_t, vertex_name_map_t> vertex_comp_t;
 
+std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace_ids(StatusOr<gcs::ObjectMetadata> object_metadata, trace_structure query_trace, int start_time, int end_time, gcs::Client* client);
 std::string hex_str(std::string data, int len);
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(std::string spans_data, std::vector<std::string> trace_ids);
 std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_map(std::map<std::string, std::string> trace_id_to_root_service_map);
