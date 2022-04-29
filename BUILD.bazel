@@ -17,6 +17,20 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])  # Apache 2.0
 
 cc_binary(
+    name = "trace_storage",
+    srcs = [
+        "trace_storage.cc",
+    ],
+    deps = [
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:regex",
+        "@boost//:algorithm",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+    ],
+)
+
+cc_binary(
     name = "graph_query",
     srcs = [
         "graph_query.cc",
