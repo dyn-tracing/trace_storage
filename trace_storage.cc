@@ -15,6 +15,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <regex>
+#include <future>
 #include "google/cloud/storage/client.h"
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
 #include <boost/regex.hpp>
@@ -69,7 +70,6 @@ opentelemetry::proto::trace::v1::Span get_span(
         opentelemetry::proto::trace::v1::TracesData trace_data;
         bool ret = trace_data.ParseFromString(contents);
         if (!ret) {
-            std::cerr << " not parsed! " << std::endl;
             throw std::runtime_error("could not parse span data");
         }
         int sp_size = trace_data.resource_spans(0).scope_spans(0).spans_size();
@@ -86,8 +86,9 @@ opentelemetry::proto::trace::v1::Span get_span(
 }
 
 // Gets a trace by trace ID and given timespan
-int get_trace(std::string traceID, int start_time,
-              int end_time, gcs::Client* client) {
+std::vector<std::future<opentelemetry::proto::trace::v1::Span>> get_trace(
+    std::string traceID, int start_time,int end_time, gcs::Client* client) {
+    std::vector<std::future<opentelemetry::proto::trace::v1::Span>> to_return;
     bool trace_found = false;
     for (int i=0; i < 10; i++) {
         if (trace_found) {
@@ -98,8 +99,7 @@ int get_trace(std::string traceID, int start_time,
             break;
           }
           std::string obj_name = std::to_string(i) + std::to_string(j) + "-";
-          obj_name += std::to_string(start_time) + "-" +
-          obj_name += std::to_string(end_time);
+          obj_name += std::to_string(start_time) + "-" + std::to_string(end_time);
           auto reader = client->ReadObject(trace_struct_bucket, obj_name);
           if (reader.status().code() ==
             ::google::cloud::StatusCode::kNotFound) {
@@ -108,13 +108,13 @@ int get_trace(std::string traceID, int start_time,
             std::cerr << "Error reading trace object: " << reader.status()
                 << "\n";
             throw std::runtime_error("error reading trace object");
-            return 1;
           } else {
             std::string contents{std::istreambuf_iterator<char>{reader}, {}};
             int traceID_location = contents.find(traceID);
             if (traceID_location) {
                 trace_found = true;
                 int end = contents.find("Trace ID", traceID_location-1);
+                // TODO:  will searching for this work if we have the last trace in the file?
                 if (end) {
                     std::string spans = contents.substr(
                         traceID_location, end-traceID_location);
@@ -125,10 +125,12 @@ int get_trace(std::string traceID, int start_time,
                         if (split_spans[k] != "") {
                             std::vector<std::string> span_info;
                             span_info = split_string_by_colon(split_spans[k]);
-                            opentelemetry::proto::trace::v1::Span sp;
-                            sp = get_span(i, j, span_info[2],
+                            std::future<opentelemetry::proto::trace::v1::Span> sp;
+                            to_return.push_back(std::async(std::launch::async, get_span,
+                                i, j, span_info[2],
                                 std::to_string(start_time),
-                                std::to_string(end_time), client, span_info[1]);
+                                std::to_string(end_time), client, span_info[1]));
+                            std::cout << "pushing back" << std::endl;
                         }
                     }
 
@@ -138,13 +140,15 @@ int get_trace(std::string traceID, int start_time,
           }
         }
     }
-    return 0;
+    return to_return;
 }
 
 int main(int argc, char* argv[]) {
     // Create a client to communicate with Google Cloud Storage. This client
     // uses the default configuration for authentication and project id.
     auto client = gcs::Client();
-    return get_trace("366ada8fbc705fbddf0468d1df1e746f",
-                     1651073970, 1651073970, &client);
+    auto span_futures = get_trace("d90e74866f678a8c318a2c01eb475308",
+                     1651171125, 1651171126, &client);
+    std::cout << "len span_futures" << span_futures.size() << std::endl;
+    return 0;
 }
