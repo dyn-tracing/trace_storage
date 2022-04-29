@@ -5,9 +5,9 @@
 #include <boost/graph/vf2_sub_graph_iso.hpp>
 #include <iostream>
 
-const std::string TRACE_STRUCT_BUCKET = "dyntraces-snicket3";
-const std::string TRACE_HASHES_BUCKET = "tracehashes-snicket3";
-const std::string SERVICES_BUCKETS_SUFFIX = "-snicket3";
+const std::string TRACE_STRUCT_BUCKET = "dyntraces-snicket2";
+const std::string TRACE_HASHES_BUCKET = "tracehashes-snicket2";
+const std::string SERVICES_BUCKETS_SUFFIX = "-snicket2";
 const std::string ASTERISK_SERVICE = "NONE";
 
 const int TRACE_ID_LENGTH = 32;
