@@ -3,23 +3,18 @@
 int main(int argc, char* argv[]) {
 	dummy_tests();
 
-	if (argc != 2) {
-		std::cerr << "Missing bucket name.\n";
-		std::cerr << "Usage: quickstart <bucket-name>\n";
-		return 1;
-	}
-	std::string const bucket_name = argv[1];
-
 	// Building a query trace where [frontend]-()->[]-()->[emailservice]-()
 	trace_structure query_trace;
-	query_trace.num_nodes = 2;
+	query_trace.num_nodes = 3;
 	query_trace.node_names.insert(std::make_pair(0, "frontend"));
 	query_trace.node_names.insert(std::make_pair(1, ASTERISK_SERVICE));
+	query_trace.node_names.insert(std::make_pair(2, "emailservice"));
 
 	query_trace.edges.insert(std::make_pair(0, 1));
+	query_trace.edges.insert(std::make_pair(1, 2));
 
 	auto client = gcs::Client();
-	int total = get_traces_by_structure(query_trace, 1650574225, 1650574226, &client);
+	int total = get_traces_by_structure(query_trace, 1651176657, 1651176659, &client);
 	std::cout << "Total results: " << total << std::endl;
 	return 0;
 }
@@ -43,6 +38,7 @@ int get_traces_by_structure(trace_structure query_trace, int start_time, int end
 
 		std::string object_name = object_metadata->name();
 		std::string batch_name = extract_batch_name(object_name);
+		std::cout << "Processing " << object_name << std::endl;
 
 		std::pair<int, int> batch_time = extract_batch_timestamps(batch_name);
 		if (false == is_object_within_timespan(batch_time, start_time, end_time)) {
@@ -125,7 +121,7 @@ bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, i
 std::string read_object(std::string bucket, std::string object, gcs::Client* client) {
 	auto reader = client->ReadObject(bucket, object);
 	if (!reader) {
-		std::cerr << "Error reading object: " << reader.status() << "\n";
+		std::cerr << "Error reading object " << bucket << "/" << object << " :" << reader.status() << "\n";
 		exit(1);
 	}
 
