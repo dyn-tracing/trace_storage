@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
 	query_trace.edges.insert(std::make_pair(1, 2));
 
 	auto client = gcs::Client();
-	int total = get_traces_by_structure(query_trace, 1650574275, 1650574275, &client);
+	int total = get_traces_by_structure(query_trace, 1650574271, 1650574279, &client);
 	std::cout << "Total results: " << total << std::endl;
 	return 0;
 }
@@ -32,14 +32,21 @@ int main(int argc, char* argv[]) {
  * @return int 
  */
 int get_traces_by_structure(trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
-	std::vector<std::string> response;
+	std::vector<std::future<std::vector<std::string>>> response_futures;
 
 	for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET)) {
-		std::vector<std::string> trace_ids = process_trace_hashes_object_and_retrieve_relevant_trace_ids(
-			object_metadata, query_trace, start_time, end_time, client);
-		response.insert(response.end(), trace_ids.begin(), trace_ids.end());
+		response_futures.push_back(std::async(
+			std::launch::async, process_trace_hashes_object_and_retrieve_relevant_trace_ids,
+			object_metadata, query_trace, start_time, end_time, client
+		));
 	}
 
+	std::vector<std::string> response;
+	for_each(response_futures.begin(), response_futures.end(),
+		[&response](std::future<std::vector<std::string>>& fut){
+			std::vector<std::string> trace_ids = fut.get();
+			response.insert(response.end(), trace_ids.begin(), trace_ids.end());
+	});
 	return response.size();
 }
 
