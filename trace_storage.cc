@@ -15,13 +15,14 @@
 #include <iostream>
 #include <stdexcept>
 #include <regex>
+#include <future>
 #include "google/cloud/storage/client.h"
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
 #include <boost/regex.hpp>
 #include <boost/algorithm/string/regex.hpp>
 
-const char trace_struct_bucket[] = "dyntraces-snicket3";
-const char ending[] = "-snicket3";
+const char trace_struct_bucket[] = "dyntraces-snicket4";
+const char ending[] = "-snicket4";
 // Create aliases to make the code easier to read.
 namespace gcs = ::google::cloud::storage;
 
@@ -52,99 +53,105 @@ std::string hex_str(std::string data, int len) {
 
 
 opentelemetry::proto::trace::v1::Span get_span(
-	int hash1, int hash2, std::string microservice, std::string start_time,
-	std::string end_time, gcs::Client* client, std::string span_id) {
-	std::string obj_name = std::to_string(hash1) + std::to_string(hash2);
-	obj_name = obj_name + "-" + start_time + "-" + end_time;
-	auto reader = client->ReadObject(microservice+ending, obj_name);
-	if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
-		std::cerr << "span object not found " << obj_name <<
-			"in microservice " << microservice << std::endl;
-		throw std::runtime_error("span object not found");
-	} else if (!reader) {
-		std::cerr << "Error reading object: " << reader.status() << "\n";
-		throw std::runtime_error("Error reading trace object");
-	} else {
-		std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-		opentelemetry::proto::trace::v1::TracesData trace_data;
-		bool ret = trace_data.ParseFromString(contents);
-		if (!ret) {
-			std::cerr << " not parsed! " << std::endl;
-			throw std::runtime_error("could not parse span data");
-		}
-		int sp_size = trace_data.resource_spans(0).scope_spans(0).spans_size();
-		for (int i=0; i < sp_size; i++) {
-			opentelemetry::proto::trace::v1::Span sp =
-				trace_data.resource_spans(0).scope_spans(0).spans(i);
-			if (hex_str(sp.span_id(), sp.span_id().length()) == span_id) {
-				return sp;
-			}
-		}
-	}
-	std::cerr << "did not find span object " << span_id << std::endl;
-	throw std::runtime_error("did not find span object");
+    int hash1, int hash2, std::string microservice, std::string start_time,
+    std::string end_time, gcs::Client* client, std::string span_id) {
+    std::string obj_name = std::to_string(hash1) + std::to_string(hash2);
+    obj_name = obj_name + "-" + start_time + "-" + end_time;
+    auto reader = client->ReadObject(microservice+ending, obj_name);
+    if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
+        std::cerr << "span object not found " << obj_name <<
+            "in microservice " << microservice << std::endl;
+        throw std::runtime_error("span object not found");
+    } else if (!reader) {
+        std::cerr << "Error reading object: " << reader.status() << "\n";
+        throw std::runtime_error("Error reading trace object");
+    } else {
+        std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+        opentelemetry::proto::trace::v1::TracesData trace_data;
+        bool ret = trace_data.ParseFromString(contents);
+        if (!ret) {
+            throw std::runtime_error("could not parse span data");
+        }
+        int sp_size = trace_data.resource_spans(0).scope_spans(0).spans_size();
+        for (int i=0; i < sp_size; i++) {
+            opentelemetry::proto::trace::v1::Span sp =
+                trace_data.resource_spans(0).scope_spans(0).spans(i);
+            if (hex_str(sp.span_id(), sp.span_id().length()) == span_id) {
+                return sp;
+            }
+        }
+    }
+    std::cerr << "did not find span object " << span_id << std::endl;
+    throw std::runtime_error("did not find span object");
 }
 
 // Gets a trace by trace ID and given timespan
-int get_trace(std::string traceID, int start_time,
-			  int end_time, gcs::Client* client) {
-	bool trace_found = false;
-	for (int i=0; i < 10; i++) {
-		if (trace_found) {
-			break;
-		}
-		for (int j=0; j < 10; j++) {
-		  if (trace_found) {
-			break;
-		  }
-		  std::string obj_name = std::to_string(i) + std::to_string(j) + "-";
-		  obj_name += std::to_string(start_time) + "-" +
-		  obj_name += std::to_string(end_time);
-		  auto reader = client->ReadObject(trace_struct_bucket, obj_name);
-		  if (reader.status().code() ==
-			::google::cloud::StatusCode::kNotFound) {
-			continue;
-		  } else if (!reader) {
-			std::cerr << "Error reading trace object: " << reader.status()
-				<< "\n";
-			throw std::runtime_error("error reading trace object");
-			return 1;
-		  } else {
-			std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-			int traceID_location = contents.find(traceID);
-			if (traceID_location) {
-				trace_found = true;
-				int end = contents.find("Trace ID", traceID_location-1);
-				if (end) {
-					std::string spans = contents.substr(
-						traceID_location, end-traceID_location);
-					std::vector<std::string> split_spans;
-					split_spans = split_string_by_newline(spans);
-					// start at 1 because first line will be trace ID
-					for (int k = 1; k < split_spans.size(); k++) {
-						if (split_spans[k] != "") {
-							std::vector<std::string> span_info;
-							span_info = split_string_by_colon(split_spans[k]);
-							opentelemetry::proto::trace::v1::Span sp;
-							sp = get_span(i, j, span_info[2],
-								std::to_string(start_time),
-								std::to_string(end_time), client, span_info[1]);
-						}
-					}
+std::vector<std::future<opentelemetry::proto::trace::v1::Span>> get_trace(
+    std::string traceID, int start_time, int end_time, gcs::Client* client) {
+    std::vector<std::future<opentelemetry::proto::trace::v1::Span>> to_return;
+    bool trace_found = false;
+    for (int i=0; i < 10; i++) {
+        if (trace_found) {
+            break;
+        }
+        for (int j=0; j < 10; j++) {
+          if (trace_found) {
+            break;
+          }
+          std::string obj_name = std::to_string(i) + std::to_string(j) + "-";
+          obj_name += std::to_string(start_time) + "-" + std::to_string(end_time);
+          auto reader = client->ReadObject(trace_struct_bucket, obj_name);
+          if (reader.status().code() ==
+            ::google::cloud::StatusCode::kNotFound) {
+            continue;
+          } else if (!reader) {
+            std::cerr << "Error reading trace object: " << reader.status()
+                << "\n";
+            throw std::runtime_error("error reading trace object");
+          } else {
+            std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+            int traceID_location = contents.find(traceID);
+            if (traceID_location) {
+                trace_found = true;
+                int end = contents.find("Trace ID", traceID_location-1);
+                // TODO(jessica):  will searching for this work if we have the last trace in the file?
+                if (end) {
+                    std::string spans = contents.substr(
+                        traceID_location, end-traceID_location);
+                    std::vector<std::string> split_spans;
+                    split_spans = split_string_by_newline(spans);
+                    // start at 1 because first line will be trace ID
+                    for (int k = 1; k < split_spans.size(); k++) {
+                        if (split_spans[k] != "") {
+                            std::vector<std::string> span_info;
+                            span_info = split_string_by_colon(split_spans[k]);
+                            std::future<opentelemetry::proto::trace::v1::Span> sp;
+                            to_return.push_back(std::async(std::launch::async, get_span,
+                                i, j, span_info[2],
+                                std::to_string(start_time),
+                                std::to_string(end_time), client, span_info[1]));
+                        }
+                    }
 
 
-				} else { throw std::runtime_error("couldn't find trace ID"); }
-			}
-		  }
-		}
-	}
-	return 0;
+                } else { throw std::runtime_error("couldn't find trace ID"); }
+            }
+          }
+        }
+    }
+    return to_return;
 }
 
 int main(int argc, char* argv[]) {
-	// Create a client to communicate with Google Cloud Storage. This client
-	// uses the default configuration for authentication and project id.
-	auto client = gcs::Client();
-	return get_trace("366ada8fbc705fbddf0468d1df1e746f",
-					 1651073970, 1651073970, &client);
+    // Create a client to communicate with Google Cloud Storage. This client
+    // uses the default configuration for authentication and project id.
+    auto client = gcs::Client();
+    auto span_futures = get_trace("7721859b8a133816fe9f34330a8454bb",
+                     1651501012, 1651501013, &client);
+    std::cout << "len span_futures: " << span_futures.size() << std::endl;
+    for (int i=0; i < span_futures.size(); i++) {
+        auto span = span_futures[i].get();
+        std::cout << "span id " << hex_str(span.span_id(), span.span_id().length()) << std::endl;
+    }
+    return 0;
 }
