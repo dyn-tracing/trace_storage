@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
 	query_trace.edges.insert(std::make_pair(1, 2));
 
 	auto client = gcs::Client();
-	int total = get_traces_by_structure(query_trace, 1550574271, 1750574279, &client);
+	int total = get_traces_by_structure(query_trace, 1651500600, 1651500650, &client);
 	std::cout << "Total results: " << total << std::endl;
 	return 0;
 }
@@ -66,7 +66,6 @@ std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace
 
 	std::string object_name = object_metadata->name();
 	std::string batch_name = extract_batch_name(object_name);
-	std::cout << "Processing " << object_name << std::endl;
 
 	std::pair<int, int> batch_time = extract_batch_timestamps(batch_name);
 	if (false == is_object_within_timespan(batch_time, start_time, end_time)) {
