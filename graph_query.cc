@@ -34,7 +34,8 @@ int main(int argc, char* argv[]) {
  * @param client 
  * @return std::vector<std::string> 
  */
-std::vector<std::string> get_traces_by_structure(trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
+std::vector<std::string> get_traces_by_structure(
+	trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
 	std::vector<std::future<std::vector<std::string>>> response_futures;
 
 	for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET)) {
