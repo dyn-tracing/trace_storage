@@ -37,8 +37,7 @@ int get_traces_by_structure(trace_structure query_trace, int start_time, int end
 	for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET)) {
 		response_futures.push_back(std::async(
 			std::launch::async, process_trace_hashes_object_and_retrieve_relevant_trace_ids,
-			object_metadata, query_trace, start_time, end_time, client
-		));
+			object_metadata, query_trace, start_time, end_time, client));
 	}
 
 	std::vector<std::string> response;
