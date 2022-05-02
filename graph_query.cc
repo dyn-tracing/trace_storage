@@ -497,6 +497,6 @@ int dummy_tests() {
 	// 	std::cout << std::endl;
 	// }
 
-	exit(1);
+	// exit(1);
 	return 0;
 }
