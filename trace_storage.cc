@@ -27,28 +27,28 @@ const char ending[] = "-snicket4";
 namespace gcs = ::google::cloud::storage;
 
 std::vector<std::string> split_string_by_newline(const std::string& str) {
-    std::vector<std::string> tokens;
-    split_regex(tokens, str, boost::regex("(\n)+"));
-    return tokens;
+	std::vector<std::string> tokens;
+	split_regex(tokens, str, boost::regex("(\n)+"));
+	return tokens;
 }
 
 std::vector<std::string> split_string_by_colon(const std::string& str) {
-    std::vector<std::string> tokens;
-    split_regex(tokens, str, boost::regex("(:)+"));
-    return tokens;
+	std::vector<std::string> tokens;
+	split_regex(tokens, str, boost::regex("(:)+"));
+	return tokens;
 }
 
 // https://codereview.stackexchange.com/questions/78535/converting-array-of-bytes-to-the-hex-string-representation
 constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7',
-                           '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+						   '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
 std::string hex_str(std::string data, int len) {
-  std::string s(len * 2, ' ');
-  for (int i = 0; i < len; ++i) {
-    s[2 * i]     = hexmap[(data[i] & 0xF0) >> 4];
-    s[2 * i + 1] = hexmap[data[i] & 0x0F];
-  }
-  return s;
+	std::string s(len * 2, ' ');
+	for (int i = 0; i < len; ++i) {
+		s[2 * i]     = hexmap[(data[i] & 0xF0) >> 4];
+		s[2 * i + 1] = hexmap[data[i] & 0x0F];
+	}
+	return s;
 }
 
 
