@@ -462,13 +462,21 @@ int dummy_tests() {
 	// trace_structure a;
 	// a.num_nodes = 3;
 	// a.node_names.insert(std::make_pair(0, "a"));
-	// a.node_names.insert(std::make_pair(1, "b"));
+	// a.node_names.insert(std::make_pair(1, "NONE"));
 	// a.node_names.insert(std::make_pair(2, "c"));
+
+	// a.edges.insert(std::make_pair(0, 1));
+	// a.edges.insert(std::make_pair(1, 2));
+
 	// trace_structure b;
 	// b.num_nodes = 3;
 	// b.node_names.insert(std::make_pair(0, "a"));
 	// b.node_names.insert(std::make_pair(1, "b"));
 	// b.node_names.insert(std::make_pair(2, "c"));
+
+	// b.edges.insert(std::make_pair(0, 1));
+	// b.edges.insert(std::make_pair(1, 2));
+
 	// std::cout << is_isomorphic(a, b) << std::endl;
 
 	// std::map<std::string, std::string> m;
@@ -489,6 +497,6 @@ int dummy_tests() {
 	// 	std::cout << std::endl;
 	// }
 
-	// exit(1);
+	exit(1);
 	return 0;
 }
