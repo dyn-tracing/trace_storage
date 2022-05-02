@@ -21,8 +21,8 @@
 #include <boost/regex.hpp>
 #include <boost/algorithm/string/regex.hpp>
 
-const char trace_struct_bucket[] = "dyntraces-snicket3";
-const char ending[] = "-snicket3";
+const char trace_struct_bucket[] = "dyntraces-snicket4";
+const char ending[] = "-snicket4";
 // Create aliases to make the code easier to read.
 namespace gcs = ::google::cloud::storage;
 
@@ -130,7 +130,6 @@ std::vector<std::future<opentelemetry::proto::trace::v1::Span>> get_trace(
                                 i, j, span_info[2],
                                 std::to_string(start_time),
                                 std::to_string(end_time), client, span_info[1]));
-                            std::cout << "pushing back" << std::endl;
                         }
                     }
 
@@ -147,8 +146,13 @@ int main(int argc, char* argv[]) {
     // Create a client to communicate with Google Cloud Storage. This client
     // uses the default configuration for authentication and project id.
     auto client = gcs::Client();
-    auto span_futures = get_trace("d90e74866f678a8c318a2c01eb475308",
-                     1651171125, 1651171126, &client);
-    std::cout << "len span_futures" << span_futures.size() << std::endl;
+    auto span_futures = get_trace("7721859b8a133816fe9f34330a8454bb",
+                     1651501012, 1651501013, &client);
+    std::cout << "len span_futures: " << span_futures.size() << std::endl;
+    for (int i=0; i<span_futures.size(); i++) {
+        auto span = span_futures[i].get();
+        std::cout << "span id " << hex_str(span.span_id(), span.span_id().length()) << std::endl;
+
+    }
     return 0;
 }
