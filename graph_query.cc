@@ -17,8 +17,11 @@ int main(int argc, char* argv[]) {
 	query_trace.edges.insert(std::make_pair(1, 2));
 
 	auto client = gcs::Client();
-	int total = get_traces_by_structure(query_trace, 1650574275, 1650574275, &client);
-	std::cout << "Total results: " << total << std::endl;
+	std::vector<std::string> total = get_traces_by_structure(query_trace, 1650574275, 1650574275, &client);
+	std::cout << "Total results: " << total.size() << std::endl;
+	// for (std::string i: total) {
+	// 	std::cout << i << std::endl;
+	// }
 	return 0;
 }
 
@@ -29,9 +32,9 @@ int main(int argc, char* argv[]) {
  * @param start_time 
  * @param end_time 
  * @param client 
- * @return int 
+ * @return std::vector<std::string> 
  */
-int get_traces_by_structure(trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
+std::vector<std::string> get_traces_by_structure(trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
 	std::vector<std::string> response;
 
 	for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET)) {
@@ -40,7 +43,7 @@ int get_traces_by_structure(trace_structure query_trace, int start_time, int end
 		response.insert(response.end(), trace_ids.begin(), trace_ids.end());
 	}
 
-	return response.size();
+	return response;
 }
 
 std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace_ids(
@@ -59,7 +62,6 @@ std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace
 
 	std::string object_name = object_metadata->name();
 	std::string batch_name = extract_batch_name(object_name);
-	std::cout << "Processing " << object_name << std::endl;
 
 	std::pair<int, int> batch_time = extract_batch_timestamps(batch_name);
 	if (false == is_object_within_timespan(batch_time, start_time, end_time)) {

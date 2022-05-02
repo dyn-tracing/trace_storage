@@ -118,7 +118,7 @@ bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, i
 std::string read_object(std::string bucket, std::string object, gcs::Client* client);
 std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client);
 int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* client);
-int get_traces_by_structure(trace_structure query_trace, int start_time, int end_time, gcs::Client* client);
+std::vector<std::string> get_traces_by_structure(trace_structure query_trace, int start_time, int end_time, gcs::Client* client);
 std::string strip_from_the_end(std::string object, char stripper);
 trace_structure morph_trace_object_to_trace_structure(std::string trace);
 bool is_isomorphic(trace_structure query_trace, trace_structure candidate_trace);
