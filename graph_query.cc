@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
 	query_trace.edges.insert(std::make_pair(1, 2));
 
 	auto client = gcs::Client();
-	int total = get_traces_by_structure(query_trace, 1650574271, 1650574279, &client);
+	int total = get_traces_by_structure(query_trace, 1550574271, 1750574279, &client);
 	std::cout << "Total results: " << total << std::endl;
 	return 0;
 }
