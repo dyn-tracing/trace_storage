@@ -87,7 +87,7 @@ opentelemetry::proto::trace::v1::Span get_span(
 
 // Gets a trace by trace ID and given timespan
 std::vector<std::future<opentelemetry::proto::trace::v1::Span>> get_trace(
-    std::string traceID, int start_time,int end_time, gcs::Client* client) {
+    std::string traceID, int start_time, int end_time, gcs::Client* client) {
     std::vector<std::future<opentelemetry::proto::trace::v1::Span>> to_return;
     bool trace_found = false;
     for (int i=0; i < 10; i++) {
@@ -114,7 +114,7 @@ std::vector<std::future<opentelemetry::proto::trace::v1::Span>> get_trace(
             if (traceID_location) {
                 trace_found = true;
                 int end = contents.find("Trace ID", traceID_location-1);
-                // TODO:  will searching for this work if we have the last trace in the file?
+                // TODO(jessica):  will searching for this work if we have the last trace in the file?
                 if (end) {
                     std::string spans = contents.substr(
                         traceID_location, end-traceID_location);
@@ -149,10 +149,9 @@ int main(int argc, char* argv[]) {
     auto span_futures = get_trace("7721859b8a133816fe9f34330a8454bb",
                      1651501012, 1651501013, &client);
     std::cout << "len span_futures: " << span_futures.size() << std::endl;
-    for (int i=0; i<span_futures.size(); i++) {
+    for (int i=0; i < span_futures.size(); i++) {
         auto span = span_futures[i].get();
         std::cout << "span id " << hex_str(span.span_id(), span.span_id().length()) << std::endl;
-
     }
     return 0;
 }
