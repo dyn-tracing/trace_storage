@@ -10,6 +10,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <future>
 #include "google/cloud/storage/client.h"
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
 #include <boost/algorithm/string.hpp>
@@ -17,9 +18,9 @@
 #include <boost/graph/vf2_sub_graph_iso.hpp>
 
 
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket2";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket2";
-const char SERVICES_BUCKETS_SUFFIX[] = "-snicket2";
+const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket4";
+const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket4";
+const char SERVICES_BUCKETS_SUFFIX[] = "-snicket4";
 const char ASTERISK_SERVICE[] = "NONE";
 
 const int TRACE_ID_LENGTH = 32;
