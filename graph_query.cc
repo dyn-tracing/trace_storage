@@ -11,6 +11,7 @@ int main(int argc, char* argv[]) {
 	query_trace.num_nodes = 3;
 	query_trace.node_names.insert(std::make_pair(0, "frontend"));
 	query_trace.node_names.insert(std::make_pair(1, ASTERISK_SERVICE));
+	// query_trace.node_names.insert(std::make_pair(2, "recommendationservice"));
 	query_trace.node_names.insert(std::make_pair(2, "emailservice"));
 
 	query_trace.edges.insert(std::make_pair(0, 1));
@@ -72,7 +73,7 @@ std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace
 
 	std::pair<int, int> batch_time = extract_batch_timestamps(batch_name);
 	if (false == is_object_within_timespan(batch_time, start_time, end_time)) {
-		return response_trace_ids;
+		return std::vector<std::string>();
 	}
 
 	response_trace_ids = get_trace_ids_from_trace_hashes_object(object_name, client);
@@ -83,7 +84,7 @@ std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace
 	std::string object_content = read_object(TRACE_STRUCT_BUCKET, batch_name, client);
 
 	if (false == does_trace_structure_conform_to_graph_query(object_content, response_trace_ids[0], query_trace, client)) {
-		return response_trace_ids;
+		return std::vector<std::string>();
 	}
 
 	response_trace_ids = filter_trace_ids_based_on_query_timestamp(
