@@ -319,9 +319,9 @@ bool is_isomorphic(trace_structure query_trace, trace_structure candidate_trace)
 
 	for (std::unordered_map<int, int> m : isomorphism_maps) {
 		for (auto i : m) {
-			std::cout << i.first << " " << i.second << std::endl;
+			std::cout << i.first << " " << i.second << ", ";
 		}
-		break;
+		std::cout << std::endl;
 	}
 	return res;
 }
@@ -470,25 +470,28 @@ int dummy_tests() {
 
 	// auto response = morph_trace_object_to_trace_structure("Trace ID: 123:\n1:2:a\n1:3:b\n:1:f\n2:4:c\n4:5:b");
 
-	trace_structure a;
-	a.num_nodes = 3;
-	a.node_names.insert(std::make_pair(0, "a"));
-	a.node_names.insert(std::make_pair(1, "NONE"));
-	a.node_names.insert(std::make_pair(2, "c"));
+	// trace_structure a;
+	// a.num_nodes = 3;
+	// a.node_names.insert(std::make_pair(0, "a"));
+	// a.node_names.insert(std::make_pair(1, "NONE"));
+	// a.node_names.insert(std::make_pair(2, "c"));
 
-	a.edges.insert(std::make_pair(0, 1));
-	a.edges.insert(std::make_pair(1, 2));
+	// a.edges.insert(std::make_pair(0, 1));
+	// a.edges.insert(std::make_pair(1, 2));
 
-	trace_structure b;
-	b.num_nodes = 3;
-	b.node_names.insert(std::make_pair(0, "a"));
-	b.node_names.insert(std::make_pair(1, "b"));
-	b.node_names.insert(std::make_pair(2, "c"));
+	// trace_structure b;
+	// b.num_nodes = 4;
+	// b.node_names.insert(std::make_pair(0, "a"));
+	// b.node_names.insert(std::make_pair(1, "b"));
+	// b.node_names.insert(std::make_pair(2, "c"));
+	// b.node_names.insert(std::make_pair(3, "d"));
 
-	b.edges.insert(std::make_pair(0, 1));
-	b.edges.insert(std::make_pair(1, 2));
+	// b.edges.insert(std::make_pair(0, 1));
+	// b.edges.insert(std::make_pair(0, 3));
+	// b.edges.insert(std::make_pair(1, 2));
+	// b.edges.insert(std::make_pair(3, 2));
 
-	std::cout << is_isomorphic(a, b) << std::endl;
+	// std::cout << is_isomorphic(a, b) << std::endl;
 
 	// std::map<std::string, std::string> m;
 	// m["A"] = "B";
@@ -508,6 +511,6 @@ int dummy_tests() {
 	// 	std::cout << std::endl;
 	// }
 
-	exit(1);
+	// exit(1);
 	return 0;
 }

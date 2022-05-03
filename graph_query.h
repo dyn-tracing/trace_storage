@@ -1,6 +1,13 @@
 // Copyright 2022 Haseeb LLC
 // @author: Muhammad Haseeb <mh6218@nyu.edu>
 
+/**
+ * TODO: Some boost definitions (functions, classes, structs) that I overrode 
+ * for extracting all the isomorphism maps, use camel casing and I have retained that
+ * for consistency with the corresponding boost definitions. But we are using snake case
+ * in the rest of our codebase, so maybe convert all of those overriden defs to snake_case. 
+ */
+
 #ifndef GRAPH_QUERY_H_
 #define GRAPH_QUERY_H_
 
@@ -76,10 +83,6 @@ struct vf2_callback_custom {
 	: graph1_(graph1), graph2_(graph2), isomorphism_maps_(isomorphism_maps) {
 	}
 
-	/**
-	 * @brief Returning false so that the isomorphism finding process stops after finding 
-	 * a single isomorphism evidence. 
-	 */
 	template < typename CorrespondenceMap1To2, typename CorrespondenceMap2To1 >
 	bool operator()(CorrespondenceMap1To2 f, CorrespondenceMap2To1) const {
 		std::unordered_map<int, int> iso_map;
