@@ -11,11 +11,11 @@ int main(int argc, char* argv[]) {
 	query_trace.num_nodes = 3;
 	query_trace.node_names.insert(std::make_pair(0, "frontend"));
 	query_trace.node_names.insert(std::make_pair(1, ASTERISK_SERVICE));
-	// query_trace.node_names.insert(std::make_pair(2, "recommendationservice"));
 	query_trace.node_names.insert(std::make_pair(2, "emailservice"));
 
 	query_trace.edges.insert(std::make_pair(0, 1));
 	query_trace.edges.insert(std::make_pair(1, 2));
+
 
 	auto client = gcs::Client();
 	std::vector<std::string> total = get_traces_by_structure(query_trace, 1551500618, 1651500700, &client);
@@ -305,13 +305,24 @@ bool is_isomorphic(trace_structure query_trace, trace_structure candidate_trace)
 	vertex_comp_t vertex_comp = make_property_map_equivalent_custom(
 		boost::get(boost::vertex_name_t::vertex_name, query_graph),
 		boost::get(boost::vertex_name_t::vertex_name, candidate_graph));
-	vf2_callback_custom<graph_type, graph_type> callback(query_graph, candidate_graph);
+
+	std::vector<std::unordered_map<int, int>> isomorphism_maps;
+
+	vf2_callback_custom<graph_type, graph_type, std::vector<std::unordered_map<int, int>>> callback(
+		query_graph, candidate_graph, isomorphism_maps);
 	bool res = boost::vf2_subgraph_iso(
 		query_graph,
 		candidate_graph,
 		callback,
 		boost::vertex_order_by_mult(query_graph),
 		boost::vertices_equivalent(vertex_comp));
+
+	for (std::unordered_map<int, int> m : isomorphism_maps) {
+		for (auto i : m) {
+			std::cout << i.first << " " << i.second << std::endl;
+		}
+		break;
+	}
 	return res;
 }
 
@@ -459,25 +470,25 @@ int dummy_tests() {
 
 	// auto response = morph_trace_object_to_trace_structure("Trace ID: 123:\n1:2:a\n1:3:b\n:1:f\n2:4:c\n4:5:b");
 
-	// trace_structure a;
-	// a.num_nodes = 3;
-	// a.node_names.insert(std::make_pair(0, "a"));
-	// a.node_names.insert(std::make_pair(1, "NONE"));
-	// a.node_names.insert(std::make_pair(2, "c"));
+	trace_structure a;
+	a.num_nodes = 3;
+	a.node_names.insert(std::make_pair(0, "a"));
+	a.node_names.insert(std::make_pair(1, "NONE"));
+	a.node_names.insert(std::make_pair(2, "c"));
 
-	// a.edges.insert(std::make_pair(0, 1));
-	// a.edges.insert(std::make_pair(1, 2));
+	a.edges.insert(std::make_pair(0, 1));
+	a.edges.insert(std::make_pair(1, 2));
 
-	// trace_structure b;
-	// b.num_nodes = 3;
-	// b.node_names.insert(std::make_pair(0, "a"));
-	// b.node_names.insert(std::make_pair(1, "b"));
-	// b.node_names.insert(std::make_pair(2, "c"));
+	trace_structure b;
+	b.num_nodes = 3;
+	b.node_names.insert(std::make_pair(0, "a"));
+	b.node_names.insert(std::make_pair(1, "b"));
+	b.node_names.insert(std::make_pair(2, "c"));
 
-	// b.edges.insert(std::make_pair(0, 1));
-	// b.edges.insert(std::make_pair(1, 2));
+	b.edges.insert(std::make_pair(0, 1));
+	b.edges.insert(std::make_pair(1, 2));
 
-	// std::cout << is_isomorphic(a, b) << std::endl;
+	std::cout << is_isomorphic(a, b) << std::endl;
 
 	// std::map<std::string, std::string> m;
 	// m["A"] = "B";
@@ -497,6 +508,6 @@ int dummy_tests() {
 	// 	std::cout << std::endl;
 	// }
 
-	// exit(1);
+	exit(1);
 	return 0;
 }

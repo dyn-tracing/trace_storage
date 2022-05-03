@@ -67,10 +67,13 @@ property_map_equivalent_custom< PropertyMapFirst, PropertyMapSecond > make_prope
 		property_map1, property_map2));
 }
 
-template < typename Graph1, typename Graph2 >
+/**
+ * TODO: maybe pass the pointer to IsomorphismMaps, that should be a better practice.
+ */
+template < typename Graph1, typename Graph2, typename IsomorphismMaps>
 struct vf2_callback_custom {
-	vf2_callback_custom(const Graph1& graph1, const Graph2& graph2)
-	: graph1_(graph1), graph2_(graph2) {
+	vf2_callback_custom(const Graph1& graph1, const Graph2& graph2, IsomorphismMaps& isomorphism_maps)
+	: graph1_(graph1), graph2_(graph2), isomorphism_maps_(isomorphism_maps) {
 	}
 
 	/**
@@ -79,12 +82,22 @@ struct vf2_callback_custom {
 	 */
 	template < typename CorrespondenceMap1To2, typename CorrespondenceMap2To1 >
 	bool operator()(CorrespondenceMap1To2 f, CorrespondenceMap2To1) const {
-		return false;
+		std::unordered_map<int, int> iso_map;
+		// Print (sub)graph isomorphism map
+        BGL_FORALL_VERTICES_T(v, graph1_, Graph1)
+		iso_map.insert(
+			std::make_pair(
+				get(boost::vertex_index_t(), graph1_, v),
+				get(boost::vertex_index_t(), graph2_, get(f, v))));
+
+		isomorphism_maps_.push_back(iso_map);
+		return true;
 	}
 
 	private:
 		const Graph1& graph1_;
 		const Graph2& graph2_;
+		IsomorphismMaps& isomorphism_maps_;
 };
 
 typedef boost::property<boost::vertex_name_t, std::string, boost::property<boost::vertex_index_t, int> >
