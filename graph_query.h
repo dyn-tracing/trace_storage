@@ -37,6 +37,19 @@ namespace gcs = ::google::cloud::storage;
 using ::google::cloud::StatusOr;
 namespace bg = boost::graph;
 
+enum property_comparison {
+	Equal_to,
+	Lesser_than,
+	Greater_than
+};
+
+struct query_condition {
+	int node_index;
+	std::string node_property_name;
+	std::string node_property_value;
+	property_comparison comp;
+};
+
 struct trace_structure {
 	int num_nodes;
 	std::unordered_map<int, std::string> node_names;
@@ -112,7 +125,7 @@ typedef property_map_equivalent_custom<vertex_name_map_t, vertex_name_map_t> ver
 
 std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace_ids(
 	StatusOr<gcs::ObjectMetadata> object_metadata, trace_structure query_trace,
-	int start_time, int end_time, gcs::Client* client);
+	int start_time, int end_time, std::vector<query_condition> conditions, gcs::Client* client);
 std::string hex_str(std::string data, int len);
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
 	std::string spans_data, std::vector<std::string> trace_ids);
@@ -122,6 +135,9 @@ std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string 
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
 	std::vector<std::string> trace_ids, std::string batch_name, std::string object_content,
 	int start_time, int end_time, gcs::Client* client);
+std::vector<std::string> filter_trace_ids_based_on_conditions(
+		std::vector<std::string> trace_ids, std::string batch_name,
+		std::vector<query_condition> conditions, gcs::Client* client);
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph);
 void print_trace_structure(trace_structure trace);
 std::string extract_trace_from_traces_object(std::string trace_id, std::string object_content);
@@ -136,7 +152,8 @@ std::string read_object(std::string bucket, std::string object, gcs::Client* cli
 std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client);
 int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* client);
 std::vector<std::string> get_traces_by_structure(
-	trace_structure query_trace, int start_time, int end_time, gcs::Client* client);
+	trace_structure query_trace, int start_time, int end_time,
+	std::vector<query_condition> conditions, gcs::Client* client);
 std::string strip_from_the_end(std::string object, char stripper);
 trace_structure morph_trace_object_to_trace_structure(std::string trace);
 bool is_isomorphic(trace_structure query_trace, trace_structure candidate_trace);

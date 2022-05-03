@@ -146,12 +146,13 @@ int main(int argc, char* argv[]) {
     // Create a client to communicate with Google Cloud Storage. This client
     // uses the default configuration for authentication and project id.
     auto client = gcs::Client();
-    auto span_futures = get_trace("7721859b8a133816fe9f34330a8454bb",
-                     1651501012, 1651501013, &client);
+    auto span_futures = get_trace("0000898de3ac90dc60a138fbc9c9d6b0",
+                     1651500643, 1651500644, &client);
     std::cout << "len span_futures: " << span_futures.size() << std::endl;
     for (int i=0; i < span_futures.size(); i++) {
         auto span = span_futures[i].get();
-        std::cout << "span id " << hex_str(span.span_id(), span.span_id().length()) << std::endl;
+        std::cout << "span id " << hex_str(span.span_id(), span.span_id().length())
+        << " " << span.name() << " " << std::to_string(span.start_time_unix_nano()) << std::endl;
     }
     return 0;
 }

@@ -6,43 +6,57 @@
 int main(int argc, char* argv[]) {
 	dummy_tests();
 
-	// Building a query trace where [frontend]-()->[]-()->[emailservice]-()
+	// query trace structure
 	trace_structure query_trace;
 	query_trace.num_nodes = 3;
-	query_trace.node_names.insert(std::make_pair(0, "frontend"));
+	query_trace.node_names.insert(std::make_pair(0, ASTERISK_SERVICE));
 	query_trace.node_names.insert(std::make_pair(1, ASTERISK_SERVICE));
 	query_trace.node_names.insert(std::make_pair(2, "emailservice"));
 
 	query_trace.edges.insert(std::make_pair(0, 1));
 	query_trace.edges.insert(std::make_pair(1, 2));
 
+	// query conditions
+	std::vector<query_condition> conditions;
 
+	query_condition condition1;
+	condition1.node_index = 2;
+	condition1.node_property_name = "start_time_unix_nano";
+	condition1.node_property_value = "1651500644062285170";
+	condition1.comp = Equal_to;
+
+	conditions.push_back(condition1);
+
+	// querying
 	auto client = gcs::Client();
-	std::vector<std::string> total = get_traces_by_structure(query_trace, 1551500618, 1651500700, &client);
+	std::vector<std::string> total = get_traces_by_structure(query_trace, 1551500618, 1651500700, conditions, &client);
 	std::cout << "Total results: " << total.size() << std::endl;
 	// for (std::string i: total) {
 	// 	std::cout << i << std::endl;
+	// 	break;
 	// }
 	return 0;
 }
 
 /**
- * @brief Get the traces by structure. 
+ * @brief Get the traces by structure object
  * 
  * @param query_trace 
  * @param start_time 
  * @param end_time 
+ * @param conditions 
  * @param client 
  * @return std::vector<std::string> 
  */
 std::vector<std::string> get_traces_by_structure(
-	trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
+	trace_structure query_trace, int start_time, int end_time,
+	std::vector<query_condition> conditions, gcs::Client* client) {
 	std::vector<std::future<std::vector<std::string>>> response_futures;
 
 	for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET)) {
 		response_futures.push_back(std::async(
 			std::launch::async, process_trace_hashes_object_and_retrieve_relevant_trace_ids,
-			object_metadata, query_trace, start_time, end_time, client));
+			object_metadata, query_trace, start_time, end_time, conditions, client));
 	}
 
 	std::vector<std::string> response;
@@ -59,6 +73,7 @@ std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace
 	trace_structure query_trace,
 	int start_time,
 	int end_time,
+	std::vector<query_condition> conditions,
 	gcs::Client* client
 ) {
 	if (!object_metadata) {
@@ -89,6 +104,11 @@ std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace
 
 	response_trace_ids = filter_trace_ids_based_on_query_timestamp(
 		response_trace_ids, batch_name, object_content, start_time, end_time, client);
+
+	response_trace_ids = filter_trace_ids_based_on_conditions(
+		response_trace_ids, batch_name, conditions, client);
+
+	std::cout << response_trace_ids[0] << " : " << object_name << std::endl;
 	return response_trace_ids;
 }
 
@@ -317,12 +337,12 @@ bool is_isomorphic(trace_structure query_trace, trace_structure candidate_trace)
 		boost::vertex_order_by_mult(query_graph),
 		boost::vertices_equivalent(vertex_comp));
 
-	for (std::unordered_map<int, int> m : isomorphism_maps) {
-		for (auto i : m) {
-			std::cout << i.first << " " << i.second << ", ";
-		}
-		std::cout << std::endl;
-	}
+	// for (std::unordered_map<int, int> m : isomorphism_maps) {
+	// 	for (auto i : m) {
+	// 		std::cout << i.first << " " << i.second << ", ";
+	// 	}
+	// 	std::cout << std::endl;
+	// }
 	return res;
 }
 
@@ -454,6 +474,17 @@ std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_ma
 	return response;
 }
 
+std::vector<std::string> filter_trace_ids_based_on_conditions(
+	std::vector<std::string> trace_ids,
+	std::string batch_name,
+	std::vector<query_condition> conditions,
+	gcs::Client* client) {
+	std::vector<std::string> response;
+
+	//do da filterin
+
+	return trace_ids;
+}
 
 int dummy_tests() {
 	// std::cout << is_object_within_timespan("12-123-125", 123, 124) << ":1" << std::endl;
