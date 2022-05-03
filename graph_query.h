@@ -136,15 +136,20 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
 	std::vector<std::string> trace_ids, std::string batch_name, std::string object_content,
 	int start_time, int end_time, gcs::Client* client);
 std::vector<std::string> filter_trace_ids_based_on_conditions(
-		std::vector<std::string> trace_ids, std::string batch_name,
-		std::vector<query_condition> conditions, gcs::Client* client);
+	std::vector<std::string> trace_ids,
+	std::string batch_name,
+	std::vector<query_condition> conditions,
+	std::vector<std::unordered_map<int, int>> iso_maps, // query_node, trace_node
+	std::unordered_map<int, std::string> trace_node_names,
+	std::unordered_map<int, std::string> query_node_names,
+	gcs::Client* client);
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph);
 void print_trace_structure(trace_structure trace);
 std::string extract_trace_from_traces_object(std::string trace_id, std::string object_content);
 std::pair<int, int> extract_batch_timestamps(std::string batch_name);
 std::string extract_batch_name(std::string object_name);
-bool does_trace_structure_conform_to_graph_query(
-	std::string object_content, std::string trace_id, trace_structure query_trace, gcs::Client* client);
+std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
+	trace_structure candidate_trace, trace_structure query_trace);
 std::vector<std::string> split_by_char(std::string input, std::string splitter);
 std::vector<std::string> split_by_line(std::string input);
 bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, int end_time);
@@ -156,7 +161,6 @@ std::vector<std::string> get_traces_by_structure(
 	std::vector<query_condition> conditions, gcs::Client* client);
 std::string strip_from_the_end(std::string object, char stripper);
 trace_structure morph_trace_object_to_trace_structure(std::string trace);
-bool is_isomorphic(trace_structure query_trace, trace_structure candidate_trace);
 int dummy_tests();
 
 #endif  // GRAPH_QUERY_H_

@@ -97,8 +97,12 @@ std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace
 	}
 
 	std::string object_content = read_object(TRACE_STRUCT_BUCKET, batch_name, client);
+	std::string trace = extract_trace_from_traces_object(response_trace_ids[0], object_content);
+	trace_structure candidate_trace = morph_trace_object_to_trace_structure(trace);
 
-	if (false == does_trace_structure_conform_to_graph_query(object_content, response_trace_ids[0], query_trace, client)) {
+	auto iso_maps = get_isomorphism_mappings(candidate_trace, query_trace);
+
+	if (iso_maps.size() < 1) {
 		return std::vector<std::string>();
 	}
 
@@ -106,7 +110,8 @@ std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace
 		response_trace_ids, batch_name, object_content, start_time, end_time, client);
 
 	response_trace_ids = filter_trace_ids_based_on_conditions(
-		response_trace_ids, batch_name, conditions, client);
+		response_trace_ids, batch_name, conditions, iso_maps,
+		candidate_trace.node_names, query_trace.node_names, client);
 
 	std::cout << response_trace_ids[0] << " : " << object_name << std::endl;
 	return response_trace_ids;
@@ -115,13 +120,28 @@ std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace
 /**
  * TODO: maybe pass a pointer to object_content only, would that be more performant?
  */
-bool does_trace_structure_conform_to_graph_query(
-	std::string object_content, std::string trace_id, trace_structure query_trace, gcs::Client* client ) {
-	std::string trace = extract_trace_from_traces_object(trace_id, object_content);
+std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
+	trace_structure candidate_trace, trace_structure query_trace) {
+	graph_type candidate_graph = morph_trace_structure_to_boost_graph_type(candidate_trace);
+	graph_type query_graph = morph_trace_structure_to_boost_graph_type(query_trace);
 
-	trace_structure candidate_trace = morph_trace_object_to_trace_structure(trace);
-	bool response = is_isomorphic(query_trace, candidate_trace);
-	return response;
+	vertex_comp_t vertex_comp = make_property_map_equivalent_custom(
+		boost::get(boost::vertex_name_t::vertex_name, query_graph),
+		boost::get(boost::vertex_name_t::vertex_name, candidate_graph));
+
+	std::vector<std::unordered_map<int, int>> isomorphism_maps;
+
+	vf2_callback_custom<graph_type, graph_type, std::vector<std::unordered_map<int, int>>> callback(
+		query_graph, candidate_graph, isomorphism_maps);
+
+	boost::vf2_subgraph_iso(
+		query_graph,
+		candidate_graph,
+		callback,
+		boost::vertex_order_by_mult(query_graph),
+		boost::vertices_equivalent(vertex_comp));
+
+	return isomorphism_maps;
 }
 
 std::vector<std::string> split_by_line(std::string input) {
@@ -319,33 +339,6 @@ void print_trace_structure(trace_structure trace) {
 	}
 }
 
-bool is_isomorphic(trace_structure query_trace, trace_structure candidate_trace) {
-	graph_type query_graph = morph_trace_structure_to_boost_graph_type(query_trace);
-	graph_type candidate_graph = morph_trace_structure_to_boost_graph_type(candidate_trace);
-	vertex_comp_t vertex_comp = make_property_map_equivalent_custom(
-		boost::get(boost::vertex_name_t::vertex_name, query_graph),
-		boost::get(boost::vertex_name_t::vertex_name, candidate_graph));
-
-	std::vector<std::unordered_map<int, int>> isomorphism_maps;
-
-	vf2_callback_custom<graph_type, graph_type, std::vector<std::unordered_map<int, int>>> callback(
-		query_graph, candidate_graph, isomorphism_maps);
-	bool res = boost::vf2_subgraph_iso(
-		query_graph,
-		candidate_graph,
-		callback,
-		boost::vertex_order_by_mult(query_graph),
-		boost::vertices_equivalent(vertex_comp));
-
-	// for (std::unordered_map<int, int> m : isomorphism_maps) {
-	// 	for (auto i : m) {
-	// 		std::cout << i.first << " " << i.second << ", ";
-	// 	}
-	// 	std::cout << std::endl;
-	// }
-	return res;
-}
-
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph) {
 	graph_type output_graph;
 
@@ -478,12 +471,21 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 	std::vector<std::string> trace_ids,
 	std::string batch_name,
 	std::vector<query_condition> conditions,
+	std::vector<std::unordered_map<int, int>> iso_maps, // query_node, trace_node
+	std::unordered_map<int, std::string> trace_node_names,
+	std::unordered_map<int, std::string> query_node_names,
 	gcs::Client* client) {
 	std::vector<std::string> response;
 
-	//do da filterin
+	for (auto current_trace_id : trace_ids) {
+		/**
+		 * TODO: Do the stuff that was discussed with Jessica Berg
+		 * 
+		 */
+		response.push_back(current_trace_id);
+	}
 
-	return trace_ids;
+	return response;
 }
 
 int dummy_tests() {
@@ -522,7 +524,7 @@ int dummy_tests() {
 	// b.edges.insert(std::make_pair(1, 2));
 	// b.edges.insert(std::make_pair(3, 2));
 
-	// std::cout << is_isomorphic(a, b) << std::endl;
+	// std::cout << get_isomorphism_mappings(a, b) << std::endl;
 
 	// std::map<std::string, std::string> m;
 	// m["A"] = "B";
