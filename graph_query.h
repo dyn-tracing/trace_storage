@@ -123,6 +123,9 @@ graph_type;
 typedef boost::property_map<graph_type, boost::vertex_name_t>::type vertex_name_map_t;
 typedef property_map_equivalent_custom<vertex_name_map_t, vertex_name_map_t> vertex_comp_t;
 
+std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
+	StatusOr<std::string> prefix, trace_structure query_trace,
+	int start_time, int end_time, std::vector<query_condition> conditions, gcs::Client* client);
 std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace_ids(
 	StatusOr<gcs::ObjectMetadata> object_metadata, trace_structure query_trace,
 	int start_time, int end_time, std::vector<query_condition> conditions, gcs::Client* client);

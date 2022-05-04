@@ -53,6 +53,30 @@ std::vector<std::string> get_traces_by_structure(
 	std::vector<query_condition> conditions, gcs::Client* client) {
 	std::vector<std::future<std::vector<std::string>>> response_futures;
 
+	/**
+	 * Get the prefixes as done in the dummy_tests(), 
+	 * make one thread for each prefix.. and do all the job that's done in the 
+	 * process_trace_hashes_object_and_retrieve_relevant_trace_ids for any one trace_id present 
+	 * in the entire prefix and then while returning read all the trace_ids of a prefix (can be 
+	 * multiple object)
+	 */
+	// for (auto&& prefix : client.ListObjectsAndPrefixes(TRACE_HASHES_BUCKET, gcs::Delimiter("/"))) {
+	// 	if (!prefix) {
+	// 		std::cerr << "Error in getting prefixes" << std::endl;
+	// 		exit(1);
+	// 	}
+
+	// 	auto result = *std::move(item); // what the bleep
+	// 	if (false == absl::holds_alternative<std::string>(result) {
+	// 		std::cerr << "Error in getting prefixes" << std::endl;
+	// 		exit(1);
+	// 	}
+
+	// 	response_futures.push_back(std::async(
+	// 		std::launch::async, process_trace_hashes_prefix_and_retrieve_relevant_trace_ids,
+	// 		prefix, query_trace, start_time, end_time, conditions, client));
+	// }
+
 	for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET)) {
 		response_futures.push_back(std::async(
 			std::launch::async, process_trace_hashes_object_and_retrieve_relevant_trace_ids,
@@ -66,6 +90,16 @@ std::vector<std::string> get_traces_by_structure(
 			response.insert(response.end(), trace_ids.begin(), trace_ids.end());
 	});
 	return response;
+}
+
+std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
+	StatusOr<std::string> prefix,
+	trace_structure query_trace,
+	int start_time,
+	int end_time,
+	std::vector<query_condition> conditions,
+	gcs::Client* client
+) {
 }
 
 std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace_ids(
@@ -261,6 +295,10 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
 		}
 
 		std::vector<std::string> span_info = split_by_char(line, ":");
+		/**
+		 * TODO: when jess appends the hashes here, then span_info size is going to be 4
+		 * 
+		 */
 		if (span_info.size() != 3) {
 			std::cerr << "Malformed trace found: \n" << trace << std::endl;
 			exit(1);
@@ -474,7 +512,8 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 	std::vector<std::unordered_map<int, int>> iso_maps, // query_node, trace_node
 	std::unordered_map<int, std::string> trace_node_names,
 	std::unordered_map<int, std::string> query_node_names,
-	gcs::Client* client) {
+	gcs::Client* client
+) {
 	std::vector<std::string> response;
 
 	for (auto current_trace_id : trace_ids) {
@@ -544,6 +583,18 @@ int dummy_tests() {
 	// 	std::cout << std::endl;
 	// }
 
+	// auto client = gcs::Client();
+	// for (auto&& item : client.ListObjectsAndPrefixes(
+    //          TRACE_HASHES_BUCKET, gcs::Delimiter("/"))) {
+    //   if (!item) throw std::runtime_error(item.status().message());
+    //   auto result = *std::move(item);
+    //   if (absl::holds_alternative<gcs::ObjectMetadata>(result)) {
+    //     std::cout << "object_name="
+    //               << absl::get<gcs::ObjectMetadata>(result).name() << "\n";
+    //   } else if (absl::holds_alternative<std::string>(result)) {
+    //     std::cout << "prefix     =" << absl::get<std::string>(result) << "\n";
+    //   }
+    // }
 	// exit(1);
 	return 0;
 }
