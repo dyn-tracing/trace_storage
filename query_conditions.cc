@@ -6,10 +6,12 @@
 /**
  * TODO: There got to be a concise way to do all this stuff.. directly getting function name
  * from `condition` and invoking that using `reflection` maybe???
+ * 
+ * Will comparing `uint64_t` with `int` have problems here???
  */
 
 bool does_latency_condition_hold(opentelemetry::proto::trace::v1::Span sp, query_condition condition) {
-    auto latency = sp.start_time_unix_nano() - sp.end_time_unix_nano();
+    auto latency = sp.end_time_unix_nano() - sp.start_time_unix_nano();
 
     switch (condition.comp) {
         case Equal_to:
