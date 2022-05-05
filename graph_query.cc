@@ -151,7 +151,6 @@ std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace
 		response_trace_ids, batch_name, object_content, conditions, iso_maps,
 		candidate_trace.node_names, query_trace.node_names, client);
 
-	std::cout << response_trace_ids[0] << " : " << object_name << std::endl;
 	return response_trace_ids;
 }
 
@@ -511,21 +510,24 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 	std::unordered_map<int, std::string> query_node_names,
 	gcs::Client* client
 ) {
-	std::vector<std::string> response;
+	std::vector<std::pair<std::future<bool>, std::string>> response_future_and_trace_id_pairs;
 
-	/**
-	 * Brute forcing rn. TODO: Optimize if possible. 
-	 */
 	for (auto current_trace_id : trace_ids) {
-		
-		auto current_trace_satisfies_every_condition = does_trace_satisfy_all_conditions(
-			current_trace_id, batch_name, object_content, conditions, iso_maps,
-			trace_node_names, query_node_names, client);
-
-		if (true == current_trace_satisfies_every_condition) {
-			response.push_back(current_trace_id);
-		}
+		response_future_and_trace_id_pairs.push_back(std::make_pair(
+			std::async(std::launch::async, does_trace_satisfy_all_conditions,
+				current_trace_id, batch_name, object_content, conditions, iso_maps,
+				trace_node_names, query_node_names, client),
+			current_trace_id));
 	}
+
+	std::vector<std::string> response;
+	for_each(response_future_and_trace_id_pairs.begin(), response_future_and_trace_id_pairs.end(),
+		[&response](std::pair<std::future<bool>, std::string>& fut_trace_pair){
+			auto trace_id_satisfies_all_conditions = fut_trace_pair.first.get();
+			if (true == trace_id_satisfies_all_conditions) {
+				response.push_back(fut_trace_pair.second);
+			}
+	});
 
 	return response;
 }
