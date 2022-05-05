@@ -167,6 +167,14 @@ std::vector<std::string> get_traces_by_structure(
 	std::vector<query_condition> conditions, gcs::Client* client);
 std::string strip_from_the_end(std::string object, char stripper);
 trace_structure morph_trace_object_to_trace_structure(std::string trace);
+bool does_trace_satisfy_all_conditions(
+	std::string trace_id, std::string batch_name,
+	std::string object_content, std::vector<query_condition> conditions,
+	std::vector<std::unordered_map<int, int>> iso_maps,  // query_node, trace_node
+	std::unordered_map<int, std::string> trace_node_names,
+	std::unordered_map<int, std::string> query_node_names,
+	gcs::Client* client
+);
 int dummy_tests();
 
 #endif  // GRAPH_QUERY_H_

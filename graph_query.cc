@@ -517,15 +517,10 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 	 * Brute forcing rn. TODO: Optimize if possible. 
 	 */
 	for (auto current_trace_id : trace_ids) {
-		bool current_trace_satisfies_every_condition = true;
-		for (auto current_condition : conditions) {
-			if (false == does_trace_satisfy_condition(
-				current_trace_id, current_condition, iso_maps, batch_name,
-				object_content, trace_node_names, query_node_names, client)) {
-				current_trace_satisfies_every_condition = false;
-				break;
-			}
-		}
+		
+		auto current_trace_satisfies_every_condition = does_trace_satisfy_all_conditions(
+			current_trace_id, batch_name, object_content, conditions, iso_maps,
+			trace_node_names, query_node_names, client);
 
 		if (true == current_trace_satisfies_every_condition) {
 			response.push_back(current_trace_id);
@@ -533,6 +528,27 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 	}
 
 	return response;
+}
+
+bool does_trace_satisfy_all_conditions(
+	std::string trace_id, std::string batch_name,
+	std::string object_content, std::vector<query_condition> conditions,
+	std::vector<std::unordered_map<int, int>> iso_maps,  // query_node, trace_node
+	std::unordered_map<int, std::string> trace_node_names,
+	std::unordered_map<int, std::string> query_node_names,
+	gcs::Client* client
+) {
+	bool current_trace_satisfies_every_condition = true;
+	for (auto current_condition : conditions) {
+		if (false == does_trace_satisfy_condition(
+			trace_id, current_condition, iso_maps, batch_name,
+			object_content, trace_node_names, query_node_names, client)) {
+			current_trace_satisfies_every_condition = false;
+			break;
+		}
+	}
+
+	return current_trace_satisfies_every_condition;
 }
 
 bool does_trace_satisfy_condition(
