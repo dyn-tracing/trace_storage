@@ -9,8 +9,8 @@ int main(int argc, char* argv[]) {
 	// query trace structure
 	trace_structure query_trace;
 	query_trace.num_nodes = 3;
-	query_trace.node_names.insert(std::make_pair(0, ASTERISK_SERVICE));
-	query_trace.node_names.insert(std::make_pair(1, ASTERISK_SERVICE));
+	query_trace.node_names.insert(std::make_pair(0, "frontend"));
+	query_trace.node_names.insert(std::make_pair(1, "adservice"));
 	query_trace.node_names.insert(std::make_pair(2, "emailservice"));
 
 	query_trace.edges.insert(std::make_pair(0, 1));
@@ -21,15 +21,20 @@ int main(int argc, char* argv[]) {
 
 	query_condition condition1;
 	condition1.node_index = 2;
-	condition1.node_property_name = "start_time_unix_nano";
-	condition1.node_property_value = "1651500644062285170";
-	condition1.comp = Equal_to;
+	condition1.node_property_name = Latency;
+	condition1.node_property_value = "10000000";  // 1e+7 ns, 10 ms
+	condition1.comp = Lesser_than;
 
 	conditions.push_back(condition1);
 
+	/**
+	 * TODO: RN all the conditions are checked for satisfaction. Add the ability
+	 * to do `condition1 OR condition2` and mixes of ANDs, ORs
+	 */
+
 	// querying
 	auto client = gcs::Client();
-	std::vector<std::string> total = get_traces_by_structure(query_trace, 1551500618, 1651500700, conditions, &client);
+	std::vector<std::string> total = get_traces_by_structure(query_trace, 1651696797, 1651696798, conditions, &client);
 	std::cout << "Total results: " << total.size() << std::endl;
 	// for (std::string i: total) {
 	// 	std::cout << i << std::endl;
@@ -92,15 +97,15 @@ std::vector<std::string> get_traces_by_structure(
 	return response;
 }
 
-std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
-	StatusOr<std::string> prefix,
-	trace_structure query_trace,
-	int start_time,
-	int end_time,
-	std::vector<query_condition> conditions,
-	gcs::Client* client
-) {
-}
+// std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
+// 	StatusOr<std::string> prefix,
+// 	trace_structure query_trace,
+// 	int start_time,
+// 	int end_time,
+// 	std::vector<query_condition> conditions,
+// 	gcs::Client* client
+// ) {
+// }
 
 std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace_ids(
 	StatusOr<gcs::ObjectMetadata> object_metadata,
@@ -135,7 +140,6 @@ std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace
 	trace_structure candidate_trace = morph_trace_object_to_trace_structure(trace);
 
 	auto iso_maps = get_isomorphism_mappings(candidate_trace, query_trace);
-
 	if (iso_maps.size() < 1) {
 		return std::vector<std::string>();
 	}
@@ -144,7 +148,7 @@ std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace
 		response_trace_ids, batch_name, object_content, start_time, end_time, client);
 
 	response_trace_ids = filter_trace_ids_based_on_conditions(
-		response_trace_ids, batch_name, conditions, iso_maps,
+		response_trace_ids, batch_name, object_content, conditions, iso_maps,
 		candidate_trace.node_names, query_trace.node_names, client);
 
 	std::cout << response_trace_ids[0] << " : " << object_name << std::endl;
@@ -295,16 +299,12 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
 		}
 
 		std::vector<std::string> span_info = split_by_char(line, ":");
-		/**
-		 * TODO: when jess appends the hashes here, then span_info size is going to be 4
-		 * 
-		 */
-		if (span_info.size() != 3) {
+		if (span_info.size() != 4) {
 			std::cerr << "Malformed trace found: \n" << trace << std::endl;
 			exit(1);
 		}
 
-		span_to_service.insert(std::make_pair(span_info[1], span_info[2]+"-"+span_info[1]));
+		span_to_service.insert(std::make_pair(span_info[1], span_info[2]+":"+span_info[3]));
 
 		if (span_info[0].length() > 0) {
 			edges.insert(std::make_pair(span_info[0], span_info[1]));
@@ -313,16 +313,10 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
 
 	response.num_nodes = span_to_service.size();
 
-	/**
-	 * TODO: Make sure that the traces with multiple spans of a single
-	 * service are catered properly. Seems like it is already handled
-	 * properly, just mako suro!
-	 */
-
 	// Filling response.node_names
 	int count = 0;
 	for(const auto& elem : span_to_service) {
-		response.node_names.insert(make_pair(count, split_by_char(elem.second, "-")[0]));
+		response.node_names.insert(make_pair(count, elem.second));
 		reverse_node_names.insert(make_pair(elem.second, count));
 		count++;
 	}
@@ -334,6 +328,8 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
 			reverse_node_names[span_to_service[elem.second]]));
 	}
 
+	// print_trace_structure(response);
+	// exit(1);
 	return response;
 }
 
@@ -484,7 +480,7 @@ std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string 
 		for (int ind = 1; ind < trace.size(); ind ++) {
 			if (trace[ind].substr(0, 1) == ":") {
 				std::vector<std::string> root_span_info = split_by_char(trace[ind], ":");
-				std::string root_service = root_span_info[root_span_info.size()-1];
+				std::string root_service = root_span_info[2];
 				response.insert(std::make_pair(trace_id, root_service));
 				break;
 			}
@@ -508,23 +504,108 @@ std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_ma
 std::vector<std::string> filter_trace_ids_based_on_conditions(
 	std::vector<std::string> trace_ids,
 	std::string batch_name,
+	std::string object_content,
 	std::vector<query_condition> conditions,
-	std::vector<std::unordered_map<int, int>> iso_maps, // query_node, trace_node
+	std::vector<std::unordered_map<int, int>> iso_maps,  // query_node, trace_node
 	std::unordered_map<int, std::string> trace_node_names,
 	std::unordered_map<int, std::string> query_node_names,
 	gcs::Client* client
 ) {
 	std::vector<std::string> response;
 
+	/**
+	 * Brute forcing rn. TODO: Optimize if possible. 
+	 */
 	for (auto current_trace_id : trace_ids) {
-		/**
-		 * TODO: Do the stuff that was discussed with Jessica Berg
-		 * 
-		 */
-		response.push_back(current_trace_id);
+		bool current_trace_satisfies_every_condition = true;
+		for (auto current_condition : conditions) {
+			if (false == does_trace_satisfy_condition(
+				current_trace_id, current_condition, iso_maps, batch_name,
+				object_content, trace_node_names, query_node_names, client)) {
+				current_trace_satisfies_every_condition = false;
+				break;
+			}
+		}
+
+		if (true == current_trace_satisfies_every_condition) {
+			response.push_back(current_trace_id);
+		}
 	}
 
 	return response;
+}
+
+bool does_trace_satisfy_condition(
+	std::string trace_id, query_condition condition,
+	std::vector<std::unordered_map<int, int>> iso_maps, std::string batch_name, std::string object_content,
+	std::unordered_map<int, std::string> trace_node_names, std::unordered_map<int, std::string> query_node_names,
+	gcs::Client* client
+) {
+	/**
+	 * TODO: fetch the span having object earlier, so that it can be used in all the for loop iterations. 
+	 * instead of fetching it in every iteration. 
+	 */
+	for (auto current_iso_map : iso_maps) {
+		auto trace_node_index = current_iso_map[condition.node_index];
+		auto condition_service = trace_node_names[trace_node_index];
+
+		auto trace = extract_trace_from_traces_object(trace_id, object_content);
+		auto trace_lines = split_by_line(trace);
+
+		for (auto line : trace_lines) {
+			if (line.find(condition_service) != std::string::npos) {
+				auto span_info = split_by_char(line, ":");
+				auto span_id = span_info[1];
+				auto service_name = span_info[2];
+				if (true == does_span_satisfy_condition(span_id, service_name, batch_name, condition, client)) {
+					return true;
+				}
+				break;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool does_span_satisfy_condition(
+	std::string span_id, std::string service_name, std::string batch_name,
+	query_condition condition, gcs::Client* client
+) {
+	auto object_content = read_object(service_name + SERVICES_BUCKETS_SUFFIX, batch_name, client);
+
+	opentelemetry::proto::trace::v1::TracesData trace_data;
+	bool ret = trace_data.ParseFromString(object_content);
+	if (false == ret) {
+		std::cerr << "Error in does_span_satisfy_condition:ParseFromString" << std::endl;
+		exit(1);
+	}
+
+	for (int i=0; i < trace_data.resource_spans(0).scope_spans(0).spans_size(); i++) {
+		opentelemetry::proto::trace::v1::Span sp = trace_data.resource_spans(0).scope_spans(0).spans(i);
+
+		std::string current_span_id = hex_str(sp.span_id(), sp.span_id().length());
+		if (current_span_id == span_id) {
+			switch (condition.node_property_name) {
+				case Latency:
+					return does_latency_condition_hold(sp, condition);
+				case Start_time:
+					return does_start_time_condition_hold(sp, condition);
+				case End_time:
+					return does_end_time_condition_hold(sp, condition);
+				case Attribute_parent_name:
+					std::cerr << "Under construction." << std::endl;
+					exit(1);
+				default:
+					std::cerr << "Condition not supported." << std::endl;
+					exit(1);
+			}
+
+			break;
+		}
+	}
+
+	return false;
 }
 
 int dummy_tests() {

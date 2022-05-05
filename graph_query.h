@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 #include <future>
+#include "query_conditions.h"
 #include "google/cloud/storage/client.h"
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
 #include <boost/algorithm/string.hpp>
@@ -25,9 +26,9 @@
 #include <boost/graph/vf2_sub_graph_iso.hpp>
 
 
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket4";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket4";
-const char SERVICES_BUCKETS_SUFFIX[] = "-snicket4";
+const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket3";
+const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket3";
+const char SERVICES_BUCKETS_SUFFIX[] = "-snicket3";
 const char ASTERISK_SERVICE[] = "NONE";
 
 const int TRACE_ID_LENGTH = 32;
@@ -37,24 +38,13 @@ namespace gcs = ::google::cloud::storage;
 using ::google::cloud::StatusOr;
 namespace bg = boost::graph;
 
-enum property_comparison {
-	Equal_to,
-	Lesser_than,
-	Greater_than
-};
-
-struct query_condition {
-	int node_index;
-	std::string node_property_name;
-	std::string node_property_value;
-	property_comparison comp;
-};
-
 struct trace_structure {
 	int num_nodes;
 	std::unordered_map<int, std::string> node_names;
 	std::multimap<int, int> edges;
 };
+
+std::vector<std::string> split_by_char(std::string input, std::string splitter);
 
 // Binary function object that returns true if the values for item1
 // in property_map1 and item2 in property_map2 are equivalent.
@@ -71,7 +61,10 @@ struct property_map_equivalent_custom {
 			return true;
 		}
 
-		return (get(m_property_map1, item1) == get(m_property_map2, item2));
+		auto prop1 = split_by_char(get(m_property_map1, item1), ":")[0];
+		auto prop2 = split_by_char(get(m_property_map2, item2), ":")[0];
+
+		return prop1 == prop2;
 	}
 
 	private:
@@ -99,7 +92,7 @@ struct vf2_callback_custom {
 	template < typename CorrespondenceMap1To2, typename CorrespondenceMap2To1 >
 	bool operator()(CorrespondenceMap1To2 f, CorrespondenceMap2To1) const {
 		std::unordered_map<int, int> iso_map;
-		// Print (sub)graph isomorphism map
+
         BGL_FORALL_VERTICES_T(v, graph1_, Graph1)
 		iso_map.insert(
 			std::make_pair(
@@ -123,6 +116,16 @@ graph_type;
 typedef boost::property_map<graph_type, boost::vertex_name_t>::type vertex_name_map_t;
 typedef property_map_equivalent_custom<vertex_name_map_t, vertex_name_map_t> vertex_comp_t;
 
+bool does_span_satisfy_condition(
+	std::string span_id, std::string service_name, std::string batch_name,
+	query_condition condition, gcs::Client* client
+);
+bool does_trace_satisfy_condition(
+	std::string trace_id, query_condition condition,
+	std::vector<std::unordered_map<int, int>> iso_maps, std::string batch_name, std::string object_content,
+	std::unordered_map<int, std::string> trace_node_names, std::unordered_map<int, std::string> query_node_names,
+	gcs::Client* client
+);
 std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 	StatusOr<std::string> prefix, trace_structure query_trace,
 	int start_time, int end_time, std::vector<query_condition> conditions, gcs::Client* client);
@@ -141,8 +144,9 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
 std::vector<std::string> filter_trace_ids_based_on_conditions(
 	std::vector<std::string> trace_ids,
 	std::string batch_name,
+	std::string object_content,
 	std::vector<query_condition> conditions,
-	std::vector<std::unordered_map<int, int>> iso_maps, // query_node, trace_node
+	std::vector<std::unordered_map<int, int>> iso_maps,  // query_node, trace_node
 	std::unordered_map<int, std::string> trace_node_names,
 	std::unordered_map<int, std::string> query_node_names,
 	gcs::Client* client);
@@ -153,7 +157,6 @@ std::pair<int, int> extract_batch_timestamps(std::string batch_name);
 std::string extract_batch_name(std::string object_name);
 std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
 	trace_structure candidate_trace, trace_structure query_trace);
-std::vector<std::string> split_by_char(std::string input, std::string splitter);
 std::vector<std::string> split_by_line(std::string input);
 bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, int end_time);
 std::string read_object(std::string bucket, std::string object, gcs::Client* client);

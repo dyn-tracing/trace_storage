@@ -97,6 +97,7 @@
         "strstream": "cpp",
         "*.ipp": "cpp",
         "*.inc": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "hash_map": "cpp"
     }
 }
