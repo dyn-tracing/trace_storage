@@ -62,7 +62,7 @@ std::vector<std::string> get_traces_by_structure(
 			exit(1);
 		}
 
-		auto result = *std::move(prefix); // what the bleep
+		auto result = *std::move(prefix);  // what the bleep
 		if (false == absl::holds_alternative<std::string>(result)) {
 			std::cerr << "Error in getting prefixes" << std::endl;
 			exit(1);
@@ -468,7 +468,7 @@ std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_ma
 	return response;
 }
 
-data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions (
+data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
 	std::vector<query_condition> conditions, std::vector<std::unordered_map<int, int>> iso_maps,
 	std::unordered_map<int, std::string> trace_node_names,
 	std::unordered_map<int, std::string> query_node_names,
@@ -490,7 +490,7 @@ data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions 
 			) {
 				auto data = read_object(
 					service_name_without_hash_id + SERVICES_BUCKETS_SUFFIX, batch_name, client);
-				
+
 				opentelemetry::proto::trace::v1::TracesData trace_data;
 				bool ret = trace_data.ParseFromString(data);
 				if (false == ret) {
@@ -535,7 +535,7 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 	for (auto current_trace_id : trace_ids) {
 		bool satisfies_conditions = does_trace_satisfy_all_conditions(
 			current_trace_id, object_content, conditions, iso_maps.size(), required_data);
-		
+
 		if (true == satisfies_conditions) {
 			response.push_back(current_trace_id);
 		}
