@@ -34,19 +34,10 @@ int main(int argc, char* argv[]) {
 	conditions.push_back(condition1);
 	conditions.push_back(condition2);
 
-	/**
-	 * TODO: RN all the conditions are checked for satisfaction. Add the ability
-	 * to do `condition1 OR condition2` and mixes of ANDs, ORs
-	 */
-
 	// querying
 	auto client = gcs::Client();
 	std::vector<std::string> total = get_traces_by_structure(query_trace, 1651696797, 1651696798, conditions, &client);
 	std::cout << "Total results: " << total.size() << std::endl;
-	// for (std::string i: total) {
-	// 	std::cout << i << std::endl;
-	// 	break;
-	// }
 	return 0;
 }
 
@@ -64,10 +55,6 @@ std::vector<std::string> get_traces_by_structure(
 	trace_structure query_trace, int start_time, int end_time,
 	std::vector<query_condition> conditions, gcs::Client* client) {
 	std::vector<std::future<std::vector<std::string>>> response_futures;
-
-	/**
-	 * TODO: waht will happen if in the future we have multiple "/" in the object names?
-	 */
 
 	for (auto&& prefix : client->ListObjectsAndPrefixes(TRACE_HASHES_BUCKET, gcs::Delimiter("/"))) {
 		if (!prefix) {
@@ -101,6 +88,7 @@ std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace
 	std::vector<query_condition> conditions, gcs::Client* client
 ) {
 	std::vector<std::string> response;
+	std::vector<std::future<std::vector<std::string>>> future_response_of_condition_evaluations;
 	std::vector<std::unordered_map<int, int>> iso_maps;
 
 	for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET, gcs::Prefix(prefix))) {
@@ -136,15 +124,9 @@ std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace
 		response_trace_ids = filter_trace_ids_based_on_query_timestamp(
 			response_trace_ids, batch_name, object_content, start_time, end_time, client);
 
-		/**
-		 * TODO: make this call asynchronous and colllect all such futures of the 
-		 * entire for loop and then evaluate them at the end.  maybe??
-		 * 
-		 */
 		response_trace_ids = filter_trace_ids_based_on_conditions(
 			response_trace_ids, batch_name, object_content, conditions, iso_maps,
 			candidate_trace.node_names, query_trace.node_names, client);
-
 		response.insert(response.end(), response_trace_ids.begin(), response_trace_ids.end());
 	}
 
@@ -152,9 +134,13 @@ std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace
 }
 
 /**
- * TODO: maybe pass a pointer to object_content only, would that be more performant?
+ * @brief Get the isomorphism mappings object
  * 
  * Map: query trace => stored trace
+ * 
+ * @param candidate_trace 
+ * @param query_trace 
+ * @return std::vector<std::unordered_map<int, int>> 
  */
 std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
 	trace_structure candidate_trace, trace_structure query_trace) {
@@ -189,12 +175,6 @@ std::vector<std::string> split_by_line(std::string input) {
 	return result;
 }
 
-/**
- * @brief Right now this function only calculates whether the batch timestamps have some overlap with the 
- * timespan provided in the query. 
- * 
- * @return bool
- */
 bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, int end_time) {
 	std::pair<int, int> query_timespan = std::make_pair(start_time, end_time);
 
@@ -386,17 +366,6 @@ graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph
 	return output_graph;
 }
 
-/**
- * @brief This is the place to do filtering of the trace_ids. RN I am filetering just on the start and end timestamp but it can
- * be generalized to cater to other filtering objectives. 
- * 
- * @param trace_ids 
- * @param batch_name 
- * @param object_content 
- * @param start_time 
- * @param end_time 
- * @return std::vector<std::string> 
- */
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
 	std::vector<std::string> trace_ids,
 	std::string batch_name,
