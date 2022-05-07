@@ -217,11 +217,6 @@ bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, i
 }
 
 std::string read_object(std::string bucket, std::string object, gcs::Client* client) {
-	auto elem = network_cache.find(bucket+"/"+object);
-	if (elem != network_cache.end()) {
-		return elem->second;
-	}
-
 	auto reader = client->ReadObject(bucket, object);
 	if (!reader) {
 		std::cerr << "Error reading object " << bucket << "/" << object << " :" << reader.status() << "\n";
@@ -229,7 +224,6 @@ std::string read_object(std::string bucket, std::string object, gcs::Client* cli
 	}
 
 	std::string object_content{std::istreambuf_iterator<char>{reader}, {}};
-	network_cache[bucket+"/"+object] = object_content;
 	return object_content;
 }
 
@@ -498,6 +492,37 @@ std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_ma
 	return response;
 }
 
+data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions (
+	std::vector<query_condition> conditions, std::vector<std::unordered_map<int, int>> iso_maps,
+	std::unordered_map<int, std::string> trace_node_names,
+	std::unordered_map<int, std::string> query_node_names,
+	std::string batch_name, std::string trace, gcs::Client* client
+) {
+	data_for_verifying_conditions response;
+
+	for (auto curr_condition : conditions) {
+		std::vector <std::string> iso_map_to_service;
+
+		for (auto curr_iso_map : iso_maps) {
+			auto trace_node_index = curr_iso_map[curr_condition.node_index];
+			auto condition_service = trace_node_names[trace_node_index];
+			iso_map_to_service.push_back(condition_service);
+
+			auto service_name_without_hash_id = split_by_char(condition_service, ":")[0];
+			if (response.service_name_to_respective_object.find(
+				service_name_without_hash_id) == response.service_name_to_respective_object.end()) {
+					auto data = read_object(
+						service_name_without_hash_id + SERVICES_BUCKETS_SUFFIX, batch_name, client);
+				response.service_name_to_respective_object[service_name_without_hash_id] = data;
+			}
+		}
+
+		response.service_name_for_condition_with_isomap.push_back(iso_map_to_service);
+	}
+
+	return response;
+}
+
 std::vector<std::string> filter_trace_ids_based_on_conditions(
 	std::vector<std::string> trace_ids,
 	std::string batch_name,
@@ -508,12 +533,24 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 	std::unordered_map<int, std::string> query_node_names,
 	gcs::Client* client
 ) {
+	if (trace_ids.size() < 1) {
+		return trace_ids;
+	}
 	std::vector<std::string> response;
-	std::vector<std::pair<std::future<bool>, std::string>> response_future_and_trace_id_pairs;
+
+	/**
+	 * By fetching data early on, we can reuse it almost in every
+	 * condition check of every trace, avoiding the need to fetch it
+	 * again and again. isn't that something!
+	 */
+	auto required_data = get_gcs_objects_required_for_verifying_conditions(
+		conditions, iso_maps, trace_node_names, query_node_names, batch_name,
+		extract_trace_from_traces_object(trace_ids[0], object_content), client
+	);
+
 	for (auto current_trace_id : trace_ids) {
 		bool satisfies_conditions = does_trace_satisfy_all_conditions(
-			current_trace_id, batch_name, object_content, conditions, iso_maps,
-			trace_node_names, query_node_names, client);
+			current_trace_id, object_content, conditions, iso_maps.size(), required_data);
 		
 		if (true == satisfies_conditions) {
 			response.push_back(current_trace_id);
@@ -523,21 +560,16 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 }
 
 bool does_trace_satisfy_all_conditions(
-	std::string trace_id, std::string batch_name,
-	std::string object_content, std::vector<query_condition> conditions,
-	std::vector<std::unordered_map<int, int>> iso_maps,  // query_node, trace_node
-	std::unordered_map<int, std::string> trace_node_names,
-	std::unordered_map<int, std::string> query_node_names,
-	gcs::Client* client
+	std::string trace_id, std::string object_content, std::vector<query_condition> conditions,
+	int num_iso_maps, data_for_verifying_conditions& verification_data
 ) {
 	bool current_trace_satisfies_every_condition = true;
-	for (auto current_condition : conditions) {
+	for (int curr_cond_ind = 0; curr_cond_ind < conditions.size(); curr_cond_ind++) {
 		if (false == does_trace_satisfy_condition(
-			trace_id, current_condition, iso_maps, batch_name,
-			object_content, trace_node_names, query_node_names, client
-		)) {
-			current_trace_satisfies_every_condition = false;
-			break;
+			trace_id, conditions[curr_cond_ind], num_iso_maps,
+			object_content, verification_data, curr_cond_ind)) {
+				current_trace_satisfies_every_condition = false;
+				break;
 		}
 	}
 
@@ -546,27 +578,21 @@ bool does_trace_satisfy_all_conditions(
 
 bool does_trace_satisfy_condition(
 	std::string trace_id, query_condition condition,
-	std::vector<std::unordered_map<int, int>> iso_maps, std::string batch_name, std::string object_content,
-	std::unordered_map<int, std::string> trace_node_names, std::unordered_map<int, std::string> query_node_names,
-	gcs::Client* client
+	int num_iso_maps, std::string object_content,
+	data_for_verifying_conditions& verification_data, int condition_index_in_verification_data
 ) {
-	/**
-	 * TODO: fetch the span having object earlier, so that it can be used in all the for loop iterations. 
-	 * instead of fetching it in every iteration. 
-	 */
-	for (auto current_iso_map : iso_maps) {
-		auto trace_node_index = current_iso_map[condition.node_index];
-		auto condition_service = trace_node_names[trace_node_index];
-
+	for (int curr_iso_map_ind = 0; curr_iso_map_ind < num_iso_maps; curr_iso_map_ind++) {
 		auto trace = extract_trace_from_traces_object(trace_id, object_content);
 		auto trace_lines = split_by_line(trace);
 
+		auto condition_service = verification_data.service_name_for_condition_with_isomap[
+			condition_index_in_verification_data][curr_iso_map_ind];
 		for (auto line : trace_lines) {
 			if (line.find(condition_service) != std::string::npos) {
 				auto span_info = split_by_char(line, ":");
 				auto span_id = span_info[1];
 				auto service_name = span_info[2];
-				if (true == does_span_satisfy_condition(span_id, service_name, batch_name, condition, client)) {
+				if (true == does_span_satisfy_condition(span_id, service_name, condition, verification_data)) {
 					return true;
 				}
 				break;
@@ -578,14 +604,10 @@ bool does_trace_satisfy_condition(
 }
 
 bool does_span_satisfy_condition(
-	std::string span_id, std::string service_name, std::string batch_name,
-	query_condition condition, gcs::Client* client
+	std::string span_id, std::string service_name,
+	query_condition condition, data_for_verifying_conditions& verification_data
 ) {
-	/**
-	 * TODO: Common object call here. 
-	 * 
-	 */
-	auto object_content = read_object(service_name + SERVICES_BUCKETS_SUFFIX, batch_name, client);
+	auto object_content = verification_data.service_name_to_respective_object[service_name];
 
 	opentelemetry::proto::trace::v1::TracesData trace_data;
 	bool ret = trace_data.ParseFromString(object_content);

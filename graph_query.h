@@ -34,8 +34,6 @@ const char ASTERISK_SERVICE[] = "NONE";
 const int TRACE_ID_LENGTH = 32;
 const int SPAN_ID_LENGTH = 16;
 
-std::unordered_map<std::string, std::string> network_cache;
-
 namespace gcs = ::google::cloud::storage;
 using ::google::cloud::StatusOr;
 namespace bg = boost::graph;
@@ -44,6 +42,11 @@ struct trace_structure {
 	int num_nodes;
 	std::unordered_map<int, std::string> node_names;
 	std::multimap<int, int> edges;
+};
+
+struct data_for_verifying_conditions {
+	std::vector <std::vector <std::string>> service_name_for_condition_with_isomap;
+	std::unordered_map<std::string, std::string> service_name_to_respective_object;
 };
 
 std::vector<std::string> split_by_char(std::string input, std::string splitter);
@@ -118,15 +121,20 @@ graph_type;
 typedef boost::property_map<graph_type, boost::vertex_name_t>::type vertex_name_map_t;
 typedef property_map_equivalent_custom<vertex_name_map_t, vertex_name_map_t> vertex_comp_t;
 
+data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions (
+	std::vector<query_condition> conditions, std::vector<std::unordered_map<int, int>> iso_maps,
+	std::unordered_map<int, std::string> trace_node_names,
+	std::unordered_map<int, std::string> query_node_names,
+	std::string batch_name, std::string trace, gcs::Client* client
+);
 bool does_span_satisfy_condition(
-	std::string span_id, std::string service_name, std::string batch_name,
-	query_condition condition, gcs::Client* client
+	std::string span_id, std::string service_name,
+	query_condition condition, data_for_verifying_conditions& verification_data
 );
 bool does_trace_satisfy_condition(
 	std::string trace_id, query_condition condition,
-	std::vector<std::unordered_map<int, int>> iso_maps, std::string batch_name, std::string object_content,
-	std::unordered_map<int, std::string> trace_node_names, std::unordered_map<int, std::string> query_node_names,
-	gcs::Client* client
+	int num_iso_maps, std::string object_content,
+	data_for_verifying_conditions& verification_data, int condition_index_in_verification_data
 );
 std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 	std::string prefix, trace_structure query_trace,
@@ -170,12 +178,8 @@ std::vector<std::string> get_traces_by_structure(
 std::string strip_from_the_end(std::string object, char stripper);
 trace_structure morph_trace_object_to_trace_structure(std::string trace);
 bool does_trace_satisfy_all_conditions(
-	std::string trace_id, std::string batch_name,
-	std::string object_content, std::vector<query_condition> conditions,
-	std::vector<std::unordered_map<int, int>> iso_maps,  // query_node, trace_node
-	std::unordered_map<int, std::string> trace_node_names,
-	std::unordered_map<int, std::string> query_node_names,
-	gcs::Client* client
+	std::string trace_id, std::string object_content, std::vector<query_condition> conditions,
+	int num_iso_maps, data_for_verifying_conditions& verification_data
 );
 int dummy_tests();
 
