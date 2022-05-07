@@ -46,7 +46,7 @@ struct trace_structure {
 
 struct data_for_verifying_conditions {
 	std::vector <std::vector <std::string>> service_name_for_condition_with_isomap;
-	std::unordered_map<std::string, std::string> service_name_to_respective_object;
+	std::unordered_map<std::string, opentelemetry::proto::trace::v1::TracesData> service_name_to_respective_object;
 };
 
 std::vector<std::string> split_by_char(std::string input, std::string splitter);

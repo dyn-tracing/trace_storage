@@ -210,7 +210,6 @@ std::string read_object(std::string bucket, std::string object, gcs::Client* cli
 		exit(1);
 	}
 
-	std::cout << "Reading " << bucket << "/" << object << std::endl;
 	std::string object_content{std::istreambuf_iterator<char>{reader}, {}};
 	return object_content;
 }
@@ -487,10 +486,18 @@ data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions 
 
 			auto service_name_without_hash_id = split_by_char(condition_service, ":")[0];
 			if (response.service_name_to_respective_object.find(
-				service_name_without_hash_id) == response.service_name_to_respective_object.end()) {
-					auto data = read_object(
-						service_name_without_hash_id + SERVICES_BUCKETS_SUFFIX, batch_name, client);
-				response.service_name_to_respective_object[service_name_without_hash_id] = data;
+				service_name_without_hash_id) == response.service_name_to_respective_object.end()
+			) {
+				auto data = read_object(
+					service_name_without_hash_id + SERVICES_BUCKETS_SUFFIX, batch_name, client);
+				
+				opentelemetry::proto::trace::v1::TracesData trace_data;
+				bool ret = trace_data.ParseFromString(data);
+				if (false == ret) {
+					std::cerr << "Error in get_gcs_objects_required_for_verifying_conditions:ParseFromString" << std::endl;
+					exit(1);
+				}
+				response.service_name_to_respective_object[service_name_without_hash_id] = trace_data;
 			}
 		}
 
@@ -584,17 +591,11 @@ bool does_span_satisfy_condition(
 	std::string span_id, std::string service_name,
 	query_condition condition, data_for_verifying_conditions& verification_data
 ) {
-	auto object_content = verification_data.service_name_to_respective_object[service_name];
+	auto trace_data = verification_data.service_name_to_respective_object[service_name];
 
-	opentelemetry::proto::trace::v1::TracesData trace_data;
-	bool ret = trace_data.ParseFromString(object_content);
-	if (false == ret) {
-		std::cerr << "Error in does_span_satisfy_condition:ParseFromString" << std::endl;
-		exit(1);
-	}
-
+	opentelemetry::proto::trace::v1::Span sp;
 	for (int i=0; i < trace_data.resource_spans(0).scope_spans(0).spans_size(); i++) {
-		opentelemetry::proto::trace::v1::Span sp = trace_data.resource_spans(0).scope_spans(0).spans(i);
+		sp = trace_data.resource_spans(0).scope_spans(0).spans(i);
 
 		std::string current_span_id = hex_str(sp.span_id(), sp.span_id().length());
 		if (current_span_id == span_id) {
