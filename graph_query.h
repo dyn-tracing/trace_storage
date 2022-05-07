@@ -34,6 +34,8 @@ const char ASTERISK_SERVICE[] = "NONE";
 const int TRACE_ID_LENGTH = 32;
 const int SPAN_ID_LENGTH = 16;
 
+std::unordered_map<std::string, std::string> network_cache;
+
 namespace gcs = ::google::cloud::storage;
 using ::google::cloud::StatusOr;
 namespace bg = boost::graph;
