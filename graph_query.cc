@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
 	query_trace.num_nodes = 3;
 	query_trace.node_names.insert(std::make_pair(0, "frontend"));
 	query_trace.node_names.insert(std::make_pair(1, "adservice"));
-	query_trace.node_names.insert(std::make_pair(2, "emailservice"));
+	query_trace.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
 
 	query_trace.edges.insert(std::make_pair(0, 1));
 	query_trace.edges.insert(std::make_pair(1, 2));
@@ -115,15 +115,12 @@ std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace
 			continue;
 		}
 
-		std::cout << TRACE_STRUCT_BUCKET << "/" << batch_name << std::endl;
-		std::cout << "process_trace_hashes_prefix_and_retrieve_relevant_trace_ids";
 		std::string object_content = read_object(TRACE_STRUCT_BUCKET, batch_name, client);
 		std::string trace = extract_trace_from_traces_object(response_trace_ids[0], object_content);
 		trace_structure candidate_trace = morph_trace_object_to_trace_structure(trace);
 
 		if (iso_maps.size() < 1) {
 			iso_maps = get_isomorphism_mappings(candidate_trace, query_trace);
-			std::cout << "running isomorphism" << std::endl;
 			if (iso_maps.size() < 1) {
 				return std::vector<std::string>();
 			}
@@ -222,7 +219,6 @@ bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, i
 std::string read_object(std::string bucket, std::string object, gcs::Client* client) {
 	auto elem = network_cache.find(bucket+"/"+object);
 	if (elem != network_cache.end()) {
-		std::cout << "served: " << elem->first << std::endl;
 		return elem->second;
 	}
 
@@ -238,7 +234,6 @@ std::string read_object(std::string bucket, std::string object, gcs::Client* cli
 }
 
 std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client) {
-	std::cout << "get_trace_ids_from_trace_hashes_object";
 	std::string object_content = read_object(TRACE_HASHES_BUCKET, object_name, client);
 	std::vector<std::string> trace_ids = split_by_line(object_content);
 
@@ -415,7 +410,6 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
 
 	for (auto const& elem : root_service_to_trace_ids_map) {
 		std::string bucket = elem.first + SERVICES_BUCKETS_SUFFIX;
-		std::cout << "filter_trace_ids_based_on_query_timestamp";
 		std::string spans_data = read_object(bucket, batch_name, client);
 
 		std::map<std::string, std::pair<int, int>>
@@ -514,29 +508,17 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 	std::unordered_map<int, std::string> query_node_names,
 	gcs::Client* client
 ) {
-	/**
-	 * TODO: 
-	 * 
-	 */
-
+	std::vector<std::string> response;
 	std::vector<std::pair<std::future<bool>, std::string>> response_future_and_trace_id_pairs;
 	for (auto current_trace_id : trace_ids) {
-		response_future_and_trace_id_pairs.push_back(std::make_pair(
-			std::async(std::launch::async, does_trace_satisfy_all_conditions,
-				current_trace_id, batch_name, object_content, conditions, iso_maps,
-				trace_node_names, query_node_names, client),
-			current_trace_id));
+		bool satisfies_conditions = does_trace_satisfy_all_conditions(
+			current_trace_id, batch_name, object_content, conditions, iso_maps,
+			trace_node_names, query_node_names, client);
+		
+		if (true == satisfies_conditions) {
+			response.push_back(current_trace_id);
+		}
 	}
-
-	std::vector<std::string> response;
-	for_each(response_future_and_trace_id_pairs.begin(), response_future_and_trace_id_pairs.end(),
-		[&response](std::pair<std::future<bool>, std::string>& fut_trace_pair){
-			auto trace_id_satisfies_all_conditions = fut_trace_pair.first.get();
-			if (true == trace_id_satisfies_all_conditions) {
-				response.push_back(fut_trace_pair.second);
-			}
-	});
-
 	return response;
 }
 
@@ -603,7 +585,6 @@ bool does_span_satisfy_condition(
 	 * TODO: Common object call here. 
 	 * 
 	 */
-	std::cout << "does_span_satisfy_condition";
 	auto object_content = read_object(service_name + SERVICES_BUCKETS_SUFFIX, batch_name, client);
 
 	opentelemetry::proto::trace::v1::TracesData trace_data;
