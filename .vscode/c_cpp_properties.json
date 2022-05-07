@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/bazel-trace_storage/external/com_github_googleapis_google_cloud_cpp/google/cloud/**",
                 "/private/var/tmp/_bazel_haseeb/0e1dfccc4fe0f43812d2997a2c3413bc/external/boost",
-                "/private/var/tmp/_bazel_haseeb/0e1dfccc4fe0f43812d2997a2c3413bc/external/com_github_googleapis_google_cloud_cpp"
+                // "/private/var/tmp/_bazel_haseeb/0e1dfccc4fe0f43812d2997a2c3413bc/external/com_github_googleapis_google_cloud_cpp",
+                // "/private/var/tmp/_bazel_haseeb/0fea1cc594e4f4c7f09fe06c038d0a4e/external/com_google_absl"
             ],
             "defines": [],
             "macFrameworkPath": [

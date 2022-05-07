@@ -1,6 +1,13 @@
 // Copyright 2022 Haseeb LLC
 // @author: Muhammad Haseeb <mh6218@nyu.edu>
 
+/**
+ * TODO: Some boost definitions (functions, classes, structs) that I overrode 
+ * for extracting all the isomorphism maps, use camel casing and I have retained that
+ * for consistency with the corresponding boost definitions. But we are using snake case
+ * in the rest of our codebase, so maybe convert all of those overriden defs to snake_case. 
+ */
+
 #ifndef GRAPH_QUERY_H_
 #define GRAPH_QUERY_H_
 
@@ -11,6 +18,7 @@
 #include <string>
 #include <vector>
 #include <future>
+#include "query_conditions.h"
 #include "google/cloud/storage/client.h"
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
 #include <boost/algorithm/string.hpp>
@@ -18,9 +26,9 @@
 #include <boost/graph/vf2_sub_graph_iso.hpp>
 
 
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket4";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket4";
-const char SERVICES_BUCKETS_SUFFIX[] = "-snicket4";
+const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket3";
+const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket3";
+const char SERVICES_BUCKETS_SUFFIX[] = "-snicket3";
 const char ASTERISK_SERVICE[] = "NONE";
 
 const int TRACE_ID_LENGTH = 32;
@@ -35,6 +43,13 @@ struct trace_structure {
 	std::unordered_map<int, std::string> node_names;
 	std::multimap<int, int> edges;
 };
+
+struct data_for_verifying_conditions {
+	std::vector <std::vector <std::string>> service_name_for_condition_with_isomap;
+	std::unordered_map<std::string, opentelemetry::proto::trace::v1::TracesData> service_name_to_respective_object;
+};
+
+std::vector<std::string> split_by_char(std::string input, std::string splitter);
 
 // Binary function object that returns true if the values for item1
 // in property_map1 and item2 in property_map2 are equivalent.
@@ -51,7 +66,10 @@ struct property_map_equivalent_custom {
 			return true;
 		}
 
-		return (get(m_property_map1, item1) == get(m_property_map2, item2));
+		auto prop1 = split_by_char(get(m_property_map1, item1), ":")[0];
+		auto prop2 = split_by_char(get(m_property_map2, item2), ":")[0];
+
+		return prop1 == prop2;
 	}
 
 	private:
@@ -67,24 +85,33 @@ property_map_equivalent_custom< PropertyMapFirst, PropertyMapSecond > make_prope
 		property_map1, property_map2));
 }
 
-template < typename Graph1, typename Graph2 >
+/**
+ * TODO: maybe pass the pointer to IsomorphismMaps, that should be a better practice.
+ */
+template < typename Graph1, typename Graph2, typename IsomorphismMaps>
 struct vf2_callback_custom {
-	vf2_callback_custom(const Graph1& graph1, const Graph2& graph2)
-	: graph1_(graph1), graph2_(graph2) {
+	vf2_callback_custom(const Graph1& graph1, const Graph2& graph2, IsomorphismMaps& isomorphism_maps)
+	: graph1_(graph1), graph2_(graph2), isomorphism_maps_(isomorphism_maps) {
 	}
 
-	/**
-	 * @brief Returning false so that the isomorphism finding process stops after finding 
-	 * a single isomorphism evidence. 
-	 */
 	template < typename CorrespondenceMap1To2, typename CorrespondenceMap2To1 >
 	bool operator()(CorrespondenceMap1To2 f, CorrespondenceMap2To1) const {
-		return false;
+		std::unordered_map<int, int> iso_map;
+
+        BGL_FORALL_VERTICES_T(v, graph1_, Graph1)
+		iso_map.insert(
+			std::make_pair(
+				get(boost::vertex_index_t(), graph1_, v),
+				get(boost::vertex_index_t(), graph2_, get(f, v))));
+
+		isomorphism_maps_.push_back(iso_map);
+		return true;
 	}
 
 	private:
 		const Graph1& graph1_;
 		const Graph2& graph2_;
+		IsomorphismMaps& isomorphism_maps_;
 };
 
 typedef boost::property<boost::vertex_name_t, std::string, boost::property<boost::vertex_index_t, int> >
@@ -94,9 +121,27 @@ graph_type;
 typedef boost::property_map<graph_type, boost::vertex_name_t>::type vertex_name_map_t;
 typedef property_map_equivalent_custom<vertex_name_map_t, vertex_name_map_t> vertex_comp_t;
 
+data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
+	std::vector<query_condition> conditions, std::vector<std::unordered_map<int, int>> iso_maps,
+	std::unordered_map<int, std::string> trace_node_names,
+	std::unordered_map<int, std::string> query_node_names,
+	std::string batch_name, std::string trace, gcs::Client* client
+);
+bool does_span_satisfy_condition(
+	std::string span_id, std::string service_name,
+	query_condition condition, data_for_verifying_conditions& verification_data
+);
+bool does_trace_satisfy_condition(
+	std::string trace_id, query_condition condition,
+	int num_iso_maps, std::string object_content,
+	data_for_verifying_conditions& verification_data, int condition_index_in_verification_data
+);
+std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
+	std::string prefix, trace_structure query_trace,
+	int start_time, int end_time, std::vector<query_condition> conditions, gcs::Client* client);
 std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace_ids(
 	StatusOr<gcs::ObjectMetadata> object_metadata, trace_structure query_trace,
-	int start_time, int end_time, gcs::Client* client);
+	int start_time, int end_time, std::vector<query_condition> conditions, gcs::Client* client);
 std::string hex_str(std::string data, int len);
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
 	std::string spans_data, std::vector<std::string> trace_ids);
@@ -106,24 +151,36 @@ std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string 
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
 	std::vector<std::string> trace_ids, std::string batch_name, std::string object_content,
 	int start_time, int end_time, gcs::Client* client);
+std::vector<std::string> filter_trace_ids_based_on_conditions(
+	std::vector<std::string> trace_ids,
+	std::string batch_name,
+	std::string object_content,
+	std::vector<query_condition> conditions,
+	std::vector<std::unordered_map<int, int>> iso_maps,  // query_node, trace_node
+	std::unordered_map<int, std::string> trace_node_names,
+	std::unordered_map<int, std::string> query_node_names,
+	gcs::Client* client);
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph);
 void print_trace_structure(trace_structure trace);
 std::string extract_trace_from_traces_object(std::string trace_id, std::string object_content);
 std::pair<int, int> extract_batch_timestamps(std::string batch_name);
 std::string extract_batch_name(std::string object_name);
-bool does_trace_structure_conform_to_graph_query(
-	std::string object_content, std::string trace_id, trace_structure query_trace, gcs::Client* client);
-std::vector<std::string> split_by_char(std::string input, std::string splitter);
+std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
+	trace_structure candidate_trace, trace_structure query_trace);
 std::vector<std::string> split_by_line(std::string input);
 bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, int end_time);
 std::string read_object(std::string bucket, std::string object, gcs::Client* client);
 std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client);
 int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* client);
 std::vector<std::string> get_traces_by_structure(
-	trace_structure query_trace, int start_time, int end_time, gcs::Client* client);
+	trace_structure query_trace, int start_time, int end_time,
+	std::vector<query_condition> conditions, gcs::Client* client);
 std::string strip_from_the_end(std::string object, char stripper);
 trace_structure morph_trace_object_to_trace_structure(std::string trace);
-bool is_isomorphic(trace_structure query_trace, trace_structure candidate_trace);
+bool does_trace_satisfy_all_conditions(
+	std::string trace_id, std::string object_content, std::vector<query_condition> conditions,
+	int num_iso_maps, data_for_verifying_conditions& verification_data
+);
 int dummy_tests();
 
 #endif  // GRAPH_QUERY_H_

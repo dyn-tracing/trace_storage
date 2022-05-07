@@ -34,7 +34,9 @@ cc_binary(
     name = "graph_query",
     srcs = [
         "graph_query.cc",
-        "graph_query.h"
+        "graph_query.h",
+        "query_conditions.cc",
+        "query_conditions.h",
     ],
     deps = [
         "@com_github_googleapis_google_cloud_cpp//:storage",

@@ -6,43 +6,72 @@
 int main(int argc, char* argv[]) {
 	dummy_tests();
 
-	// Building a query trace where [frontend]-()->[]-()->[emailservice]-()
+	// query trace structure
 	trace_structure query_trace;
 	query_trace.num_nodes = 3;
 	query_trace.node_names.insert(std::make_pair(0, "frontend"));
-	query_trace.node_names.insert(std::make_pair(1, ASTERISK_SERVICE));
-	// query_trace.node_names.insert(std::make_pair(2, "recommendationservice"));
-	query_trace.node_names.insert(std::make_pair(2, "emailservice"));
+	query_trace.node_names.insert(std::make_pair(1, "adservice"));
+	query_trace.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
 
 	query_trace.edges.insert(std::make_pair(0, 1));
 	query_trace.edges.insert(std::make_pair(1, 2));
 
+	// query conditions
+	std::vector<query_condition> conditions;
+
+	query_condition condition1;
+	condition1.node_index = 2;
+	condition1.node_property_name = Latency;
+	condition1.node_property_value = "10000000";  // 1e+7 ns, 10 ms
+	condition1.comp = Lesser_than;
+
+	query_condition condition2;
+	condition2.node_index = 2;
+	condition2.node_property_name = Latency;
+	condition2.node_property_value = "10000000";  // 1e+7 ns, 10 ms
+	condition2.comp = Lesser_than;
+
+	conditions.push_back(condition1);
+	conditions.push_back(condition2);
+
+	// querying
 	auto client = gcs::Client();
-	std::vector<std::string> total = get_traces_by_structure(query_trace, 1551500618, 1651500700, &client);
+	std::vector<std::string> total = get_traces_by_structure(query_trace, 1651696797, 1651696798, conditions, &client);
 	std::cout << "Total results: " << total.size() << std::endl;
-	// for (std::string i: total) {
-	// 	std::cout << i << std::endl;
-	// }
 	return 0;
 }
 
 /**
- * @brief Get the traces by structure. 
+ * @brief Get the traces by structure object
  * 
  * @param query_trace 
  * @param start_time 
  * @param end_time 
+ * @param conditions 
  * @param client 
  * @return std::vector<std::string> 
  */
 std::vector<std::string> get_traces_by_structure(
-	trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
+	trace_structure query_trace, int start_time, int end_time,
+	std::vector<query_condition> conditions, gcs::Client* client) {
 	std::vector<std::future<std::vector<std::string>>> response_futures;
 
-	for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET)) {
+	for (auto&& prefix : client->ListObjectsAndPrefixes(TRACE_HASHES_BUCKET, gcs::Delimiter("/"))) {
+		if (!prefix) {
+			std::cerr << "Error in getting prefixes" << std::endl;
+			exit(1);
+		}
+
+		auto result = *std::move(prefix);  // what the bleep
+		if (false == absl::holds_alternative<std::string>(result)) {
+			std::cerr << "Error in getting prefixes" << std::endl;
+			exit(1);
+		}
+		std::string prefix_ = absl::get<std::string>(result);
+
 		response_futures.push_back(std::async(
-			std::launch::async, process_trace_hashes_object_and_retrieve_relevant_trace_ids,
-			object_metadata, query_trace, start_time, end_time, client));
+			std::launch::async, process_trace_hashes_prefix_and_retrieve_relevant_trace_ids,
+			prefix_, query_trace, start_time, end_time, conditions, client));
 	}
 
 	std::vector<std::string> response;
@@ -54,54 +83,87 @@ std::vector<std::string> get_traces_by_structure(
 	return response;
 }
 
-std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace_ids(
-	StatusOr<gcs::ObjectMetadata> object_metadata,
-	trace_structure query_trace,
-	int start_time,
-	int end_time,
-	gcs::Client* client
+std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
+	std::string prefix, trace_structure query_trace, int start_time, int end_time,
+	std::vector<query_condition> conditions, gcs::Client* client
 ) {
-	if (!object_metadata) {
-		std::cerr << object_metadata.status().message() << std::endl;
-		exit(1);
+	std::vector<std::string> response;
+	std::vector<std::future<std::vector<std::string>>> future_response_of_condition_evaluations;
+	std::vector<std::unordered_map<int, int>> iso_maps;
+
+	for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET, gcs::Prefix(prefix))) {
+		if (!object_metadata) {
+			std::cerr << object_metadata.status().message() << std::endl;
+			exit(1);
+		}
+
+		std::string object_name = object_metadata->name();
+		std::string batch_name = extract_batch_name(object_name);
+
+		std::pair<int, int> batch_time = extract_batch_timestamps(batch_name);
+		if (false == is_object_within_timespan(batch_time, start_time, end_time)) {
+			continue;
+		}
+
+		std::vector<std::string> response_trace_ids = get_trace_ids_from_trace_hashes_object(object_name, client);
+		if (response_trace_ids.size() < 1) {
+			continue;
+		}
+
+		std::string object_content = read_object(TRACE_STRUCT_BUCKET, batch_name, client);
+		std::string trace = extract_trace_from_traces_object(response_trace_ids[0], object_content);
+		trace_structure candidate_trace = morph_trace_object_to_trace_structure(trace);
+
+		if (iso_maps.size() < 1) {
+			iso_maps = get_isomorphism_mappings(candidate_trace, query_trace);
+			if (iso_maps.size() < 1) {
+				return std::vector<std::string>();
+			}
+		}
+
+		response_trace_ids = filter_trace_ids_based_on_query_timestamp(
+			response_trace_ids, batch_name, object_content, start_time, end_time, client);
+
+		response_trace_ids = filter_trace_ids_based_on_conditions(
+			response_trace_ids, batch_name, object_content, conditions, iso_maps,
+			candidate_trace.node_names, query_trace.node_names, client);
+		response.insert(response.end(), response_trace_ids.begin(), response_trace_ids.end());
 	}
 
-	std::vector<std::string> response_trace_ids;
-
-	std::string object_name = object_metadata->name();
-	std::string batch_name = extract_batch_name(object_name);
-
-	std::pair<int, int> batch_time = extract_batch_timestamps(batch_name);
-	if (false == is_object_within_timespan(batch_time, start_time, end_time)) {
-		return std::vector<std::string>();
-	}
-
-	response_trace_ids = get_trace_ids_from_trace_hashes_object(object_name, client);
-	if (response_trace_ids.size() < 1) {
-		return response_trace_ids;
-	}
-
-	std::string object_content = read_object(TRACE_STRUCT_BUCKET, batch_name, client);
-
-	if (false == does_trace_structure_conform_to_graph_query(object_content, response_trace_ids[0], query_trace, client)) {
-		return std::vector<std::string>();
-	}
-
-	response_trace_ids = filter_trace_ids_based_on_query_timestamp(
-		response_trace_ids, batch_name, object_content, start_time, end_time, client);
-	return response_trace_ids;
+	return response;
 }
 
 /**
- * TODO: maybe pass a pointer to object_content only, would that be more performant?
+ * @brief Get the isomorphism mappings object
+ * 
+ * Map: query trace => stored trace
+ * 
+ * @param candidate_trace 
+ * @param query_trace 
+ * @return std::vector<std::unordered_map<int, int>> 
  */
-bool does_trace_structure_conform_to_graph_query(
-	std::string object_content, std::string trace_id, trace_structure query_trace, gcs::Client* client ) {
-	std::string trace = extract_trace_from_traces_object(trace_id, object_content);
+std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
+	trace_structure candidate_trace, trace_structure query_trace) {
+	graph_type candidate_graph = morph_trace_structure_to_boost_graph_type(candidate_trace);
+	graph_type query_graph = morph_trace_structure_to_boost_graph_type(query_trace);
 
-	trace_structure candidate_trace = morph_trace_object_to_trace_structure(trace);
-	bool response = is_isomorphic(query_trace, candidate_trace);
-	return response;
+	vertex_comp_t vertex_comp = make_property_map_equivalent_custom(
+		boost::get(boost::vertex_name_t::vertex_name, query_graph),
+		boost::get(boost::vertex_name_t::vertex_name, candidate_graph));
+
+	std::vector<std::unordered_map<int, int>> isomorphism_maps;
+
+	vf2_callback_custom<graph_type, graph_type, std::vector<std::unordered_map<int, int>>> callback(
+		query_graph, candidate_graph, isomorphism_maps);
+
+	boost::vf2_subgraph_iso(
+		query_graph,
+		candidate_graph,
+		callback,
+		boost::vertex_order_by_mult(query_graph),
+		boost::vertices_equivalent(vertex_comp));
+
+	return isomorphism_maps;
 }
 
 std::vector<std::string> split_by_line(std::string input) {
@@ -113,12 +175,6 @@ std::vector<std::string> split_by_line(std::string input) {
 	return result;
 }
 
-/**
- * @brief Right now this function only calculates whether the batch timestamps have some overlap with the 
- * timespan provided in the query. 
- * 
- * @return bool
- */
 bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, int end_time) {
 	std::pair<int, int> query_timespan = std::make_pair(start_time, end_time);
 
@@ -221,12 +277,12 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
 		}
 
 		std::vector<std::string> span_info = split_by_char(line, ":");
-		if (span_info.size() != 3) {
+		if (span_info.size() != 4) {
 			std::cerr << "Malformed trace found: \n" << trace << std::endl;
 			exit(1);
 		}
 
-		span_to_service.insert(std::make_pair(span_info[1], span_info[2]+"-"+span_info[1]));
+		span_to_service.insert(std::make_pair(span_info[1], span_info[2]+":"+span_info[3]));
 
 		if (span_info[0].length() > 0) {
 			edges.insert(std::make_pair(span_info[0], span_info[1]));
@@ -235,16 +291,10 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
 
 	response.num_nodes = span_to_service.size();
 
-	/**
-	 * TODO: Make sure that the traces with multiple spans of a single
-	 * service are catered properly. Seems like it is already handled
-	 * properly, just mako suro!
-	 */
-
 	// Filling response.node_names
 	int count = 0;
 	for(const auto& elem : span_to_service) {
-		response.node_names.insert(make_pair(count, split_by_char(elem.second, "-")[0]));
+		response.node_names.insert(make_pair(count, elem.second));
 		reverse_node_names.insert(make_pair(elem.second, count));
 		count++;
 	}
@@ -256,6 +306,8 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
 			reverse_node_names[span_to_service[elem.second]]));
 	}
 
+	// print_trace_structure(response);
+	// exit(1);
 	return response;
 }
 
@@ -299,22 +351,6 @@ void print_trace_structure(trace_structure trace) {
 	}
 }
 
-bool is_isomorphic(trace_structure query_trace, trace_structure candidate_trace) {
-	graph_type query_graph = morph_trace_structure_to_boost_graph_type(query_trace);
-	graph_type candidate_graph = morph_trace_structure_to_boost_graph_type(candidate_trace);
-	vertex_comp_t vertex_comp = make_property_map_equivalent_custom(
-		boost::get(boost::vertex_name_t::vertex_name, query_graph),
-		boost::get(boost::vertex_name_t::vertex_name, candidate_graph));
-	vf2_callback_custom<graph_type, graph_type> callback(query_graph, candidate_graph);
-	bool res = boost::vf2_subgraph_iso(
-		query_graph,
-		candidate_graph,
-		callback,
-		boost::vertex_order_by_mult(query_graph),
-		boost::vertices_equivalent(vertex_comp));
-	return res;
-}
-
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph) {
 	graph_type output_graph;
 
@@ -329,17 +365,6 @@ graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph
 	return output_graph;
 }
 
-/**
- * @brief This is the place to do filtering of the trace_ids. RN I am filetering just on the start and end timestamp but it can
- * be generalized to cater to other filtering objectives. 
- * 
- * @param trace_ids 
- * @param batch_name 
- * @param object_content 
- * @param start_time 
- * @param end_time 
- * @return std::vector<std::string> 
- */
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
 	std::vector<std::string> trace_ids,
 	std::string batch_name,
@@ -422,7 +447,7 @@ std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string 
 		for (int ind = 1; ind < trace.size(); ind ++) {
 			if (trace[ind].substr(0, 1) == ":") {
 				std::vector<std::string> root_span_info = split_by_char(trace[ind], ":");
-				std::string root_service = root_span_info[root_span_info.size()-1];
+				std::string root_service = root_span_info[2];
 				response.insert(std::make_pair(trace_id, root_service));
 				break;
 			}
@@ -443,6 +468,158 @@ std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_ma
 	return response;
 }
 
+data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
+	std::vector<query_condition> conditions, std::vector<std::unordered_map<int, int>> iso_maps,
+	std::unordered_map<int, std::string> trace_node_names,
+	std::unordered_map<int, std::string> query_node_names,
+	std::string batch_name, std::string trace, gcs::Client* client
+) {
+	data_for_verifying_conditions response;
+
+	for (auto curr_condition : conditions) {
+		std::vector <std::string> iso_map_to_service;
+
+		for (auto curr_iso_map : iso_maps) {
+			auto trace_node_index = curr_iso_map[curr_condition.node_index];
+			auto condition_service = trace_node_names[trace_node_index];
+			iso_map_to_service.push_back(condition_service);
+
+			auto service_name_without_hash_id = split_by_char(condition_service, ":")[0];
+			if (response.service_name_to_respective_object.find(
+				service_name_without_hash_id) == response.service_name_to_respective_object.end()
+			) {
+				auto data = read_object(
+					service_name_without_hash_id + SERVICES_BUCKETS_SUFFIX, batch_name, client);
+
+				opentelemetry::proto::trace::v1::TracesData trace_data;
+				bool ret = trace_data.ParseFromString(data);
+				if (false == ret) {
+					std::cerr << "Error in get_gcs_objects_required_for_verifying_conditions:ParseFromString" << std::endl;
+					exit(1);
+				}
+				response.service_name_to_respective_object[service_name_without_hash_id] = trace_data;
+			}
+		}
+
+		response.service_name_for_condition_with_isomap.push_back(iso_map_to_service);
+	}
+
+	return response;
+}
+
+std::vector<std::string> filter_trace_ids_based_on_conditions(
+	std::vector<std::string> trace_ids,
+	std::string batch_name,
+	std::string object_content,
+	std::vector<query_condition> conditions,
+	std::vector<std::unordered_map<int, int>> iso_maps,  // query_node, trace_node
+	std::unordered_map<int, std::string> trace_node_names,
+	std::unordered_map<int, std::string> query_node_names,
+	gcs::Client* client
+) {
+	if (trace_ids.size() < 1) {
+		return trace_ids;
+	}
+	std::vector<std::string> response;
+
+	/**
+	 * By fetching data early on, we can reuse it almost in every
+	 * condition check of every trace, avoiding the need to fetch it
+	 * again and again. isn't that something!
+	 */
+	auto required_data = get_gcs_objects_required_for_verifying_conditions(
+		conditions, iso_maps, trace_node_names, query_node_names, batch_name,
+		extract_trace_from_traces_object(trace_ids[0], object_content), client
+	);
+
+	for (auto current_trace_id : trace_ids) {
+		bool satisfies_conditions = does_trace_satisfy_all_conditions(
+			current_trace_id, object_content, conditions, iso_maps.size(), required_data);
+
+		if (true == satisfies_conditions) {
+			response.push_back(current_trace_id);
+		}
+	}
+	return response;
+}
+
+bool does_trace_satisfy_all_conditions(
+	std::string trace_id, std::string object_content, std::vector<query_condition> conditions,
+	int num_iso_maps, data_for_verifying_conditions& verification_data
+) {
+	bool current_trace_satisfies_every_condition = true;
+	for (int curr_cond_ind = 0; curr_cond_ind < conditions.size(); curr_cond_ind++) {
+		if (false == does_trace_satisfy_condition(
+			trace_id, conditions[curr_cond_ind], num_iso_maps,
+			object_content, verification_data, curr_cond_ind)) {
+				current_trace_satisfies_every_condition = false;
+				break;
+		}
+	}
+
+	return current_trace_satisfies_every_condition;
+}
+
+bool does_trace_satisfy_condition(
+	std::string trace_id, query_condition condition,
+	int num_iso_maps, std::string object_content,
+	data_for_verifying_conditions& verification_data, int condition_index_in_verification_data
+) {
+	for (int curr_iso_map_ind = 0; curr_iso_map_ind < num_iso_maps; curr_iso_map_ind++) {
+		auto trace = extract_trace_from_traces_object(trace_id, object_content);
+		auto trace_lines = split_by_line(trace);
+
+		auto condition_service = verification_data.service_name_for_condition_with_isomap[
+			condition_index_in_verification_data][curr_iso_map_ind];
+		for (auto line : trace_lines) {
+			if (line.find(condition_service) != std::string::npos) {
+				auto span_info = split_by_char(line, ":");
+				auto span_id = span_info[1];
+				auto service_name = span_info[2];
+				if (true == does_span_satisfy_condition(span_id, service_name, condition, verification_data)) {
+					return true;
+				}
+				break;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool does_span_satisfy_condition(
+	std::string span_id, std::string service_name,
+	query_condition condition, data_for_verifying_conditions& verification_data
+) {
+	auto trace_data = verification_data.service_name_to_respective_object[service_name];
+
+	opentelemetry::proto::trace::v1::Span sp;
+	for (int i=0; i < trace_data.resource_spans(0).scope_spans(0).spans_size(); i++) {
+		sp = trace_data.resource_spans(0).scope_spans(0).spans(i);
+
+		std::string current_span_id = hex_str(sp.span_id(), sp.span_id().length());
+		if (current_span_id == span_id) {
+			switch (condition.node_property_name) {
+				case Latency:
+					return does_latency_condition_hold(sp, condition);
+				case Start_time:
+					return does_start_time_condition_hold(sp, condition);
+				case End_time:
+					return does_end_time_condition_hold(sp, condition);
+				case Attribute_parent_name:
+					std::cerr << "Under construction." << std::endl;
+					exit(1);
+				default:
+					std::cerr << "Condition not supported." << std::endl;
+					exit(1);
+			}
+
+			break;
+		}
+	}
+
+	return false;
+}
 
 int dummy_tests() {
 	// std::cout << is_object_within_timespan("12-123-125", 123, 124) << ":1" << std::endl;
@@ -462,14 +639,25 @@ int dummy_tests() {
 	// trace_structure a;
 	// a.num_nodes = 3;
 	// a.node_names.insert(std::make_pair(0, "a"));
-	// a.node_names.insert(std::make_pair(1, "b"));
+	// a.node_names.insert(std::make_pair(1, "NONE"));
 	// a.node_names.insert(std::make_pair(2, "c"));
+
+	// a.edges.insert(std::make_pair(0, 1));
+	// a.edges.insert(std::make_pair(1, 2));
+
 	// trace_structure b;
-	// b.num_nodes = 3;
+	// b.num_nodes = 4;
 	// b.node_names.insert(std::make_pair(0, "a"));
 	// b.node_names.insert(std::make_pair(1, "b"));
 	// b.node_names.insert(std::make_pair(2, "c"));
-	// std::cout << is_isomorphic(a, b) << std::endl;
+	// b.node_names.insert(std::make_pair(3, "d"));
+
+	// b.edges.insert(std::make_pair(0, 1));
+	// b.edges.insert(std::make_pair(0, 3));
+	// b.edges.insert(std::make_pair(1, 2));
+	// b.edges.insert(std::make_pair(3, 2));
+
+	// std::cout << get_isomorphism_mappings(a, b) << std::endl;
 
 	// std::map<std::string, std::string> m;
 	// m["A"] = "B";
@@ -489,6 +677,18 @@ int dummy_tests() {
 	// 	std::cout << std::endl;
 	// }
 
+	// auto client = gcs::Client();
+	// for (auto&& item : client.ListObjectsAndPrefixes(
+    //          TRACE_HASHES_BUCKET, gcs::Delimiter("/"))) {
+    //   if (!item) throw std::runtime_error(item.status().message());
+    //   auto result = *std::move(item);
+    //   if (absl::holds_alternative<gcs::ObjectMetadata>(result)) {
+    //     std::cout << "object_name="
+    //               << absl::get<gcs::ObjectMetadata>(result).name() << "\n";
+    //   } else if (absl::holds_alternative<std::string>(result)) {
+    //     std::cout << "prefix     =" << absl::get<std::string>(result) << "\n";
+    //   }
+    // }
 	// exit(1);
 	return 0;
 }
