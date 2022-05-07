@@ -127,7 +127,7 @@ bool does_trace_satisfy_condition(
 	gcs::Client* client
 );
 std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
-	StatusOr<std::string> prefix, trace_structure query_trace,
+	std::string prefix, trace_structure query_trace,
 	int start_time, int end_time, std::vector<query_condition> conditions, gcs::Client* client);
 std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace_ids(
 	StatusOr<gcs::ObjectMetadata> object_metadata, trace_structure query_trace,

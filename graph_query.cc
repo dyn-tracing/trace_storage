@@ -59,34 +59,32 @@ std::vector<std::string> get_traces_by_structure(
 	std::vector<std::future<std::vector<std::string>>> response_futures;
 
 	/**
-	 * Get the prefixes as done in the dummy_tests(), 
-	 * make one thread for each prefix.. and do all the job that's done in the 
-	 * process_trace_hashes_object_and_retrieve_relevant_trace_ids for any one trace_id present 
-	 * in the entire prefix and then while returning read all the trace_ids of a prefix (can be 
-	 * multiple object)
+	 * TODO: waht will happen if in the future we have multiple "/" in the object names?
 	 */
-	// for (auto&& prefix : client.ListObjectsAndPrefixes(TRACE_HASHES_BUCKET, gcs::Delimiter("/"))) {
-	// 	if (!prefix) {
-	// 		std::cerr << "Error in getting prefixes" << std::endl;
-	// 		exit(1);
-	// 	}
 
-	// 	auto result = *std::move(item); // what the bleep
-	// 	if (false == absl::holds_alternative<std::string>(result) {
-	// 		std::cerr << "Error in getting prefixes" << std::endl;
-	// 		exit(1);
-	// 	}
+	for (auto&& prefix : client->ListObjectsAndPrefixes(TRACE_HASHES_BUCKET, gcs::Delimiter("/"))) {
+		if (!prefix) {
+			std::cerr << "Error in getting prefixes" << std::endl;
+			exit(1);
+		}
 
-	// 	response_futures.push_back(std::async(
-	// 		std::launch::async, process_trace_hashes_prefix_and_retrieve_relevant_trace_ids,
-	// 		prefix, query_trace, start_time, end_time, conditions, client));
-	// }
+		auto result = *std::move(prefix); // what the bleep
+		if (false == absl::holds_alternative<std::string>(result)) {
+			std::cerr << "Error in getting prefixes" << std::endl;
+			exit(1);
+		}
+		std::string prefix_ = absl::get<std::string>(result);
 
-	for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET)) {
 		response_futures.push_back(std::async(
-			std::launch::async, process_trace_hashes_object_and_retrieve_relevant_trace_ids,
-			object_metadata, query_trace, start_time, end_time, conditions, client));
+			std::launch::async, process_trace_hashes_prefix_and_retrieve_relevant_trace_ids,
+			prefix_, query_trace, start_time, end_time, conditions, client));
 	}
+
+	// for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET)) {
+	// 	response_futures.push_back(std::async(
+	// 		std::launch::async, process_trace_hashes_object_and_retrieve_relevant_trace_ids,
+	// 		object_metadata, query_trace, start_time, end_time, conditions, client));
+	// }
 
 	std::vector<std::string> response;
 	for_each(response_futures.begin(), response_futures.end(),
@@ -97,23 +95,66 @@ std::vector<std::string> get_traces_by_structure(
 	return response;
 }
 
-// std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
-// 	StatusOr<std::string> prefix,
-// 	trace_structure query_trace,
-// 	int start_time,
-// 	int end_time,
-// 	std::vector<query_condition> conditions,
-// 	gcs::Client* client
-// ) {
-// }
+std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
+	std::string prefix, trace_structure query_trace, int start_time, int end_time,
+	std::vector<query_condition> conditions, gcs::Client* client
+) {
+	std::vector<std::string> response;
+	std::vector<std::unordered_map<int, int>> iso_maps;
+
+	for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET, gcs::Prefix(prefix))) {
+		if (!object_metadata) {
+			std::cerr << object_metadata.status().message() << std::endl;
+			exit(1);
+		}
+
+		std::string object_name = object_metadata->name();
+		std::string batch_name = extract_batch_name(object_name);
+
+		std::pair<int, int> batch_time = extract_batch_timestamps(batch_name);
+		if (false == is_object_within_timespan(batch_time, start_time, end_time)) {
+			continue;
+		}
+
+		std::vector<std::string> response_trace_ids = get_trace_ids_from_trace_hashes_object(object_name, client);
+		if (response_trace_ids.size() < 1) {
+			continue;
+		}
+
+		std::cout << TRACE_STRUCT_BUCKET << "/" << batch_name << std::endl;
+		std::string object_content = read_object(TRACE_STRUCT_BUCKET, batch_name, client);
+		std::string trace = extract_trace_from_traces_object(response_trace_ids[0], object_content);
+		trace_structure candidate_trace = morph_trace_object_to_trace_structure(trace);
+
+		if (iso_maps.size() < 1) {
+			iso_maps = get_isomorphism_mappings(candidate_trace, query_trace);
+			std::cout << "running isomorphism" << std::endl;
+			if (iso_maps.size() < 1) {
+				return std::vector<std::string>();
+			}
+		}
+
+		response_trace_ids = filter_trace_ids_based_on_query_timestamp(
+			response_trace_ids, batch_name, object_content, start_time, end_time, client);
+
+		/**
+		 * TODO: maybe make this call asynchronous and colllect all such futures of the 
+		 * entire for loop and then evaluate them at the end.  maybe??
+		 * 
+		 */
+		response_trace_ids = filter_trace_ids_based_on_conditions(
+			response_trace_ids, batch_name, object_content, conditions, iso_maps,
+			candidate_trace.node_names, query_trace.node_names, client);
+
+		response.insert(response.end(), response_trace_ids.begin(), response_trace_ids.end());
+	}
+
+	return response;
+}
 
 std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace_ids(
-	StatusOr<gcs::ObjectMetadata> object_metadata,
-	trace_structure query_trace,
-	int start_time,
-	int end_time,
-	std::vector<query_condition> conditions,
-	gcs::Client* client
+	StatusOr<gcs::ObjectMetadata> object_metadata, trace_structure query_trace, int start_time, int end_time,
+	std::vector<query_condition> conditions, gcs::Client* client
 ) {
 	if (!object_metadata) {
 		std::cerr << object_metadata.status().message() << std::endl;
@@ -156,6 +197,8 @@ std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace
 
 /**
  * TODO: maybe pass a pointer to object_content only, would that be more performant?
+ * 
+ * Map: query trace => stored trace
  */
 std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
 	trace_structure candidate_trace, trace_structure query_trace) {
@@ -225,6 +268,7 @@ bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, i
 }
 
 std::string read_object(std::string bucket, std::string object, gcs::Client* client) {
+	// std::cout << bucket << " : " << object << std::endl;
 	auto reader = client->ReadObject(bucket, object);
 	if (!reader) {
 		std::cerr << "Error reading object " << bucket << "/" << object << " :" << reader.status() << "\n";
@@ -511,7 +555,6 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 	gcs::Client* client
 ) {
 	std::vector<std::pair<std::future<bool>, std::string>> response_future_and_trace_id_pairs;
-
 	for (auto current_trace_id : trace_ids) {
 		response_future_and_trace_id_pairs.push_back(std::make_pair(
 			std::async(std::launch::async, does_trace_satisfy_all_conditions,
@@ -544,7 +587,8 @@ bool does_trace_satisfy_all_conditions(
 	for (auto current_condition : conditions) {
 		if (false == does_trace_satisfy_condition(
 			trace_id, current_condition, iso_maps, batch_name,
-			object_content, trace_node_names, query_node_names, client)) {
+			object_content, trace_node_names, query_node_names, client
+		)) {
 			current_trace_satisfies_every_condition = false;
 			break;
 		}
@@ -590,6 +634,10 @@ bool does_span_satisfy_condition(
 	std::string span_id, std::string service_name, std::string batch_name,
 	query_condition condition, gcs::Client* client
 ) {
+	/**
+	 * TODO: Common object call here. 
+	 * 
+	 */
 	auto object_content = read_object(service_name + SERVICES_BUCKETS_SUFFIX, batch_name, client);
 
 	opentelemetry::proto::trace::v1::TracesData trace_data;
