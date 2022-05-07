@@ -25,7 +25,14 @@ int main(int argc, char* argv[]) {
 	condition1.node_property_value = "10000000";  // 1e+7 ns, 10 ms
 	condition1.comp = Lesser_than;
 
+	query_condition condition2;
+	condition2.node_index = 2;
+	condition2.node_property_name = Latency;
+	condition2.node_property_value = "10000000";  // 1e+7 ns, 10 ms
+	condition2.comp = Lesser_than;
+
 	conditions.push_back(condition1);
+	conditions.push_back(condition2);
 
 	/**
 	 * TODO: RN all the conditions are checked for satisfaction. Add the ability
@@ -130,7 +137,7 @@ std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace
 			response_trace_ids, batch_name, object_content, start_time, end_time, client);
 
 		/**
-		 * TODO: maybe make this call asynchronous and colllect all such futures of the 
+		 * TODO: make this call asynchronous and colllect all such futures of the 
 		 * entire for loop and then evaluate them at the end.  maybe??
 		 * 
 		 */
@@ -223,6 +230,7 @@ std::string read_object(std::string bucket, std::string object, gcs::Client* cli
 		exit(1);
 	}
 
+	std::cout << "Reading " << bucket << "/" << object << std::endl;
 	std::string object_content{std::istreambuf_iterator<char>{reader}, {}};
 	return object_content;
 }
