@@ -1,0 +1,46 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+
+cc_binary(
+    name = "id_index",
+    srcs = [
+        "id_index.h",
+        "id_index.cc",
+        "bloom_filter.hpp"
+    ],
+    deps = [
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:regex",
+        "@boost//:algorithm",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+    ],
+)
+
+cc_library(
+    name = "id_index_lib",
+    srcs = [
+        "id_index.cc",
+        "bloom_filter.hpp"
+    ],
+    hdrs = ["id_index.h"],
+    deps = [
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:regex",
+        "@boost//:algorithm",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+    ],
+    visibility = ["//main:__pkg__"],
+)
+
+cc_test(
+    name = "index_test",
+    size = "small",
+    srcs = [
+            "id_index_test.cc",
+         ],
+    deps = [
+        "//id_index:id_index_lib",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

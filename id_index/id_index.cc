@@ -1,15 +1,4 @@
-#include <time.h>
-#include <regex>
-#include <boost/regex.hpp>
-#include "google/cloud/storage/client.h"                                        
-#include "opentelemetry/proto/trace/v1/trace.pb.h" 
-#include "bloom_filter.hpp"
-#include <boost/algorithm/string/regex.hpp>
-
-namespace gcs = ::google::cloud::storage;
-const char trace_struct_bucket[] = "dyntraces-snicket4";
-time_t granularity = 1000;
-
+#include "id_index.h"
 
 std::vector<std::string> split_string_by_char(const std::string& str, std::string& ch) {
     std::vector<std::string> tokens;
@@ -18,9 +7,49 @@ std::vector<std::string> split_string_by_char(const std::string& str, std::strin
     return tokens;
 }
 
-std::vector<std::string> get_batches_between_timestamps(time_t earliest, time_t latest) {
+std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
+    // you want to generate a list of prefixes between earliest and latest
+    // find the first digit at which they differ, then do a list on lowest to highest there
+    // is this the absolute most efficient?  No, but at a certain point the network calls cost,
+    // and I think this is good enough.
+
+    std::vector<std::string> to_return;
+    std::stringstream e;
+    e << earliest;
+    std::stringstream l;
+    l << latest;
+
+    std::string e_str = e.str();
+    std::string l_str = l.str();
+
+    int i=0;
+    for ( ; i<e_str.length(); i++) {
+        if (e_str[i] != l_str[i]) {
+            break;
+        }
+    }
+
+    // i is now the first spot of difference
+    long min = atol(&e_str[i]);
+    long max = atol(&l_str[i]);
+
+    for (int j=min; j<=max; j++) {
+        std::string prefix = e_str.substr(0, i);
+        prefix += e_str[i];
+        to_return.push_back(prefix);
+    }
+    return to_return;
+}
+
+std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest) {
     // TODO
     std::vector<std::string> to_return;
+    for (auto&& object_metadata : client->ListObjects(trace_struct_bucket, gcs::Prefix())) {
+        if (!object_metadata) {
+            throw std::runtime_error(object_metadata.status().message());
+        }
+
+    }
     return to_return;
 }
 
@@ -68,7 +97,8 @@ int bubble_up_bloom_filter(gcs::Client* client, bloom_filter bf) {
 int update_index(gcs::Client* client, time_t last_updated) {
     time_t now;
     time(&now);
-    std::vector<std::string> batches = get_batches_between_timestamps(last_updated, now-(now%granularity));
+    time_t granularity = 1000;
+    std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, now-(now%granularity));
     bloom_filter bf = create_bloom_filter(client, batches[0], 0, 1000);
 
 }
@@ -81,4 +111,4 @@ int main(int argc, char* argv[]) {
     //
     
     return 0;                                                                   
-} 
+}

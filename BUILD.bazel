@@ -13,6 +13,7 @@
 # limitations under the License.
 
 package(default_visibility = ["//visibility:public"])
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
 licenses(["notice"])  # Apache 2.0
 
@@ -20,21 +21,6 @@ cc_binary(
     name = "trace_storage",
     srcs = [
         "trace_storage.cc",
-    ],
-    deps = [
-        "@com_github_googleapis_google_cloud_cpp//:storage",
-        "@boost//:regex",
-        "@boost//:algorithm",
-        "@com_google_protobuf//:protobuf",
-        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
-    ],
-)
-
-cc_binary(
-    name = "id_index",
-    srcs = [
-        "id_index.cc",
-        "bloom_filter.hpp"
     ],
     deps = [
         "@com_github_googleapis_google_cloud_cpp//:storage",
