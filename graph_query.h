@@ -153,13 +153,12 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
 	int start_time, int end_time, gcs::Client* client);
 std::vector<std::string> filter_trace_ids_based_on_conditions(
 	std::vector<std::string> trace_ids,
-	std::string batch_name,
+	int trace_ids_start_index,
 	std::string object_content,
 	std::vector<query_condition> conditions,
-	std::vector<std::unordered_map<int, int>> iso_maps,  // query_node, trace_node
-	std::unordered_map<int, std::string> trace_node_names,
-	std::unordered_map<int, std::string> query_node_names,
-	gcs::Client* client);
+	int num_iso_maps,
+	data_for_verifying_conditions& required_data
+);
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph);
 void print_trace_structure(trace_structure trace);
 std::string extract_trace_from_traces_object(std::string trace_id, std::string object_content);

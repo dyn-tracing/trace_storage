@@ -25,14 +25,14 @@ int main(int argc, char* argv[]) {
 	condition1.node_property_value = "10000000";  // 1e+7 ns, 10 ms
 	condition1.comp = Lesser_than;
 
-	query_condition condition2;
-	condition2.node_index = 2;
-	condition2.node_property_name = Latency;
-	condition2.node_property_value = "10000000";  // 1e+7 ns, 10 ms
-	condition2.comp = Lesser_than;
+	// query_condition condition2;
+	// condition2.node_index = 2;
+	// condition2.node_property_name = Latency;
+	// condition2.node_property_value = "10000000";  // 1e+7 ns, 10 ms
+	// condition2.comp = Lesser_than;
 
 	conditions.push_back(condition1);
-	conditions.push_back(condition2);
+	// conditions.push_back(condition2);
 
 	// querying
 	auto client = gcs::Client();
@@ -87,8 +87,8 @@ std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace
 	std::string prefix, trace_structure query_trace, int start_time, int end_time,
 	std::vector<query_condition> conditions, gcs::Client* client
 ) {
-	std::vector<std::string> response;
-	std::vector<std::future<std::vector<std::string>>> future_response_of_condition_evaluations;
+	std::vector<std::future<std::vector<std::string>>> response_futures;
+	std::vector<data_for_verifying_conditions> all_required_data;
 	std::vector<std::unordered_map<int, int>> iso_maps;
 
 	for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET, gcs::Prefix(prefix))) {
@@ -124,12 +124,27 @@ std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace
 		response_trace_ids = filter_trace_ids_based_on_query_timestamp(
 			response_trace_ids, batch_name, object_content, start_time, end_time, client);
 
-		response_trace_ids = filter_trace_ids_based_on_conditions(
-			response_trace_ids, batch_name, object_content, conditions, iso_maps,
-			candidate_trace.node_names, query_trace.node_names, client);
-		response.insert(response.end(), response_trace_ids.begin(), response_trace_ids.end());
+		auto required_data = get_gcs_objects_required_for_verifying_conditions(
+			conditions, iso_maps, candidate_trace.node_names, query_trace.node_names, batch_name,
+			extract_trace_from_traces_object(response_trace_ids[0], object_content), client);
+
+		all_required_data.push_back(required_data);
+
+		for(int i = 0; i < response_trace_ids.size(); i = i+100) {
+			response_futures.push_back(std::async(
+				std::launch::async,
+				filter_trace_ids_based_on_conditions,
+				response_trace_ids, i, object_content, conditions, iso_maps.size(),
+				std::ref(all_required_data[all_required_data.size()-1])));
+		}
 	}
 
+	std::vector<std::string> response;
+	for_each(response_futures.begin(), response_futures.end(),
+		[&response](std::future<std::vector<std::string>>& fut) {
+			std::vector<std::string> trace_ids = fut.get();
+			response.insert(response.end(), trace_ids.begin(), trace_ids.end());
+	});
 	return response;
 }
 
@@ -509,37 +524,24 @@ data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
 
 std::vector<std::string> filter_trace_ids_based_on_conditions(
 	std::vector<std::string> trace_ids,
-	std::string batch_name,
+	int trace_ids_start_index,
 	std::string object_content,
 	std::vector<query_condition> conditions,
-	std::vector<std::unordered_map<int, int>> iso_maps,  // query_node, trace_node
-	std::unordered_map<int, std::string> trace_node_names,
-	std::unordered_map<int, std::string> query_node_names,
-	gcs::Client* client
+	int num_iso_maps,
+	data_for_verifying_conditions& required_data
 ) {
-	if (trace_ids.size() < 1) {
-		return trace_ids;
-	}
 	std::vector<std::string> response;
 
-	/**
-	 * By fetching data early on, we can reuse it almost in every
-	 * condition check of every trace, avoiding the need to fetch it
-	 * again and again. isn't that something!
-	 */
-	auto required_data = get_gcs_objects_required_for_verifying_conditions(
-		conditions, iso_maps, trace_node_names, query_node_names, batch_name,
-		extract_trace_from_traces_object(trace_ids[0], object_content), client
-	);
-
-	for (auto current_trace_id : trace_ids) {
+	for (int i = trace_ids_start_index; (i < trace_ids.size() && i < trace_ids_start_index + 99); i++) {
+		auto current_trace_id = trace_ids[i];
 		bool satisfies_conditions = does_trace_satisfy_all_conditions(
-			current_trace_id, object_content, conditions, iso_maps.size(), required_data);
+			current_trace_id, object_content, conditions, num_iso_maps, required_data);
 
 		if (true == satisfies_conditions) {
 			response.push_back(current_trace_id);
 		}
 	}
+
 	return response;
 }
 
@@ -591,11 +593,8 @@ bool does_span_satisfy_condition(
 	std::string span_id, std::string service_name,
 	query_condition condition, data_for_verifying_conditions& verification_data
 ) {
-	/**
-	 * TODO: convert these weird variables into addresses
-	 * 
-	 */
-	opentelemetry::proto::trace::v1::TracesData* trace_data = &(verification_data.service_name_to_respective_object[service_name]);
+	opentelemetry::proto::trace::v1::TracesData* trace_data = &(
+		verification_data.service_name_to_respective_object[service_name]);
 
 	const opentelemetry::proto::trace::v1::Span* sp;
 	for (int i=0; i < trace_data->resource_spans(0).scope_spans(0).spans_size(); i++) {
