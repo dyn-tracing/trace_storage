@@ -31,6 +31,21 @@ cc_binary(
 )
 
 cc_binary(
+    name = "id_index",
+    srcs = [
+        "id_index.cc",
+        "bloom_filter.hpp"
+    ],
+    deps = [
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:regex",
+        "@boost//:algorithm",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+    ],
+)
+
+cc_binary(
     name = "graph_query",
     srcs = [
         "graph_query.cc",
