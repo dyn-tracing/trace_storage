@@ -1,12 +1,21 @@
 #include "id_index.h"
 
-std::vector<std::string> split_string_by_char(const std::string& str, std::string& ch) {
+std::string hyphen = "-";
+std::vector<std::string> split_string_by_char(std::string& str, std::string& ch) {
     std::vector<std::string> tokens;
     std::string reg = "(" + ch + ")+";
     split_regex(tokens, str, boost::regex(reg));
     return tokens;
 }
 
+bool less_than(time_t first, std::string second) {
+    std::stringstream sec_stream;
+    sec_stream << second;
+    std::string sec_str = sec_stream.str();
+    long s = stol(sec_str);
+    return first < s;
+
+}
 std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
     // you want to generate a list of prefixes between earliest and latest
     // find the first digit at which they differ, then do a list on lowest to highest there
@@ -42,13 +51,24 @@ std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
 }
 
 std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest) {
-    // TODO
     std::vector<std::string> to_return;
-    for (auto&& object_metadata : client->ListObjects(trace_struct_bucket, gcs::Prefix())) {
-        if (!object_metadata) {
-            throw std::runtime_error(object_metadata.status().message());
+    std::vector<std::string> prefixes = generate_prefixes(earliest, latest);
+    for (int i=0; i<prefixes.size(); i++) {
+        for (int j=0; j<10; j++) {
+            for (int k=0; k<10; k++) {
+                std::string new_prefix = std::to_string(i) + std::to_string(j) + "-" + prefixes[i];
+                for (auto&& object_metadata : client->ListObjects(trace_struct_bucket, gcs::Prefix(new_prefix))) {
+                    if (!object_metadata) {
+                        throw std::runtime_error(object_metadata.status().message());
+                    }
+                    // before we push back, should make sure that it's actually between the bounds
+                    std::string name = object_metadata->name();
+                    std::vector<std::string> times = split_string_by_char(name, hyphen);
+                    
+                    to_return.push_back(object_metadata->name());
+                }
+            }
         }
-
     }
     return to_return;
 }
@@ -66,7 +86,6 @@ bloom_filter create_bloom_filter(gcs::Client* client, std::string batch, time_t 
     parameters.compute_optimal_parameters();
     bloom_filter filter(parameters);
     
-    std::string hyphen = "-";
     auto batch_split = split_string_by_char(batch, hyphen);
     if ((time_t) stol(batch_split[1]) > earliest){
 
@@ -89,7 +108,7 @@ bloom_filter create_bloom_filter(gcs::Client* client, std::string batch, time_t 
 
 int bubble_up_bloom_filter(gcs::Client* client, bloom_filter bf) {
     // TODO
-
+    return 0;
 }
 
 
@@ -100,6 +119,7 @@ int update_index(gcs::Client* client, time_t last_updated) {
     time_t granularity = 1000;
     std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, now-(now%granularity));
     bloom_filter bf = create_bloom_filter(client, batches[0], 0, 1000);
+    return 0;
 
 }
 
@@ -108,7 +128,6 @@ int main(int argc, char* argv[]) {
     // uses the default configuration for authentication and project id.        
     auto client = gcs::Client();
     time_t last_updated = 0;
-    //
-    
+    update_index(&client, last_updated);
     return 0;                                                                   
 }
