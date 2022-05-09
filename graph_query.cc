@@ -25,14 +25,7 @@ int main(int argc, char* argv[]) {
 	condition1.node_property_value = "10000000";  // 1e+7 ns, 10 ms
 	condition1.comp = Lesser_than;
 
-	query_condition condition2;
-	condition2.node_index = 2;
-	condition2.node_property_name = Latency;
-	condition2.node_property_value = "10000000";  // 1e+7 ns, 10 ms
-	condition2.comp = Lesser_than;
-
 	conditions.push_back(condition1);
-	conditions.push_back(condition2);
 
 	boost::posix_time::ptime start, stop;
     start = boost::posix_time::microsec_clock::local_time();
@@ -558,13 +551,21 @@ bool does_trace_satisfy_all_conditions(
 	std::string trace_id, std::string object_content, std::vector<query_condition> conditions,
 	int num_iso_maps, data_for_verifying_conditions& verification_data
 ) {
-	bool current_trace_satisfies_every_condition = true;
+	std::vector<std::future<bool>> response_futures;
+
 	for (int curr_cond_ind = 0; curr_cond_ind < conditions.size(); curr_cond_ind++) {
-		if (false == does_trace_satisfy_condition(
+		response_futures.push_back(std::async(
+			std::launch::async,
+			does_trace_satisfy_condition,
 			trace_id, conditions[curr_cond_ind], num_iso_maps,
-			object_content, verification_data, curr_cond_ind)) {
-				current_trace_satisfies_every_condition = false;
-				break;
+			object_content, std::ref(verification_data), curr_cond_ind));
+	}
+
+	bool current_trace_satisfies_every_condition = true;
+	for(int i = 0; i < response_futures.size(); i++) {
+		if (false == response_futures[i].get()) {
+			current_trace_satisfies_every_condition = false;
+			break;
 		}
 	}
 
