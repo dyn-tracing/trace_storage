@@ -25,7 +25,21 @@ int main(int argc, char* argv[]) {
 	condition1.node_property_value = "10000000";  // 1e+7 ns, 10 ms
 	condition1.comp = Lesser_than;
 
+	query_condition condition2;
+	condition2.node_index = 1;
+	condition2.node_property_name = Latency;
+	condition2.node_property_value = "100000000000";  // 1e+7 ns, 10 ms
+	condition2.comp = Lesser_than;
+
+	query_condition condition3;
+	condition3.node_index = 0;
+	condition3.node_property_name = Latency;
+	condition3.node_property_value = "100000000000";  // 1e+7 ns, 10 ms
+	condition3.comp = Lesser_than;
+
 	conditions.push_back(condition1);
+	conditions.push_back(condition2);
+	conditions.push_back(condition3);
 
 	boost::posix_time::ptime start, stop;
     start = boost::posix_time::microsec_clock::local_time();
@@ -394,7 +408,10 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
 	std::map<std::string, std::string> trace_id_to_root_service_map = get_trace_id_to_root_service_map(object_content);
 	std::map<std::string, std::vector<std::string>> root_service_to_trace_ids_map = get_root_service_to_trace_ids_map(
 		trace_id_to_root_service_map);
-
+	/**
+	 * We could do this stuff async as well. but almost every time, the root service is same
+	 * so we mostly might not see the async benefit. 
+	 */
 	for (auto const& elem : root_service_to_trace_ids_map) {
 		std::string bucket = elem.first + SERVICES_BUCKETS_SUFFIX;
 		std::string spans_data = read_object(bucket, batch_name, client);
