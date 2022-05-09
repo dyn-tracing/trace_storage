@@ -25,19 +25,28 @@ int main(int argc, char* argv[]) {
 	condition1.node_property_value = "10000000";  // 1e+7 ns, 10 ms
 	condition1.comp = Lesser_than;
 
-	// query_condition condition2;
-	// condition2.node_index = 2;
-	// condition2.node_property_name = Latency;
-	// condition2.node_property_value = "10000000";  // 1e+7 ns, 10 ms
-	// condition2.comp = Lesser_than;
+	query_condition condition2;
+	condition2.node_index = 2;
+	condition2.node_property_name = Latency;
+	condition2.node_property_value = "10000000";  // 1e+7 ns, 10 ms
+	condition2.comp = Lesser_than;
 
 	conditions.push_back(condition1);
-	// conditions.push_back(condition2);
+	conditions.push_back(condition2);
+
+	boost::posix_time::ptime start, stop;
+    start = boost::posix_time::microsec_clock::local_time();
 
 	// querying
 	auto client = gcs::Client();
 	std::vector<std::string> total = get_traces_by_structure(query_trace, 1651696797, 1651696798, conditions, &client);
+	stop = boost::posix_time::microsec_clock::local_time();
 	std::cout << "Total results: " << total.size() << std::endl;
+
+	boost::posix_time::time_duration dur = stop - start;
+    int64_t milliseconds = dur.total_milliseconds();
+    std::cout << "Time taken: " << milliseconds << std::endl;
+
 	return 0;
 }
 

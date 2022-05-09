@@ -24,6 +24,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/vf2_sub_graph_iso.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 
 const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket3";
