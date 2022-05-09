@@ -87,17 +87,20 @@ bloom_filter create_bloom_filter(gcs::Client* client, std::string batch, time_t 
     bloom_filter filter(parameters);
     
     auto batch_split = split_string_by_char(batch, hyphen);
-    if ((time_t) stol(batch_split[1]) > earliest){
-
-    }
     auto reader = client->ReadObject(trace_struct_bucket, batch);
+    if (!reader) {
+        std::cerr << "Error reading object: " << reader.status() << "\n";
+        throw std::runtime_error("Error reading trace object");
+    }
     std::string contents{std::istreambuf_iterator<char>{reader}, {}};
     std::string newline = "\n";
     std::vector<std::string> trace_and_spans = split_string_by_char(contents, newline);
+    assert(trace_and_spans.size() > 0 );
     for (int j=0; j<trace_and_spans.size(); j++) {
-        if (trace_and_spans[j].find("Trace ID") != 0) {
+        if (trace_and_spans[j].find("Trace ID") != -1) {
             // TODO (1) check if trace lies between timestamps
-            std::string trace_id = trace_and_spans[j].substr(trace_and_spans[j].find("Trace ID") + 8 ); // 8 is len of Trace ID
+            int start = trace_and_spans[j].find("Trace ID");
+            std::string trace_id = trace_and_spans[j].substr(start + 8 , trace_and_spans[j].length() - 9); // 8 is len of Trace ID
             // (2) insert the trace in
             filter.insert(trace_id);
         }
@@ -117,8 +120,8 @@ int update_index(gcs::Client* client, time_t last_updated) {
     time_t now;
     time(&now);
     time_t granularity = 1000;
-    std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, now-(now%granularity));
-    bloom_filter bf = create_bloom_filter(client, batches[0], 0, 1000);
+    //std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, now-(now%granularity));
+    bloom_filter bf = create_bloom_filter(client, "10-1651700436-1651700437", 0, 1000);
     return 0;
 
 }
