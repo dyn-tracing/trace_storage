@@ -10,8 +10,8 @@
  * Will comparing `uint64_t` with `int` have problems here???
  */
 
-bool does_latency_condition_hold(opentelemetry::proto::trace::v1::Span sp, query_condition condition) {
-    auto latency = sp.end_time_unix_nano() - sp.start_time_unix_nano();
+bool does_latency_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition) {
+    auto latency = sp->end_time_unix_nano() - sp->start_time_unix_nano();
 
     switch (condition.comp) {
         case Equal_to:
@@ -27,8 +27,8 @@ bool does_latency_condition_hold(opentelemetry::proto::trace::v1::Span sp, query
     return false;
 }
 
-bool does_start_time_condition_hold(opentelemetry::proto::trace::v1::Span sp, query_condition condition) {
-    auto start_time = sp.start_time_unix_nano();
+bool does_start_time_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition) {
+    auto start_time = sp->start_time_unix_nano();
 
     switch (condition.comp) {
         case Equal_to:
@@ -44,8 +44,8 @@ bool does_start_time_condition_hold(opentelemetry::proto::trace::v1::Span sp, qu
     return false;
 }
 
-bool does_end_time_condition_hold(opentelemetry::proto::trace::v1::Span sp, query_condition condition) {
-    auto end_time = sp.end_time_unix_nano();
+bool does_end_time_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition) {
+    auto end_time = sp->end_time_unix_nano();
 
     switch (condition.comp) {
         case Equal_to:

@@ -591,13 +591,17 @@ bool does_span_satisfy_condition(
 	std::string span_id, std::string service_name,
 	query_condition condition, data_for_verifying_conditions& verification_data
 ) {
-	auto trace_data = verification_data.service_name_to_respective_object[service_name];
+	/**
+	 * TODO: convert these weird variables into addresses
+	 * 
+	 */
+	opentelemetry::proto::trace::v1::TracesData* trace_data = &(verification_data.service_name_to_respective_object[service_name]);
 
-	opentelemetry::proto::trace::v1::Span sp;
-	for (int i=0; i < trace_data.resource_spans(0).scope_spans(0).spans_size(); i++) {
-		sp = trace_data.resource_spans(0).scope_spans(0).spans(i);
+	const opentelemetry::proto::trace::v1::Span* sp;
+	for (int i=0; i < trace_data->resource_spans(0).scope_spans(0).spans_size(); i++) {
+		sp = &(trace_data->resource_spans(0).scope_spans(0).spans(i));
 
-		std::string current_span_id = hex_str(sp.span_id(), sp.span_id().length());
+		std::string current_span_id = hex_str(sp->span_id(), sp->span_id().length());
 		if (current_span_id == span_id) {
 			switch (condition.node_property_name) {
 				case Latency:

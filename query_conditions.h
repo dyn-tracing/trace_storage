@@ -27,8 +27,8 @@ struct query_condition {
 	property_comparison comp;
 };
 
-bool does_latency_condition_hold(opentelemetry::proto::trace::v1::Span sp, query_condition condition);
-bool does_start_time_condition_hold(opentelemetry::proto::trace::v1::Span sp, query_condition condition);
-bool does_end_time_condition_hold(opentelemetry::proto::trace::v1::Span sp, query_condition condition);
+bool does_latency_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition);
+bool does_start_time_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition);
+bool does_end_time_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition);
 
 #endif  // QUERY_CONDITIONS_H_
