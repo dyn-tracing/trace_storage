@@ -122,6 +122,9 @@ graph_type;
 typedef boost::property_map<graph_type, boost::vertex_name_t>::type vertex_name_map_t;
 typedef property_map_equivalent_custom<vertex_name_map_t, vertex_name_map_t> vertex_comp_t;
 
+opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
+	std::string bucket, std::string object_name, gcs::Client* client
+);
 data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
 	std::vector<query_condition> conditions, std::vector<std::unordered_map<int, int>> iso_maps,
 	std::unordered_map<int, std::string> trace_node_names,

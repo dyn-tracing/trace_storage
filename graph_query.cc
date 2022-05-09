@@ -502,6 +502,21 @@ std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_ma
 	return response;
 }
 
+opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
+	std::string bucket, std::string object_name, gcs::Client* client
+) {
+	auto data = read_object(bucket, object_name, client);
+
+	opentelemetry::proto::trace::v1::TracesData trace_data;
+	bool ret = trace_data.ParseFromString(data);
+	if (false == ret) {
+		std::cerr << "Error in read_object_and_parse_traces_data:ParseFromString" << std::endl;
+		exit(1);
+	}
+
+	return trace_data;
+}
+
 data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
 	std::vector<query_condition> conditions, std::vector<std::unordered_map<int, int>> iso_maps,
 	std::unordered_map<int, std::string> trace_node_names,
@@ -509,6 +524,7 @@ data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
 	std::string batch_name, std::string trace, gcs::Client* client
 ) {
 	data_for_verifying_conditions response;
+	std::vector<std::pair<std::string, std::future<opentelemetry::proto::trace::v1::TracesData>>> response_futures;
 
 	for (auto curr_condition : conditions) {
 		std::vector <std::string> iso_map_to_service;
@@ -522,21 +538,19 @@ data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
 			if (response.service_name_to_respective_object.find(
 				service_name_without_hash_id) == response.service_name_to_respective_object.end()
 			) {
-				auto data = read_object(
-					service_name_without_hash_id + SERVICES_BUCKETS_SUFFIX, batch_name, client);
-
-				opentelemetry::proto::trace::v1::TracesData trace_data;
-				bool ret = trace_data.ParseFromString(data);
-				if (false == ret) {
-					std::cerr << "Error in get_gcs_objects_required_for_verifying_conditions:ParseFromString" << std::endl;
-					exit(1);
-				}
-				response.service_name_to_respective_object[service_name_without_hash_id] = trace_data;
+				response_futures.push_back(std::make_pair(service_name_without_hash_id, std::async(
+					std::launch::async, read_object_and_parse_traces_data,
+					service_name_without_hash_id + SERVICES_BUCKETS_SUFFIX, batch_name, client)));
 			}
 		}
 
 		response.service_name_for_condition_with_isomap.push_back(iso_map_to_service);
 	}
+
+	for_each(response_futures.begin(), response_futures.end(),
+		[&response](std::pair<std::string, std::future<opentelemetry::proto::trace::v1::TracesData>>& fut) {
+			response.service_name_to_respective_object[fut.first] = fut.second.get();
+	});
 
 	return response;
 }
