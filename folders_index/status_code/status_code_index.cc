@@ -16,7 +16,7 @@ int update_index(gcs::Client* client, time_t last_updated, std::string index_sta
 	 * TODO: (i) Following is a bad thing to do. what if all object names do not fit in the memory. 
 	 * (ii) do the error handling for the case when bucket is not present. 
 	 */
-	vector<std::string> trace_struct_object_names = get_all_object_names(TRACE_STRUCT_BUCKET);
+	std::vector<std::string> trace_struct_object_names = get_all_object_names(TRACE_STRUCT_BUCKET);
 	trace_struct_object_names = sort_object_names_on_start_time(trace_struct_object_names);
 	index_batch current_index_batch = index_batch();
 
@@ -41,11 +41,11 @@ int update_index(gcs::Client* client, time_t last_updated, std::string index_sta
 	return 0;
 }
 
-vector<std::string> get_all_object_names(std::string bucket_name) {
+std::vector<std::string> get_all_object_names(std::string bucket_name) {
 	// TODO
 }
 
-vector<std::string> sort_object_names_on_start_time(vector<std::string> object_names) {
+std::vector<std::string> sort_object_names_on_start_time(std::vector<std::string> object_names) {
 	// TODO
 }
 
