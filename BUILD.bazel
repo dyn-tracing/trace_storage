@@ -47,3 +47,19 @@ cc_binary(
         "@com_github_opentelemetry_proto//:trace_service_proto_cc",
     ],
 )
+
+cc_binary(
+    name = "status_code_index",
+    srcs = [
+        "folders_index/status_code/status_code_index.cc",
+        "folders_index/status_code/status_code_index.h"
+    ],
+    deps = [
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:algorithm",
+        "@boost//:graph",
+        "@boost//:date_time",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+    ],
+)
