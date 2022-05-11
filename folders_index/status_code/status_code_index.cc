@@ -8,10 +8,16 @@ int main(int argc, char* argv[]) {
 
 	auto client = gcs::Client();
 	time_t last_updated = 0;
-	return update_index(&client, last_updated, "202");
+	trace_attribute indexed_attribute = HTTP_STATUS_CODE;
+	std::string attribute_value = "202";
+
+	return update_index(&client, last_updated, indexed_attribute, attribute_value);
 }
 
-int update_index(gcs::Client* client, time_t last_updated, std::string index_status_code) {
+int update_index(gcs::Client* client, time_t last_updated, 
+	trace_attribute indexed_attribute, std::string attribute_value
+) {
+	std::vector<std::string> span_buckets_names = get_spans_buckets_names(client);
 	/**
 	 * TODO: (i) Following is a bad thing to do. what if all object names do not fit in the memory. 
 	 * (ii) do the error handling for the case when bucket is not present. 
@@ -21,24 +27,48 @@ int update_index(gcs::Client* client, time_t last_updated, std::string index_sta
 	index_batch current_index_batch = index_batch();
 
 	for (auto object_name : trace_struct_object_names) {
-		std::vector<std::string> trace_ids_with_index_status_code = get_trace_ids_with_index_status_code(object_name, index_status_code, client);
+		std::vector<std::string> trace_ids_with_attribute = get_trace_ids_with_attribute(
+			object_name, indexed_attribute, attribute_value, span_buckets_names, client);
 
-		current_index_batch.total_trace_ids += trace_ids_with_index_status_code.size();
+		current_index_batch.total_trace_ids += trace_ids_with_attribute.size();
 		current_index_batch.trace_ids_with_timestamps.push_back(std::make_pair(
-			extract_batch_timestamps(object_name), trace_ids_with_index_status_code
+			extract_batch_timestamps(object_name), trace_ids_with_attribute
 		));
 
 		if (true == is_batch_big_enough(current_index_batch)) {
-			auto status = export_batch_to_storage(current_index_batch, index_status_code);
+			auto status = export_batch_to_storage(current_index_batch, attribute_value);
 			if (status != 0) {
 				std::cout << "Could not export an index batch to Cloud Storage!" << std::endl;
 				exit(1);
 			}
 
 			current_index_batch = index_batch();
+			break;  // TODO remove it
 		}
 	}
 	return 0;
+}
+
+std::vector<std::string> get_spans_buckets_names(gcs::Client* client) {
+	std::vector<std::string> response;
+
+	for (auto&& bucket_metadata : client->ListBucketsForProject(PROJECT_ID)) {
+		if (!bucket_metadata) {
+			std::cerr << bucket_metadata.status().message() << std::endl;
+			exit(1);
+		}
+
+		if (true == bucket_metadata->labels().empty()) {
+			continue;
+		}
+
+		const auto label_map = bucket_metadata->labels();
+		if (label_map.at(BUCKET_TYPE_LABEL_KEY) == BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS) {
+			response.push_back(bucket_metadata->name());
+		}
+	}
+
+	return response;
 }
 
 std::vector<std::string> get_all_object_names(std::string bucket_name, gcs::Client* client) {
@@ -73,45 +103,23 @@ std::vector<std::string> sort_object_names_on_start_time(std::vector<std::string
 	return object_names;	
 }
 
-std::vector<std::string> get_trace_ids_with_index_status_code(std::string object_name, std::string status_code, gcs::Client* client) {
-	auto object_content = read_object(TRACE_STRUCT_BUCKET, object_name, client);
-	std::vector<std::string> traces = split_by_string(object_content, "Trace ID: ");
-	std::vector<std::string> response;
-
-	for (auto current_trace : traces) {
-		if (true == does_trace_have_this_attribute(current_trace, object_name, trace_attribute::HTTP_STATUS_CODE, status_code, client)) {
-			response.push_back(split_by_char(current_trace, ":")[0]);
-		}
+std::vector<std::string> get_trace_ids_with_attribute(
+	std::string object_name, trace_attribute indexed_attribute, std::string attribute_value,
+	std::vector<std::string>& span_buckets_names, gcs::Client* client
+) {
+	for (auto span_bucket : span_buckets_names) {
+		std::unordered_map<std::string, bool> trace_id_to_attribute_membership = calculate_trace_id_to_attribute_map(
+			span_bucket, object_name, indexed_attribute, attribute_value, client);
 	}
 
-	return response;
+	// HERE
 }
 
-bool does_trace_have_this_attribute(
-	std::string trace_content, std::string batch_name, trace_attribute attr,
-	std::string attr_value, gcs::Client* client
+std::unordered_map<std::string, bool> calculate_trace_id_to_attribute_map(std::string span_bucket_name,
+	std::string object_name, trace_attribute indexed_attribute, std::string attribute_value, gcs::Client* client
 ) {
-	auto trace_info = split_by_char(trace_content, "\n");
-
-	bool response = false;
-	for (int i = 1; i < trace_info.size(); i++) {
-		response = response || does_span_have_this_attribute(trace_info[i], batch_name, attr, attr_value, client);
-		if (true == response) {
-			break;
-		}
-	}
-
+	std::unordered_map<std::string, bool> response;
 	return response;
-}
-
-bool does_span_have_this_attribute(
-	std::string span_content, std::string batch_name, trace_attribute attr,
-	std::string attr_value, gcs::Client* client
-) {
-	auto span_info = split_by_char(span_content, ":");
-	auto span_id = span_info[1];
-	auto service_name = span_info[2];
-	return true;
 }
 
 batch_timestamp extract_batch_timestamps(std::string batch_name) {

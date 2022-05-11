@@ -14,10 +14,14 @@
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
 #include <boost/algorithm/string.hpp>
 
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket4";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket4";
-const char SERVICES_BUCKETS_SUFFIX[] = "-snicket4";
-const char INDEX_STATUS_CODE_BUCKET[] = "index-status-code-snicket4";
+const char BUCKET_TYPE_LABEL_KEY[] = "bucket_type";
+const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
+
+const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket3";
+const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket3";
+const char SERVICES_BUCKETS_SUFFIX[] = "-snicket3";
+const char INDEX_STATUS_CODE_BUCKET[] = "index-status-code-snicket3";
+const char PROJECT_ID[] = "dynamic-tracing";
 
 enum trace_attribute {
     HTTP_STATUS_CODE,
@@ -50,19 +54,20 @@ struct index_batch {
 namespace gcs = ::google::cloud::storage;
 using ::google::cloud::StatusOr;
 
-bool does_span_have_this_attribute(
-	std::string span_content, std::string batch_name, trace_attribute attr,
-	std::string attr_value, gcs::Client* client
+int update_index(gcs::Client* client, time_t last_updated, 
+	trace_attribute indexed_attribute, std::string attribute_value
 );
-bool does_trace_have_this_attribute(
-	std::string trace_content, std::string batch_name, trace_attribute attr,
-	std::string attribute_value, gcs::Client* client
+std::unordered_map<std::string, bool> calculate_trace_id_to_attribute_map(std::string span_bucket_name,
+	std::string object_name, trace_attribute indexed_attribute, std::string attribute_value, gcs::Client* client
 );
-int update_index(gcs::Client* client, time_t last_updated, std::string index_status_code);
+std::vector<std::string> get_spans_buckets_names(gcs::Client* client);
 batch_timestamp extract_batch_timestamps(std::string batch_name);
 std::vector<std::string> get_all_object_names(std::string bucket_name, gcs::Client* client);
 std::vector<std::string> sort_object_names_on_start_time(std::vector<std::string> object_names);
-std::vector<std::string> get_trace_ids_with_index_status_code(std::string object_name, std::string status_code, gcs::Client* client);
+std::vector<std::string> get_trace_ids_with_attribute(
+	std::string object_name, trace_attribute indexed_attribute, std::string attribute_value,
+	std::vector<std::string>& span_buckets_names, gcs::Client* client
+);
 bool is_batch_big_enough(index_batch& current_index_batch);
 int export_batch_to_storage(index_batch& current_index_batch, std::string index_status_code);
 std::vector<std::string> split_by_char(std::string input, std::string splitter);
