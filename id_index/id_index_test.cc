@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "id_index.h"
+#include "bloom_filter.hpp"
 
-//#include <id_index_lib>
 // Demonstrate some basic assertions.
 TEST(Prefixes, TestGeneratePrefixesSmall) {
   // Expect two strings not to be equal.
@@ -29,3 +29,16 @@ TEST(Prefixes, TestGeneratePrefixesBig) {
   }
 }
 
+TEST(Serialization, TestSerialization) {
+  // Expect two strings not to be equal.
+  bloom_parameters a_param;
+  a_param.projected_element_count = 100;
+  a_param.false_positive_probability = 0.01;
+  a_param.compute_optimal_parameters();
+  bloom_filter a(a_param);
+  std::stringstream stream;
+  a.Serialize(stream);
+  bloom_filter b;
+  b.Deserialize(stream);
+  EXPECT_TRUE(a==b);
+}

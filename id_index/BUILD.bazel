@@ -22,7 +22,7 @@ cc_library(
         "id_index.cc",
         "bloom_filter.hpp"
     ],
-    hdrs = ["id_index.h"],
+    hdrs = ["id_index.h", "bloom_filter.hpp"],
     deps = [
         "@com_github_googleapis_google_cloud_cpp//:storage",
         "@boost//:regex",

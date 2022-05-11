@@ -218,6 +218,35 @@ public:
          return true;
    }
 
+   inline void Serialize(std::ostream &os) const {
+        os.write((const char *) &salt_count_, sizeof(uint16_t));
+        os.write((const char *) &table_size_, sizeof(uint16_t));
+        os.write((const char *) &projected_element_count_, sizeof(uint16_t));
+        os.write((const char *) &inserted_element_count_, sizeof(uint16_t));
+        os.write((const char *) &random_seed_, sizeof(uint16_t));
+        os.write((const char *) &desired_false_positive_probability_, sizeof(uint16_t));
+        os.write((const char *) &salt_, sizeof(uint16_t));
+        os.write((const char *) bit_table_.size(), sizeof(uint16_t)); // this is unsigned char
+        for (int i=0; i<bit_table_.size(); i++) {
+            os.write((const char *) &bit_table_[i], sizeof(char)); // this is unsigned char
+        }
+   }
+
+   inline void Deserialize(std::istream &is) {
+        is.read((char*) &salt_count_, sizeof(uint16_t));
+        is.read((char*) &table_size_, sizeof(uint16_t));
+        is.read((char*) &projected_element_count_, sizeof(uint16_t));
+        is.read((char*) &inserted_element_count_, sizeof(uint16_t));
+        is.read((char*) &random_seed_, sizeof(uint16_t));
+        is.read((char*) &desired_false_positive_probability_, sizeof(uint16_t));
+        is.read((char*) &salt_, sizeof(uint16_t));
+        uint16_t bit_table_size;
+        is.read((char*) &bit_table_size, sizeof(uint16_t));
+        for (int i=0; i<bit_table_size; i++) {
+            is.read((char*) &bit_table_[i], sizeof(char));
+        }
+   }
+
    inline bool operator != (const bloom_filter& f) const
    {
       return !operator==(f);
