@@ -2,7 +2,15 @@
 #include "id_index.h"
 #include "bloom_filter.hpp"
 
-// Demonstrate some basic assertions.
+
+
+TEST(HelloTest, BasicAssertions) {
+  // Expect two strings not to be equal.
+  EXPECT_STRNE("hello", "world");
+  // Expect equality.
+  EXPECT_EQ(7 * 6, 42);
+}
+
 TEST(Prefixes, TestGeneratePrefixesSmall) {
   // Expect two strings not to be equal.
   time_t begin = 1651696900;

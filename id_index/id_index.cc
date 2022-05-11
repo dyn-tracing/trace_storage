@@ -1,5 +1,6 @@
 #include "id_index.h"
-
+using ::google::cloud::StatusOr;
+std::string trace_id_bucket = "traceidindex-snicket4";
 std::string hyphen = "-";
 std::vector<std::string> split_string_by_char(std::string& str, std::string& ch) {
     std::vector<std::string> tokens;
@@ -14,8 +15,8 @@ bool less_than(time_t first, std::string second) {
     std::string sec_str = sec_stream.str();
     long s = stol(sec_str);
     return first < s;
-
 }
+
 std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
     // you want to generate a list of prefixes between earliest and latest
     // find the first digit at which they differ, then do a list on lowest to highest there
@@ -73,6 +74,46 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
     return to_return;
 }
 
+int bloom_filter_to_storage(gcs::Client* client, std::string object_name, bloom_filter* bf) {
+  /*
+  google::cloud::StatusOr<gcs::BucketMetadata> bucket_metadata =
+      client->CreateBucketForProject(
+          trace_id_bucket, "dynamic-tracing",
+          gcs::BucketMetadata()
+              .set_location("us-central1")
+              .set_storage_class(gcs::storage_class::Regional()));
+  if (!bucket_metadata) {
+    std::cerr << "Error creating bucket " << trace_id_bucket
+              << ", status=" << bucket_metadata.status() << "\n";
+    return 1;
+  }
+  */
+  std::cout << "gonna write" << std::endl;
+  gcs::ObjectWriteStream stream =
+        client->WriteObject(trace_id_bucket, object_name);
+  std::cout << "writing" << std::endl;
+  bf->Serialize(stream);
+  std::cout << "done writing" << std::endl;
+  stream.Close();
+  std::cout << "closed" << std::endl;
+  StatusOr<gcs::ObjectMetadata> metadata = std::move(stream).metadata();
+    if (!metadata) {
+      throw std::runtime_error(metadata.status().message());
+  }
+
+  // now that it is written, just double check you can re-interpret what you've written
+  gcs::ObjectReadStream read_stream = client->ReadObject(trace_id_bucket, object_name);
+  bloom_filter retrieved_bf;
+  retrieved_bf.Deserialize(read_stream);
+  read_stream.Close();
+  assert(retrieved_bf == *bf);
+  std::cout << "can retrieve succcessfully" << std::endl;
+  return 0;
+
+
+
+
+}
 
 bloom_filter create_bloom_filter(gcs::Client* client, std::string batch, time_t earliest, time_t latest) {
     bloom_parameters parameters;
@@ -122,15 +163,8 @@ int update_index(gcs::Client* client, time_t last_updated) {
     time_t granularity = 1000;
     //std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, now-(now%granularity));
     bloom_filter bf = create_bloom_filter(client, "10-1651700436-1651700437", 0, 1000);
+    bloom_filter_to_storage(client, "new_bloom", &bf);
+    // put into storage
     return 0;
 
-}
-
-int main(int argc, char* argv[]) {                                              
-    // Create a client to communicate with Google Cloud Storage. This client    
-    // uses the default configuration for authentication and project id.        
-    auto client = gcs::Client();
-    time_t last_updated = 0;
-    //update_index(&client, last_updated);
-    return 0;                                                                   
 }
