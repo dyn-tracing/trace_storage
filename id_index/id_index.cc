@@ -1,4 +1,5 @@
 #include "id_index.h"
+
 using ::google::cloud::StatusOr;
 std::string trace_id_bucket = "traceidindex-snicket4";
 std::string hyphen = "-";
@@ -40,12 +41,13 @@ std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
     }
 
     // i is now the first spot of difference
-    long min = atol(&e_str[i]);
-    long max = atol(&l_str[i]);
+
+    int min = std::stoi(e_str.substr(i, 1));
+    int max = std::stoi(l_str.substr(i, 1));
 
     for (int j=min; j<=max; j++) {
         std::string prefix = e_str.substr(0, i);
-        prefix += e_str[i];
+        prefix += std::to_string(j);
         to_return.push_back(prefix);
     }
     return to_return;
