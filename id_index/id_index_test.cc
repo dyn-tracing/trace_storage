@@ -39,7 +39,6 @@ TEST(Prefixes, TestGeneratePrefixesBig) {
   }
 }
 
-/*
 TEST(Serialization, TestSerialization) {
   // Expect two strings not to be equal.
   bloom_parameters a_param;
@@ -51,6 +50,8 @@ TEST(Serialization, TestSerialization) {
   a.Serialize(stream);
   bloom_filter b;
   b.Deserialize(stream);
+  EXPECT_TRUE(a.ints_match(b));
+  EXPECT_TRUE(a.salt_matches(b));
+  EXPECT_TRUE(a.bit_table_matches(b));
   EXPECT_TRUE(a==b);
 }
-*/

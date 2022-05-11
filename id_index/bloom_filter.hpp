@@ -218,32 +218,68 @@ public:
          return true;
    }
 
+   inline bool ints_match(const bloom_filter& f) const {
+      return (
+        salt_count_ == f.salt_count_ &&
+        table_size_ == f.table_size_ &&
+        projected_element_count_ == f.projected_element_count_ &&
+        inserted_element_count_ == f.inserted_element_count_ &&
+        random_seed_ == f.random_seed_ &&
+        desired_false_positive_probability_ == f.desired_false_positive_probability_
+      );
+   }
+
+   inline bool salt_matches(const bloom_filter& f) const {
+       if (salt_count_ != f.salt_count_) { return false; }
+       for (unsigned int i=0; i<salt_count_; i++) {
+           if (salt_[i] != f.salt_[i]) { return false; }
+       }
+       return true;
+    }
+
+   inline bool bit_table_matches(const bloom_filter& f) const {
+       if (table_size_ != f.table_size_) { return false; }
+       if (bit_table_.size() != f.bit_table_.size()) { return false; }
+       for (unsigned int i=0; i<bit_table_.size(); i++) {
+           if (bit_table_[i] != f.bit_table_[i]) { return false; }
+       }
+       return true;
+    }
+
    inline void Serialize(std::ostream &os) const {
-        os.write((const char *) &salt_count_, sizeof(uint16_t));
-        os.write((const char *) &table_size_, sizeof(uint16_t));
-        os.write((const char *) &projected_element_count_, sizeof(uint16_t));
-        os.write((const char *) &inserted_element_count_, sizeof(uint16_t));
-        os.write((const char *) &random_seed_, sizeof(uint16_t));
-        os.write((const char *) &desired_false_positive_probability_, sizeof(uint16_t));
-        os.write((const char *) &salt_, sizeof(uint16_t));
-        os.write((const char *) bit_table_.size(), sizeof(uint16_t)); // this is unsigned char
-        for (int i=0; i<bit_table_.size(); i++) {
-            os.write((const char *) &bit_table_[i], sizeof(char)); // this is unsigned char
+        os.write((char *) &salt_count_, sizeof(unsigned int));
+        os.write((char *) &table_size_, sizeof(unsigned long long int));
+        os.write((char *) &projected_element_count_, sizeof(unsigned long long int));
+        os.write((char *) &inserted_element_count_, sizeof(unsigned long long int));
+        os.write((char *) &random_seed_, sizeof(unsigned long long int));
+        os.write((char *) &desired_false_positive_probability_, sizeof(double));
+        for (unsigned int i=0; i<salt_count_; i++) {
+            os.write((char *) &salt_[i], sizeof(unsigned int));
+        }
+
+        std::cout << "table size " << table_size_ << std::endl;
+        std::cout << "bit table size " << bit_table_.size() << std::endl;
+        for (unsigned int i=0; i<table_size_; i++) {
+            os.write((char *) &bit_table_[i], sizeof(unsigned char)); // this is unsigned char
         }
    }
 
    inline void Deserialize(std::istream &is) {
-        is.read((char*) &salt_count_, sizeof(uint16_t));
-        is.read((char*) &table_size_, sizeof(uint16_t));
-        is.read((char*) &projected_element_count_, sizeof(uint16_t));
-        is.read((char*) &inserted_element_count_, sizeof(uint16_t));
-        is.read((char*) &random_seed_, sizeof(uint16_t));
-        is.read((char*) &desired_false_positive_probability_, sizeof(uint16_t));
-        is.read((char*) &salt_, sizeof(uint16_t));
-        uint16_t bit_table_size;
-        is.read((char*) &bit_table_size, sizeof(uint16_t));
-        for (int i=0; i<bit_table_size; i++) {
-            is.read((char*) &bit_table_[i], sizeof(char));
+        is.read((char *) &salt_count_, sizeof(unsigned int));
+        is.read((char *) &table_size_, sizeof(unsigned long long int));
+        is.read((char *) &projected_element_count_, sizeof(unsigned long long int));
+        is.read((char *) &inserted_element_count_, sizeof(unsigned long long int));
+        is.read((char *) &random_seed_, sizeof(unsigned long long int));
+        is.read((char *) &desired_false_positive_probability_, sizeof(double));
+
+        salt_.resize(salt_count_, static_cast<unsigned int> (0x00));
+        for (unsigned int i=0; i<salt_count_; i++) {
+            is.read((char *) &salt_[i], sizeof(unsigned int));
+        }
+
+        bit_table_.resize(table_size_ / bits_per_char, static_cast<unsigned char>(0x00));
+        for (unsigned int i=0; i<table_size_/bits_per_char; i++) {
+            is.read((char *) &bit_table_[i], sizeof(unsigned char)); // this is unsigned char
         }
    }
 
