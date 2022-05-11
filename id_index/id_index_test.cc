@@ -2,15 +2,6 @@
 #include "id_index.h"
 #include "bloom_filter.hpp"
 
-
-
-TEST(HelloTest, BasicAssertions) {
-  // Expect two strings not to be equal.
-  EXPECT_STRNE("hello", "world");
-  // Expect equality.
-  EXPECT_EQ(7 * 6, 42);
-}
-
 TEST(Prefixes, TestGeneratePrefixesSmall) {
   // Expect two strings not to be equal.
   time_t begin = 1651696900;
@@ -19,8 +10,8 @@ TEST(Prefixes, TestGeneratePrefixesSmall) {
   std::vector<std::string> expect;
   expect.push_back("1651696");
   expect.push_back("1651697");
-  for (int i=0; i<prefixes.size(); i++ ) {
-    EXPECT_TRUE(prefixes[i].compare(expect[i])==0);
+  for (int i=0; i < prefixes.size(); i++) {
+    EXPECT_EQ(prefixes[i].compare(expect[i]), 0);
   }
 }
 
@@ -31,11 +22,11 @@ TEST(Prefixes, TestGeneratePrefixesBig) {
   time_t end = 1651697000;
   std::vector<std::string> prefixes = generate_prefixes(begin, end);
   std::vector<std::string> expect;
-  for (int i=1; i<=7; i++) {
+  for (int i=1; i <= 7; i++) {
     expect.push_back("165169" + std::to_string(i));
   }
-  for (int i=0; i<expect.size(); i++) {
-    EXPECT_TRUE(prefixes[i].compare(expect[i])==0);
+  for (int i=0; i < expect.size(); i++) {
+    EXPECT_EQ(prefixes[i].compare(expect[i]), 0);
   }
 }
 
@@ -53,5 +44,5 @@ TEST(Serialization, TestSerialization) {
   EXPECT_TRUE(a.ints_match(b));
   EXPECT_TRUE(a.salt_matches(b));
   EXPECT_TRUE(a.bit_table_matches(b));
-  EXPECT_TRUE(a==b);
+  EXPECT_EQ(a, b);
 }

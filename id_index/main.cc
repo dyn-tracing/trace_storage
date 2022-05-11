@@ -1,4 +1,4 @@
-#include "id_index.h" 
+#include "id_index.h"
 
 int main(int argc, char* argv[]) {
     // Create a client to communicate with Google Cloud Storage. This client
