@@ -68,6 +68,8 @@ std::vector<std::string> get_trace_ids_with_attribute(
 	std::string object_name, trace_attribute indexed_attribute, std::string attribute_value,
 	std::vector<std::string>& span_buckets_names, gcs::Client* client
 );
+void take_per_field_OR(std::unordered_map<std::string, bool>& trace_id_to_attribute_membership,
+	std::unordered_map<std::string, bool>& local_trace_id_to_attribute_membership);
 bool is_batch_big_enough(index_batch& current_index_batch);
 int export_batch_to_storage(index_batch& current_index_batch, std::string index_status_code);
 std::vector<std::string> split_by_char(std::string input, std::string splitter);
@@ -75,6 +77,7 @@ bool compare_object_names_by_start_time(std::string object_name1, std::string ob
 std::string read_object(std::string bucket, std::string object, gcs::Client* client);
 std::vector<std::string> split_by_string(std::string input, std::string splitter);
 std::string strip_from_the_end(std::string object, char stripper);
+std::string hex_str(std::string data, int len);
 
 int dummy_tests();
 

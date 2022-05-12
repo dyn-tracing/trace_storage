@@ -107,19 +107,63 @@ std::vector<std::string> get_trace_ids_with_attribute(
 	std::string object_name, trace_attribute indexed_attribute, std::string attribute_value,
 	std::vector<std::string>& span_buckets_names, gcs::Client* client
 ) {
+	std::unordered_map<std::string, bool> trace_id_to_attribute_membership;
+
 	for (auto span_bucket : span_buckets_names) {
-		std::unordered_map<std::string, bool> trace_id_to_attribute_membership = calculate_trace_id_to_attribute_map(
+		std::unordered_map<std::string, bool> local_trace_id_to_attribute_membership = calculate_trace_id_to_attribute_map(
 			span_bucket, object_name, indexed_attribute, attribute_value, client);
+		
+		take_per_field_OR(trace_id_to_attribute_membership, local_trace_id_to_attribute_membership);
 	}
 
-	// HERE
+	std::vector<std::string> response;
+	for (auto& i : trace_id_to_attribute_membership) {
+		if (true == i.second) {
+			response.push_back(i.first);
+		}
+	}
+	return response;
+}
+
+void take_per_field_OR(std::unordered_map<std::string, bool>& trace_id_to_attribute_membership,
+	std::unordered_map<std::string, bool>& local_trace_id_to_attribute_membership) {
+	for (auto& i : local_trace_id_to_attribute_membership) {
+		if ((trace_id_to_attribute_membership.find(i.first) == trace_id_to_attribute_membership.end())
+			|| (false == trace_id_to_attribute_membership[i.first]) 
+		) {
+			trace_id_to_attribute_membership[i.first] = i.second;
+		}
+	}
 }
 
 std::unordered_map<std::string, bool> calculate_trace_id_to_attribute_map(std::string span_bucket_name,
 	std::string object_name, trace_attribute indexed_attribute, std::string attribute_value, gcs::Client* client
 ) {
-	std::unordered_map<std::string, bool> response;
-	return response;
+	std::string raw_span_bucket_obj_content = read_object(span_bucket_name, object_name, client);
+	std::map<std::string, std::pair<int, int>> response;
+
+	opentelemetry::proto::trace::v1::TracesData trace_data;
+	bool ret = trace_data.ParseFromString(raw_span_bucket_obj_content);
+	if (false == ret) {
+		std::cerr << "Error in calculate_trace_id_to_attribute_map:ParseFromString" << std::endl;
+		exit(1);
+	}
+
+	const opentelemetry::proto::trace::v1::Span* sp;
+	for (int i=0; i < trace_data.resource_spans(0).scope_spans(0).spans_size(); i++) {
+		sp = &(trace_data.resource_spans(0).scope_spans(0).spans(i));
+
+		std::string trace_id = hex_str(sp->trace_id(), sp->trace_id().length());
+
+		std::cout << "TraceID: " << trace_id << std::endl;
+
+		const opentelemetry::proto::common::v1::KeyValue* attribute;
+		for (int j=0; j < sp->attributes_size(); j++) {
+			attribute =  &(sp->attributes(j));
+			std::cout << attribute->key() << std::endl;
+		}
+	}
+	// return response;
 }
 
 batch_timestamp extract_batch_timestamps(std::string batch_name) {
@@ -183,8 +227,35 @@ std::string strip_from_the_end(std::string object, char stripper) {
 	return object;
 }
 
-int dummy_tests() {
+std::string hex_str(std::string data, int len) {
+	constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
+	std::string s(len * 2, ' ');
+	for (int i = 0; i < len; ++i) {
+		s[2 * i]     = hexmap[(data[i] & 0xF0) >> 4];
+		s[2 * i + 1] = hexmap[data[i] & 0x0F];
+	}
+
+	return s;
+}
+
+int dummy_tests() {
+	// std::unordered_map<std::string, bool> global;
+	// global["t1"] = false;
+	// global["t2"] = true;
+	// global["t5"] = true;
+
+	// std::unordered_map<std::string, bool> local;
+	// local["t1"] = true;
+	// local["t2"] = false;
+	// local["t3"] = true;
+	// local["t4"] = false;
+
+	// take_per_field_OR(global, local);
+
+	// for (auto i : global) {
+	// 	std::cout << i.first << " => " << i.second << std::endl;
+	// }
 	// exit(1);
 	return 0;
 }
