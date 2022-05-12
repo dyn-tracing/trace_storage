@@ -303,25 +303,42 @@ bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string 
 
 Leaf make_leaf(gcs::Client* client, struct BatchObjectNames batch, time_t start_time, time_t end_time) {
     Leaf leaf;
-    int number_of_batches = 0;
+    std::vector<std::future<bloom_filter>> inclusive_bloom;
+    std::vector<std::future<bloom_filter>> early_bloom;
+    std::vector<std::future<bloom_filter>> late_bloom;
     // 1. Incorporate entire batches
     for (int i=0; i<batch.inclusive.size(); i++) {
         leaf.batch_names.push_back(batch.inclusive[i]);
-        leaf.bloom_filters.push_back(create_bloom_filter_entire_batch(client, batch.inclusive[i]));
+        inclusive_bloom.push_back(std::async(std::launch::async, create_bloom_filter_entire_batch, client, batch.inclusive[i]));
     }
+
     // 2. Incorporate batches that overlap the first part of the time range (ie go shorter than it)
     for (int j=0; j<batch.early.size(); j++) {
         leaf.batch_names.push_back(batch.early[j]);
         leaf.bloom_filters.push_back(create_bloom_filter_partial_batch(client, batch.early[j], start_time, end_time));
+        early_bloom.push_back(std::async(std::launch::async, create_bloom_filter_partial_batch, client, batch.early[j], start_time, end_time));
     }
 
     // 3. Incorporate batches that overlap the later part of the time range (ie go longer than it)
-    for (int j=0; j<batch.late.size(); j++) {
-        leaf.batch_names.push_back(batch.late[j]);
-        leaf.bloom_filters.push_back(create_bloom_filter_partial_batch(client, batch.late[j], start_time, end_time));
+    for (int k=0; k<batch.late.size(); k++) {
+        leaf.batch_names.push_back(batch.late[k]);
+        leaf.bloom_filters.push_back(create_bloom_filter_partial_batch(client, batch.late[k], start_time, end_time));
+        late_bloom.push_back(std::async(std::launch::async, create_bloom_filter_partial_batch, client, batch.late[k], start_time, end_time));
     }
 
-    // 4. Put that leaf in storage
+    // 4. Get all the futures from async calls to be actual values
+    for (int i=0; i<inclusive_bloom.size(); i++) {
+        leaf.bloom_filters.push_back(inclusive_bloom[i].get());
+    }
+
+    for (int j=0; j<early_bloom.size(); j++) {
+        leaf.bloom_filters.push_back(early_bloom[j].get());
+    }
+
+    for (int k=0; k<late_bloom.size(); k++) {
+        leaf.bloom_filters.push_back(early_bloom[k].get());
+    }
+    // 5. Put that leaf in storage
     std::stringstream objname_stream;
     objname_stream << start_time << "-" << end_time;
     gcs::ObjectWriteStream stream =
@@ -403,11 +420,11 @@ int update_index(gcs::Client* client, time_t last_updated) {
     std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, to_update);
     auto batches_by_leaf = split_batches_by_leaf(batches, last_updated, to_update, granularity);
     int j=0;
+    std::vector<std::future<Leaf>> leaves;
     for (time_t i=last_updated; i<to_update; i+= granularity) {
         // now, make Bloom filters
         Leaf leaf = make_leaf(client, batches_by_leaf[j], i, i+granularity);
         j++;
-        //bubble_up_leaf(client, i, i+granularity, leaf);
     }
     return 0;
 }
