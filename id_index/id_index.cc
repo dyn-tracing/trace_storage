@@ -1,4 +1,4 @@
-#include "id_index.h"
+#include "id_index/id_index.h"
 
 using ::google::cloud::StatusOr;
 
@@ -212,19 +212,11 @@ int bloom_filter_to_storage(gcs::Client* client, std::string object_name, bloom_
   return 0;
 }
 
-bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string batch) {
-    bloom_parameters parameters;
 
-    // How many elements roughly do we expect to insert?
-    parameters.projected_element_count = 2500;
-
-    // Maximum tolerable false positive probability? (0,1)
-    parameters.false_positive_probability = 0.0001;  // 1 in 10000
-
-    parameters.compute_optimal_parameters();
-    bloom_filter filter(parameters);
-    auto batch_split = split_string_by_char(batch, hyphen);
-    auto reader = client->ReadObject(trace_struct_bucket, batch);
+std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std::string obj_name) {
+    std::vector<std::string> to_return;
+    auto batch_split = split_string_by_char(obj_name, hyphen);
+    auto reader = client->ReadObject(trace_struct_bucket, obj_name);
     if (!reader) {
         std::cerr << "Error reading object: " << reader.status() << "\n";
         throw std::runtime_error("Error reading trace object");
@@ -236,16 +228,87 @@ bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string b
             int start = trace_and_spans[j].find("Trace ID");
             std::string trace_id =
                 trace_and_spans[j].substr(start + 8 , trace_and_spans[j].length() - 9);  // 8 is len of Trace ID
-            // (2) insert the trace in
-            filter.insert(trace_id);
+            to_return.push_back(trace_id);
         }
+    }
+    return to_return;
+}
+
+
+std::vector<std::string> trace_ids_within_time_range_from_trace_id_object(gcs::Client* client, std::string obj_name, time_t start, time_t end) {
+    std::vector<std::string> to_return;
+    auto batch_split = split_string_by_char(obj_name, hyphen);
+    auto reader = client->ReadObject(trace_struct_bucket, obj_name);
+    if (!reader) {
+        std::cerr << "Error reading object: " << reader.status() << "\n";
+        throw std::runtime_error("Error reading trace object");
+    }
+    std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+    const char trace_id[] = "Trace ID";
+    std::vector<std::string> trace_and_spans = split_string_by_char(contents, trace_id);
+    for (int j=0; j < trace_and_spans.size(); j++) {
+        std::vector<std::string> spans = split_string_by_char(trace_and_spans[j], newline);
+        // one of these has to be the root span
+        std::string root_microservice;
+        std::string root_span_id;
+        for (int k=0; k<spans.size(); k++) {
+            if (spans[k][0] == ':') {
+                std::vector<std::string> root_span_data = split_string_by_char(spans[k], colon);
+                root_microservice = root_span_data[2];
+                root_span_id = root_span_data[1];
+                break;
+            }
+        }
+        // now go find that span
+        auto reader = client->ReadObject(root_microservice+std::string(bucket_suffix), obj_name);
+        if (!reader) {
+            std::cerr << "Error reading object: " << reader.status() << "\n";
+            throw std::runtime_error("Error reading trace object");
+        }
+        std::string span_contents{std::istreambuf_iterator<char>{reader}, {}};
+    }
+    return to_return;
+}
+
+bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string batch) {
+    bloom_parameters parameters;
+
+    // How many elements roughly do we expect to insert?
+    parameters.projected_element_count = 2500;
+
+    // Maximum tolerable false positive probability? (0,1)
+    parameters.false_positive_probability = 0.0001;  // 1 in 10000
+
+    parameters.compute_optimal_parameters();
+    bloom_filter filter(parameters);
+    auto trace_ids = trace_ids_from_trace_id_object(client, batch);
+    for (int i=0; i<trace_ids.size(); i++) {
+        filter.insert(trace_ids[i]);
     }
 
     return filter;
 }
 
+bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string batch, time_t earliest, time_t latest) {
+    bloom_parameters parameters;
 
-int make_leaf(gcs::Client* client, std::vector<std::vector<std::string>> batches, time_t start_time, time_t end_time) {
+    // How many elements roughly do we expect to insert?
+    parameters.projected_element_count = 2500;
+
+    // Maximum tolerable false positive probability? (0,1)
+    parameters.false_positive_probability = 0.0001;  // 1 in 10000
+
+    parameters.compute_optimal_parameters();
+    bloom_filter filter(parameters);
+    auto trace_ids = trace_ids_within_time_range_from_trace_id_object(client, batch, earliest, latest);
+    for (int i=0; i<trace_ids.size(); i++) {
+        filter.insert(trace_ids[i]);
+    }
+    return filter;
+}
+
+
+Leaf make_leaf(gcs::Client* client, std::vector<std::vector<std::string>> batches, time_t start_time, time_t end_time) {
     Leaf leaf;
     int number_of_batches = 0;
     // 1. Incorporate entire batches
@@ -253,13 +316,34 @@ int make_leaf(gcs::Client* client, std::vector<std::vector<std::string>> batches
         leaf.batch_names.push_back(batches[0][i]);
         leaf.bloom_filters.push_back(create_bloom_filter_entire_batch(client, batches[0][i]));
     }
-    // 2. Incorporate batches 
+    // 2. Incorporate batches that overlap the first part of the time range (ie go shorter than it)
     for (int j=0; j<batches[1].size(); j++) {
-
+        leaf.batch_names.push_back(batches[1][j]);
+        leaf.bloom_filters.push_back(create_bloom_filter_partial_batch(client, batches[1][j], start_time, end_time));
     }
+
+    // 3. Incorporate batches that overlap the later part of the time range (ie go longer than it)
+    for (int j=0; j<batches[1].size(); j++) {
+        leaf.batch_names.push_back(batches[1][j]);
+        leaf.bloom_filters.push_back(create_bloom_filter_partial_batch(client, batches[1][j], start_time, end_time));
+    }
+
+    // 4. Put that leaf in storage
+    std::stringstream objname_stream;
+    objname_stream << start_time << "-" << end_time;
+    gcs::ObjectWriteStream stream =
+            client->WriteObject(index_bucket, objname_stream.str());
+    serialize(leaf, stream);
+    stream.Close();
+    StatusOr<gcs::ObjectMetadata> metadata = std::move(stream).metadata();
+    if (!metadata) {
+        throw std::runtime_error(metadata.status().message());
+    }
+    return leaf;
 }
 
-int bubble_up_leaf(gcs::Client* client, time_t start_time, time_t end_time) {
+
+int bubble_up_leaf(gcs::Client* client, time_t start_time, time_t end_time, Leaf &leaf) {
     return 0;
 
 }
@@ -269,12 +353,14 @@ int update_index(gcs::Client* client, time_t last_updated) {
     time(&now);
     time_t granularity = 1000;
     // we need to update all batches between last_updated and now-granularity
+    // Note: there is room for optimization here where we make all the leaves first, then bubble up
+    // It's more complex so I'm not doing it for now but it would be a good optimization
     for (time_t i=last_updated; i<now-(now%granularity); i+= granularity) {
         // so for each, a batch
         std::vector<std::vector<std::string>> batches = get_batches_between_timestamps(client, i, i+granularity);
         // now, make Bloom filters
-        make_leaf(client, batches, i, i+granularity);
-        bubble_up_leaf(client, i, i+granularity);
+        Leaf leaf = make_leaf(client, batches, i, i+granularity);
+        bubble_up_leaf(client, i, i+granularity, leaf);
 
     }
     return 0;
