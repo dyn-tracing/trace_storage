@@ -257,8 +257,6 @@ public:
             os.write((char *) &salt_[i], sizeof(unsigned int));
         }
 
-        std::cout << "table size " << table_size_ << std::endl;
-        std::cout << "bit table size " << bit_table_.size() << std::endl;
         for (unsigned int i=0; i<table_size_; i++) {
             os.write((char *) &bit_table_[i], sizeof(unsigned char)); // this is unsigned char
         }

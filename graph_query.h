@@ -26,9 +26,9 @@
 #include <boost/graph/vf2_sub_graph_iso.hpp>
 
 
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket3";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket3";
-const char SERVICES_BUCKETS_SUFFIX[] = "-snicket3";
+const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket4";
+const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket4";
+const char SERVICES_BUCKETS_SUFFIX[] = "-snicket4";
 const char ASTERISK_SERVICE[] = "NONE";
 
 const int TRACE_ID_LENGTH = 32;
