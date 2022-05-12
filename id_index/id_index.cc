@@ -303,6 +303,8 @@ bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string 
 
 Leaf make_leaf(gcs::Client* client, struct BatchObjectNames batch, time_t start_time, time_t end_time) {
     Leaf leaf;
+    leaf.start_time = start_time;
+    leaf.end_time = end_time;
     std::vector<std::future<bloom_filter>> inclusive_bloom;
     std::vector<std::future<bloom_filter>> early_bloom;
     std::vector<std::future<bloom_filter>> late_bloom;
@@ -352,9 +354,41 @@ Leaf make_leaf(gcs::Client* client, struct BatchObjectNames batch, time_t start_
     return leaf;
 }
 
+std::tuple<time_t, time_t> get_parent(time_t start_time, time_t end_time, time_t granularity) {
 
-int bubble_up_leaf(gcs::Client* client, time_t start_time, time_t end_time, Leaf &leaf) {
+
+}
+
+
+int bubble_up_leaves_helper(gcs::Client* client,
+    std::vector<std::tuple<time_t, time_t>> just_modified,
+    std::vector<bloom_filter> just_modified_bfs, time_t granularity
+) {
+    std::map<std::tuple<time_t, time_t>, std::vector<int>> parents;
+    for (int i=0; i < just_modified.size(); i++) {
+        // who is my parent?
+        auto parent = get_parent(std::get<0>(just_modified[i]), std::get<1>(just_modified[i]), granularity);
+        parents[parent].push_back(i);
+    }
+    for (const auto & [parent, children] : parents){
+        
+    }
+    
+
+}
+
+int bubble_up_leaves(gcs::Client* client, time_t start_time, time_t end_time, std::vector<Leaf> &leaves, time_t granularity) {
     // we need to bubble up leaf so that means making a bloom filter that is the union of all of them
+    std::map<std::tuple<time_t, time_t>, std::vector<Leaf*>> parents;
+    for (int i=0; i<leaves.size(); i++) {
+        // who is my parent?
+        auto parent = get_parent(leaves[i].start_time, leaves[i].end_time, granularity);
+        parents[parent].push_back(&leaves[i]);
+    }
+
+    
+
+
 
     return 0;
 
@@ -403,11 +437,7 @@ std::vector<struct BatchObjectNames> split_batches_by_leaf(std::vector<std::stri
         }
 
     }
-    std::cout << "returning split batches by leaf" << std::endl;
     return to_return;
-
-    
-
 }
 
 int update_index(gcs::Client* client, time_t last_updated) {
@@ -420,11 +450,11 @@ int update_index(gcs::Client* client, time_t last_updated) {
     std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, to_update);
     auto batches_by_leaf = split_batches_by_leaf(batches, last_updated, to_update, granularity);
     int j=0;
-    std::vector<std::future<Leaf>> leaves;
+    std::vector<Leaf> leaves;
     for (time_t i=last_updated; i<to_update; i+= granularity) {
-        // now, make Bloom filters
-        Leaf leaf = make_leaf(client, batches_by_leaf[j], i, i+granularity);
+        leaves.push_back(make_leaf(client, batches_by_leaf[j], i, i+granularity));
         j++;
     }
+    bubble_up_leaves(client, last_updated, to_update, leaves, granularity);
     return 0;
 }

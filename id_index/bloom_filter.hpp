@@ -218,6 +218,26 @@ public:
          return true;
    }
 
+   inline bloom_filter clone() const {
+        bloom_filter bf;
+        bf.salt_count_ = salt_count_;
+        bf.table_size_ = table_size_;
+        bf.projected_element_count_ = projected_element_count_;
+        bf.inserted_element_count_ = inserted_element_count_;
+        bf.random_seed_ = random_seed_;
+        bf.desired_false_positive_probability_ = desired_false_positive_probability_;
+        bf.bit_table_.resize(table_size_ / bits_per_char, static_cast<unsigned char>(0x00));
+        bf.salt_.resize(salt_count_, static_cast<unsigned char>(0x00));
+        for (unsigned int i=0; i<salt_count_; i++) {
+            bf.salt_[i] = salt_[i]
+        }
+        for (unsigned int i=0; i<table_size_; i++) {
+            bf.bit_table_[i] = bit_table_[i]
+        }
+        return bf;
+
+   }
+
    inline bool ints_match(const bloom_filter& f) const {
       return (
         salt_count_ == f.salt_count_ &&

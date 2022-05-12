@@ -29,6 +29,8 @@ const int branching_factor = 10;
 
 // Leaf struct
 struct Leaf {
+    time_t start_time;
+    time_t end_time;
     std::vector<std::string> batch_names;
     std::vector<bloom_filter> bloom_filters;
 };
@@ -55,6 +57,7 @@ bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string 
 bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string batch);
 Leaf make_leaf(gcs::Client* client, std::vector<BatchObjectNames> batches, time_t start_time, time_t end_time);
 int bubble_up_leaf(gcs::Client* client, time_t start_time, time_t end_time, Leaf &leaf);
+std::tuple<time_t, time_t> get_parent(time_t start_time, time_t end_time, time_t granularity);
 int create_index_bucket(gcs::Client* client);
 int bloom_filter_to_storage(gcs::Client* client, std::string object_name, bloom_filter* bf);
 int bubble_up_bloom_filter(gcs::Client* client, bloom_filter bf);
