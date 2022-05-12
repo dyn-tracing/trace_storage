@@ -300,7 +300,15 @@ bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string 
 
     parameters.compute_optimal_parameters();
     bloom_filter filter(parameters);
-    auto trace_ids = trace_ids_within_time_range_from_trace_id_object(client, batch, earliest, latest);
+    auto trace_ids_unfiltered = trace_ids_from_trace_id_object(client, batch);
+    auto reader = client->ReadObject(trace_struct_bucket, batch);
+    if (!reader) {
+        std::cerr << "Error reading object: " << reader.status() << "\n";
+        throw std::runtime_error("Error reading trace object");
+    }
+    std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+    auto trace_ids = filter_trace_ids_based_on_query_timestamp(trace_ids_unfiltered, batch, contents, earliest, latest, client);
+
     for (int i=0; i<trace_ids.size(); i++) {
         filter.insert(trace_ids[i]);
     }
