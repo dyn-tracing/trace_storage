@@ -30,13 +30,14 @@ TEST(Prefixes, TestGeneratePrefixesBig) {
   }
 }
 
-TEST(Serialization, TestSerialization) {
+TEST(Serialization, TestSerializationBloom) {
   // Expect two strings not to be equal.
   bloom_parameters a_param;
   a_param.projected_element_count = 100;
   a_param.false_positive_probability = 0.01;
   a_param.compute_optimal_parameters();
   bloom_filter a(a_param);
+  a.insert("123");
   std::stringstream stream;
   a.Serialize(stream);
   bloom_filter b;
@@ -45,4 +46,25 @@ TEST(Serialization, TestSerialization) {
   EXPECT_TRUE(a.salt_matches(b));
   EXPECT_TRUE(a.bit_table_matches(b));
   EXPECT_EQ(a, b);
+}
+
+TEST(Serialization, TestSerializationLeaf) {
+  // Expect two strings not to be equal.
+  Leaf leaf1, leaf2;
+  for (int i=0; i<1; i++) {
+    leaf1.batch_names.push_back("name"+std::to_string(i));
+    bloom_parameters a_param;
+      a_param.projected_element_count = 100;
+      a_param.false_positive_probability = 0.01;
+      a_param.compute_optimal_parameters();
+      bloom_filter a(a_param);
+      a.insert("abc"+std::to_string(i));
+      leaf1.bloom_filters.push_back(a);
+  }
+  std::stringstream stream;
+  serialize(leaf1, stream);
+  leaf2 = deserialize(stream);
+  EXPECT_TRUE(leaf_sizes_equal(leaf1, leaf2));
+  EXPECT_TRUE(batch_names_equal(leaf1, leaf2));
+  EXPECT_TRUE(bloom_filters_equal(leaf1, leaf2));
 }
