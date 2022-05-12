@@ -52,7 +52,9 @@ cc_binary(
     name = "status_code_index",
     srcs = [
         "folders_index/status_code/status_code_index.cc",
-        "folders_index/status_code/status_code_index.h"
+        "folders_index/status_code/status_code_index.h",
+        "folders_index/status_code/trace_attributes.cc",
+        "folders_index/status_code/trace_attributes.h"
     ],
     deps = [
         "@com_github_googleapis_google_cloud_cpp//:storage",
