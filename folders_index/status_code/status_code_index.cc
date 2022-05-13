@@ -11,7 +11,9 @@ int main(int argc, char* argv[]) {
 	std::string indexed_attribute = ATTR_SPAN_KIND;
 	std::string attribute_value = "server";
 
-	return update_index(&client, last_updated, indexed_attribute, attribute_value);
+	update_index(&client, last_updated, indexed_attribute, attribute_value);
+
+	return 0;
 }
 
 int update_index(gcs::Client* client, time_t last_updated, 
@@ -24,22 +26,35 @@ int update_index(gcs::Client* client, time_t last_updated,
 	 */
 	std::vector<std::string> trace_struct_object_names = get_all_object_names(TRACE_STRUCT_BUCKET, client);
 	trace_struct_object_names = sort_object_names_on_start_time(trace_struct_object_names);
-	index_batch current_index_batch = index_batch();
 
+	std::vector<std::pair<std::string, std::future<std::vector<std::string>>>> response_futures;
+
+	int count = 1;
+	std::cout << "Spawning " << trace_struct_object_names.size() << " threads." << std::endl;
 	for (auto object_name : trace_struct_object_names) {
-		std::vector<std::string> trace_ids_with_attribute = get_trace_ids_with_attribute(
-			object_name, indexed_attribute, attribute_value, span_buckets_names, client);
+		response_futures.push_back(std::make_pair(object_name, std::async(std::launch::async,
+			get_trace_ids_with_attribute, object_name, indexed_attribute, attribute_value,
+			std::ref(span_buckets_names), client)));
+		std::cout << count << ", " << std::flush;
+		count++;
+	}
 
-		current_index_batch.total_trace_ids += trace_ids_with_attribute.size();
+	std::cout << "Spawned." << std::endl;
+	index_batch current_index_batch = index_batch();
+	for (int i = 0; i < response_futures.size(); i++) {
+		auto object_name = response_futures[i].first;
+		auto trace_ids = response_futures[i].second.get();
+
+		current_index_batch.total_trace_ids += trace_ids.size();
 		current_index_batch.trace_ids_with_timestamps.push_back(std::make_pair(
-			extract_batch_timestamps(object_name), trace_ids_with_attribute
+			extract_batch_timestamps(object_name), trace_ids
 		));
 
 		if (true == is_batch_big_enough(current_index_batch)) {
 			export_batch_to_storage(current_index_batch, indexed_attribute, attribute_value, client);
 			current_index_batch = index_batch();
 		}
-		break;  // TODO remove it
+		break;
 	}
 
 	export_batch_to_storage(current_index_batch, indexed_attribute, attribute_value, client);
@@ -104,14 +119,18 @@ std::vector<std::string> get_trace_ids_with_attribute(
 	std::string object_name, std::string indexed_attribute, std::string attribute_value,
 	std::vector<std::string>& span_buckets_names, gcs::Client* client
 ) {
-	std::unordered_map<std::string, bool> trace_id_to_attribute_membership;
-
+	std::vector<std::future<std::unordered_map<std::string, bool>>> response_futures;
 	for (auto span_bucket : span_buckets_names) {
-		std::unordered_map<std::string, bool> local_trace_id_to_attribute_membership = calculate_trace_id_to_attribute_map(
-			span_bucket, object_name, indexed_attribute, attribute_value, client);
-
-		take_per_field_OR(trace_id_to_attribute_membership, local_trace_id_to_attribute_membership);
+		response_futures.push_back(std::async(std::launch::async, calculate_trace_id_to_attribute_map,
+			span_bucket, object_name, indexed_attribute, attribute_value, client));
 	}
+
+	std::unordered_map<std::string, bool> trace_id_to_attribute_membership;
+	for_each(response_futures.begin(), response_futures.end(),
+		[&trace_id_to_attribute_membership](std::future<std::unordered_map<std::string, bool>>& fut){
+			std::unordered_map<std::string, bool> local_trace_id_to_attribute_membership = fut.get();
+			take_per_field_OR(trace_id_to_attribute_membership, local_trace_id_to_attribute_membership);
+	});
 
 	std::vector<std::string> response;
 	for (auto& i : trace_id_to_attribute_membership) {
@@ -190,9 +209,12 @@ bool is_batch_big_enough(index_batch& current_index_batch) {
 void export_batch_to_storage(index_batch& current_index_batch,
 	std::string indexed_attribute, std::string attribute_value, gcs::Client* client
 ) {
+	if (current_index_batch.total_trace_ids < 1) {
+		return;
+	}
+
 	batch_timestamp consiledated_timestamp = batch_timestamp();
 	std::string object_to_write = "";
-
 
 	for (auto& elem : current_index_batch.trace_ids_with_timestamps) {
 		auto curr_timestamp = elem.first;
@@ -225,12 +247,14 @@ void export_batch_to_storage(index_batch& current_index_batch,
 		consiledated_timestamp.start_time + "-" + consiledated_timestamp.end_time;
 
 	write_object(bucket_name, object_name, object_to_write, client);
-	exit(1);
+	return;
 }
 
 void write_object(std::string bucket_name, std::string object_name,
-	std::string& object_to_write, gcs::Client* client) {
-
+	std::string& object_to_write, gcs::Client* client
+) {
+	std::cout << "Writing in " << bucket_name << "/" << object_name << ". Total" << object_to_write.length() << std::endl;
+	return;
 	gcs::ObjectWriteStream stream = client->WriteObject(bucket_name, object_name);
 	stream << object_to_write << "\n";
     stream.Close();

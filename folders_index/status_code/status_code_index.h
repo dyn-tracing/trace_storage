@@ -4,11 +4,12 @@
 #ifndef STATUS_CODE_INDEX_H_
 #define STATUS_CODE_INDEX_H_
 
+#include <future>
 #include <iostream>
-#include <unordered_map>
-#include <utility>
 #include <map>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 #include "trace_attributes.h"
 #include "google/cloud/storage/client.h"
@@ -51,6 +52,9 @@ struct index_batch {
 namespace gcs = ::google::cloud::storage;
 using ::google::cloud::StatusOr;
 
+void write_object_dummy(std::string bucket_name, std::string object_name,
+	std::string& object_to_write, gcs::Client* client
+);
 void write_object(std::string bucket_name, std::string object_name,
 	std::string& object_to_write, gcs::Client* client);
 int update_index(gcs::Client* client, time_t last_updated, 
