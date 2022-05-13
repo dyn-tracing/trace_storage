@@ -355,8 +355,10 @@ Leaf make_leaf(gcs::Client* client, struct BatchObjectNames batch, time_t start_
 }
 
 std::tuple<time_t, time_t> get_parent(time_t start_time, time_t end_time, time_t granularity) {
-
-
+    time_t difference_for_parent = (end_time-start_time)*granularity;
+    // this may look unintuitive, but bc integer division, difference for parent checks out
+    time_t parent_start = (start_time/difference_for_parent)*difference_for_parent;
+    return std::make_tuple(parent_start, parent_start+difference_for_parent);
 }
 
 
@@ -516,6 +518,6 @@ int update_index(gcs::Client* client, time_t last_updated) {
         std::cout << "pushed back leaf" << std::endl;
         j++;
     }
-    //bubble_up_leaves(client, last_updated, to_update, leaves, granularity);
+    bubble_up_leaves(client, last_updated, to_update, leaves, granularity);
     return 0;
 }

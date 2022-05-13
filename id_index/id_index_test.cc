@@ -68,3 +68,16 @@ TEST(Serialization, TestSerializationLeaf) {
   EXPECT_TRUE(batch_names_equal(leaf1, leaf2));
   EXPECT_TRUE(bloom_filters_equal(leaf1, leaf2));
 }
+
+TEST(Arithmetic, TestGetParentArithmetic) {
+    auto ret = get_parent(40, 50, 10);
+    std::tuple<time_t, time_t> answer = std::make_tuple(0,100);
+    EXPECT_EQ(ret, answer);
+    auto ret2 = get_parent(140, 150, 10);
+    std::tuple<time_t, time_t> answer2 = std::make_tuple(100,200);
+    EXPECT_EQ(ret2, answer2);
+    auto ret3 = get_parent(200, 300, 10);
+    std::tuple<time_t, time_t> answer3 = std::make_tuple(0,1000);
+    EXPECT_EQ(ret3, answer3);
+
+}

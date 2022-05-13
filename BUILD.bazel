@@ -100,14 +100,14 @@ cc_binary(
 )
 
 
-#cc_test(
-#    name = "index",
-#    size = "small",
-#    srcs = [
-#            "id_index/id_index_test.cc",
-#         ],
-#    deps = [
-#        "//:id_index_lib",
-#        "@com_google_googletest//:gtest_main",
-#    ],
-#)
+cc_test(
+    name = "index",
+    size = "small",
+    srcs = [
+            "id_index/id_index_test.cc",
+         ],
+    deps = [
+        "//:id_index_lib",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
