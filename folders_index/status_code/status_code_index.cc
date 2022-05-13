@@ -25,25 +25,35 @@ int main(int argc, char* argv[]) {
 int update_index(gcs::Client* client, time_t last_updated, 
 	std::string indexed_attribute, std::string attribute_value
 ) {
+	create_index_bucket_if_not_present(indexed_attribute, client);
+
 	std::vector<std::string> span_buckets_names = get_spans_buckets_names(client);
 	std::vector<std::string> trace_struct_object_names = get_all_object_names(TRACE_STRUCT_BUCKET, client);
 	trace_struct_object_names = sort_object_names_on_start_time(trace_struct_object_names);
 
-	std::vector<std::pair<std::string, std::future<std::vector<std::string>>>> response_futures;
+	std::vector<
+		std::pair<
+			std::string,
+			std::future<
+				std::unordered_map<
+					std::string, 
+					std::vector<
+						std::string>>>>> response_futures;
 
 	for (auto object_name : trace_struct_object_names) {
 		response_futures.push_back(std::make_pair(object_name, std::async(std::launch::async,
 			get_trace_ids_with_attribute, object_name, indexed_attribute, attribute_value,
 			std::ref(span_buckets_names), client)));
+		break;
 	}
 
 	index_batch current_index_batch = index_batch();
 	for (int i = 0; i < response_futures.size(); i++) {
 		auto object_name = response_futures[i].first;
-		auto trace_ids = response_futures[i].second.get();
+		auto trace_ids_with_attributes = response_futures[i].second.get();
 
-		current_index_batch.total_trace_ids += trace_ids.size();
-		current_index_batch.trace_ids_with_timestamps.push_back(std::make_pair(object_name, trace_ids));
+		current_index_batch.total_trace_ids += trace_ids_with_attributes.size();
+		current_index_batch.trace_ids_with_timestamps.push_back(std::make_pair(object_name, trace_ids_with_attributes));
 
 		if (true == is_batch_big_enough(current_index_batch)) {
 			export_batch_to_storage(current_index_batch, indexed_attribute, attribute_value, client);
@@ -110,44 +120,48 @@ std::vector<std::string> sort_object_names_on_start_time(std::vector<std::string
 	return object_names;	
 }
 
-std::vector<std::string> get_trace_ids_with_attribute(
+std::unordered_map<std::string, std::vector<std::string>> get_trace_ids_with_attribute(
 	std::string object_name, std::string indexed_attribute, std::string attribute_value,
 	std::vector<std::string>& span_buckets_names, gcs::Client* client
 ) {
-	std::unordered_map<std::string, bool> trace_id_to_attribute_membership;
+	std::unordered_map<std::string, std::vector<std::string>> trace_id_to_attribute_membership;
 
 	for (auto span_bucket : span_buckets_names) {
-		std::unordered_map<std::string, bool> local_trace_id_to_attribute_membership = calculate_trace_id_to_attribute_map(
+		std::unordered_map<std::string, std::vector<std::string>> local_trace_id_to_attribute_membership = calculate_trace_id_to_attribute_map(
 			span_bucket, object_name, indexed_attribute, attribute_value, client);
 
-		take_per_field_OR(trace_id_to_attribute_membership, local_trace_id_to_attribute_membership);
+		take_per_field_union(trace_id_to_attribute_membership, local_trace_id_to_attribute_membership);
 	}
 
-	std::vector<std::string> response;
-	for (auto& i : trace_id_to_attribute_membership) {
-		if (true == i.second) {
-			response.push_back(i.first);
-		}
-	}
-
-	return response;
+	return trace_id_to_attribute_membership;
 }
 
-void take_per_field_OR(std::unordered_map<std::string, bool>& trace_id_to_attribute_membership,
-	std::unordered_map<std::string, bool>& local_trace_id_to_attribute_membership) {
-	for (auto& i : local_trace_id_to_attribute_membership) {
-		if ((trace_id_to_attribute_membership.find(i.first) == trace_id_to_attribute_membership.end())
-			|| (false == trace_id_to_attribute_membership[i.first]) 
-		) {
-			trace_id_to_attribute_membership[i.first] = i.second;
-		}
-	}
-}
-
-std::unordered_map<std::string, bool> calculate_trace_id_to_attribute_map(std::string span_bucket_name,
-	std::string object_name, std::string indexed_attribute, std::string attribute_value, gcs::Client* client
+void take_per_field_union(std::unordered_map<std::string, std::vector<std::string>>& trace_id_to_attribute_membership,
+	std::unordered_map<std::string, std::vector<std::string>>& local_trace_id_to_attribute_membership
 ) {
-	std::unordered_map<std::string, bool> response;
+	for (auto& i : local_trace_id_to_attribute_membership) {
+		auto local_trace_id = i.first;
+		auto local_attributes = i.second;
+
+		if (trace_id_to_attribute_membership.find(local_trace_id) == trace_id_to_attribute_membership.end()) {
+			std::vector<std::string> vec;
+			trace_id_to_attribute_membership[local_trace_id] = vec;
+		}
+
+		auto* response_attrs = &(trace_id_to_attribute_membership[local_trace_id]);
+		for (auto& j : local_attributes) {
+			if (std::find(response_attrs->begin(), response_attrs->end(), j) == response_attrs->end()) {
+				trace_id_to_attribute_membership[local_trace_id].push_back(j);
+			}
+		}
+	}
+}
+
+std::unordered_map<std::string, std::vector<std::string>> calculate_trace_id_to_attribute_map(
+	std::string span_bucket_name, std::string object_name, std::string indexed_attribute,
+	std::string attribute_value, gcs::Client* client
+) {
+	std::unordered_map<std::string, std::vector<std::string>> response;
 	std::string raw_span_bucket_obj_content = read_object(span_bucket_name, object_name, client);
 	if (raw_span_bucket_obj_content.length() < 1) {
 		return response;
@@ -173,8 +187,8 @@ std::unordered_map<std::string, bool> calculate_trace_id_to_attribute_map(std::s
 			auto curr_attr_key = attribute->key();
 			auto curr_attr_val = val->string_value();
 
-			if (indexed_attribute == curr_attr_key && attribute_value == curr_attr_val) {
-				response[trace_id] = true;
+			if (indexed_attribute == curr_attr_key) {
+				response[trace_id].push_back(curr_attr_val);
 			}
 		}
 	}
@@ -197,51 +211,70 @@ batch_timestamp extract_batch_timestamps(std::string batch_name) {
  * TODO: Can do better here. 
  */
 bool is_batch_big_enough(index_batch& current_index_batch) {
-	return (current_index_batch.total_trace_ids * 32) >= (1000000 - 200);
+	return (current_index_batch.total_trace_ids * 32) >= (1000000 - 100);
+}
+
+void print_index_batch(index_batch& current_index_batch) {
+	std::cout << current_index_batch.total_trace_ids << std::endl;
+	for (auto p : current_index_batch.trace_ids_with_timestamps) {
+		std::cout << p.first << " : " << std::endl;
+		for (auto m : p.second) {
+			std::cout << m.first << " => ";
+			for (auto a : m.second) {
+				std:: cout << a << std::flush;
+			}
+			std::cout << std::endl;
+		}
+		std::cout << std::endl;
+	}
 }
 
 void export_batch_to_storage(index_batch& current_index_batch,
 	std::string indexed_attribute, std::string attribute_value, gcs::Client* client
 ) {
-	if (current_index_batch.total_trace_ids < 1) {
-		return;
-	}
+	// std::vector<std::pair<std::string, std::unordered_map<std::string, std::vector<std::string>>>> index_batch.trace_ids_with_timestamps
 
-	batch_timestamp consiledated_timestamp = batch_timestamp();
-	std::string object_to_write = "";
-
-	for (auto& elem : current_index_batch.trace_ids_with_timestamps) {
-		auto curr_timestamp = extract_batch_timestamps(elem.first);
-		auto curr_trace_ids = elem.second;
-
-		if (consiledated_timestamp.start_time == "" || 
-			(std::stol(curr_timestamp.start_time) < std::stol(consiledated_timestamp.start_time))
-		) {
-			consiledated_timestamp.start_time = curr_timestamp.start_time;
-		}
-
-		if (consiledated_timestamp.end_time == "" || 
-			(std::stol(curr_timestamp.end_time) > std::stol(consiledated_timestamp.end_time))
-		) {
-			consiledated_timestamp.end_time = curr_timestamp.end_time;
-		}
-
-		auto serialized_trace_ids = serialize_trace_ids(curr_trace_ids);
-		auto serialized_timestamp = "Timestamp: " + elem.first;
-
-		object_to_write += (serialized_timestamp + "\n" + serialized_trace_ids);
-	}
-
-	std::string autoscaling_hash = get_autoscaling_hash_from_start_time(consiledated_timestamp.start_time);
-
-	auto bucket_name = get_bucket_name_for_attr(indexed_attribute);
-	auto folder_name = get_folder_name_from_attr_value(attribute_value);
-
-	std::string object_name = folder_name + "/" + autoscaling_hash + "-" + \
-		consiledated_timestamp.start_time + "-" + consiledated_timestamp.end_time;
-
-	write_object(bucket_name, object_name, object_to_write, client);
+	
 	return;
+	// if (current_index_batch.total_trace_ids < 1) {
+	// 	return;
+	// }
+
+	// batch_timestamp consiledated_timestamp = batch_timestamp();
+	// std::string object_to_write = "";
+
+	// for (auto& elem : current_index_batch.trace_ids_with_timestamps) {
+	// 	auto curr_timestamp = extract_batch_timestamps(elem.first);
+	// 	auto curr_trace_ids = elem.second;
+
+	// 	if (consiledated_timestamp.start_time == "" || 
+	// 		(std::stol(curr_timestamp.start_time) < std::stol(consiledated_timestamp.start_time))
+	// 	) {
+	// 		consiledated_timestamp.start_time = curr_timestamp.start_time;
+	// 	}
+
+	// 	if (consiledated_timestamp.end_time == "" || 
+	// 		(std::stol(curr_timestamp.end_time) > std::stol(consiledated_timestamp.end_time))
+	// 	) {
+	// 		consiledated_timestamp.end_time = curr_timestamp.end_time;
+	// 	}
+
+	// 	auto serialized_trace_ids = serialize_trace_ids(curr_trace_ids);
+	// 	auto serialized_timestamp = "Timestamp: " + elem.first;
+
+	// 	object_to_write += (serialized_timestamp + "\n" + serialized_trace_ids);
+	// }
+
+	// std::string autoscaling_hash = get_autoscaling_hash_from_start_time(consiledated_timestamp.start_time);
+
+	// auto bucket_name = get_bucket_name_for_attr(indexed_attribute);
+	// auto folder_name = get_folder_name_from_attr_value(attribute_value);
+
+	// std::string object_name = folder_name + "/" + autoscaling_hash + "-" + \
+	// 	consiledated_timestamp.start_time + "-" + consiledated_timestamp.end_time;
+
+	// write_object(bucket_name, object_name, object_to_write, client);
+	// return;
 }
 
 void write_object(std::string bucket_name, std::string object_name,
@@ -329,22 +362,39 @@ std::string hex_str(std::string data, int len) {
 	return s;
 }
 
+void create_index_bucket_if_not_present(std::string indexed_attribute, gcs::Client* client) {
+	auto bucket_name = get_bucket_name_for_attr(indexed_attribute);
+
+	auto bucket_metadata = client->CreateBucketForProject(bucket_name, PROJECT_ID,
+		gcs::BucketMetadata().set_location(BUCKETS_LOCATION).set_storage_class(gcs::storage_class::Regional()));
+
+	if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kAborted) {
+		// ignore this, means we've already created the bucket
+	} else if (!bucket_metadata) {
+		std::cerr << "Error creating bucket " << bucket_name << ", status=" << bucket_metadata.status() << "\n";
+		exit(1);
+	}
+}
+
 int dummy_tests() {
-	// std::unordered_map<std::string, bool> global;
-	// global["t1"] = false;
-	// global["t2"] = true;
-	// global["t5"] = true;
+	// std::unordered_map<std::string, std::vector<std::string>> global;
+	// global["t1"] = {"a", "b"};
+	// global["t2"] = {"a"};
+	// global["t5"] = {"c"};
 
-	// std::unordered_map<std::string, bool> local;
-	// local["t1"] = true;
-	// local["t2"] = false;
-	// local["t3"] = true;
-	// local["t4"] = false;
+	// std::unordered_map<std::string, std::vector<std::string>> local;
+	// local["t1"] = {"a", "c", "c", "a"};
+	// local["t2"] = {"a"};
+	// local["t6"] = {"f"};
 
-	// take_per_field_OR(global, local);
+	// take_per_field_union(global, local);
 
 	// for (auto i : global) {
-	// 	std::cout << i.first << " => " << i.second << std::endl;
+	// 	std::cout << i.first << " => ";
+	// 	for (auto j : i.second) {
+	// 		std::cout << j << " ";
+	// 	}
+	// 	std::cout << std::endl;
 	// }
 
 	// std::size_t hash = std::hash<std::string>()("foo");	
