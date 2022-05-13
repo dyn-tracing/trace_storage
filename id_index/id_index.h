@@ -55,7 +55,7 @@ std::vector<std::string> generate_prefixes(time_t earliest, time_t latest);
 std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest);
 bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string batch, time_t earliest, time_t latest);
 bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string batch);
-Leaf make_leaf(gcs::Client* client, std::vector<BatchObjectNames> batches, time_t start_time, time_t end_time);
+//Leaf make_leaf(gcs::Client* client, std::vector<BatchObjectNames> batches, time_t start_time, time_t end_time);
 int bubble_up_leaf(gcs::Client* client, time_t start_time, time_t end_time, Leaf &leaf);
 std::tuple<time_t, time_t> get_parent(time_t start_time, time_t end_time, time_t granularity);
 int create_index_bucket(gcs::Client* client);
