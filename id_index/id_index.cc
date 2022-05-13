@@ -57,7 +57,6 @@ std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
         std::string prefix = e_str.substr(0, i);
         prefix += std::to_string(j);
         to_return.push_back(prefix);
-        std::cout << "prefixes " << prefix << std::endl;
     }
     return to_return;
 }
@@ -155,7 +154,6 @@ std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix
 
 std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest) {
     std::vector<std::string> prefixes = generate_prefixes(earliest, latest);
-    std::cout << "len of prefixes " << prefixes.size() << std::endl;
     std::vector<std::future<std::vector<std::string>>> object_names;
     for (int i = 0; i < prefixes.size(); i++) {
         for (int j = 0; j < 10; j++) {
@@ -166,7 +164,6 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
             }
         }
     }
-    std::cout << "pushed all async out " << std::endl << std::flush;
     std::vector<std::string> to_return;
     for (int m=0; m<object_names.size(); m++) {
         auto names = object_names[m].get();
@@ -191,7 +188,6 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
             }
         }
     }
-    std::cout << "returning batch" << std::endl;
     return to_return;
 }
 
@@ -211,28 +207,6 @@ int create_index_bucket(gcs::Client* client) {
   }
   return 0;
 }
-
-int bloom_filter_to_storage(gcs::Client* client, std::string object_name, bloom_filter* bf) {
-  gcs::ObjectWriteStream stream =
-        client->WriteObject(trace_struct_bucket, object_name);
-  bf->Serialize(stream);
-  stream.Close();
-  StatusOr<gcs::ObjectMetadata> metadata = std::move(stream).metadata();
-    if (!metadata) {
-      throw std::runtime_error(metadata.status().message());
-  }
-
-  /*
-  // now that it is written, just double check you can re-interpret what you've written
-  gcs::ObjectReadStream read_stream = client->ReadObject(trace_struct_bucket, object_name);
-  bloom_filter retrieved_bf;
-  retrieved_bf.Deserialize(read_stream);
-  read_stream.Close();
-  assert(retrieved_bf == *bf);
-  */
-  return 0;
-}
-
 
 std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std::string obj_name) {
     std::vector<std::string> to_return;
@@ -362,7 +336,7 @@ std::tuple<time_t, time_t> get_parent(time_t start_time, time_t end_time, time_t
 }
 
 
-int bubble_up_leaves_helper(gcs::Client* client,
+std::tuple<time_t, time_t>  bubble_up_leaves_helper(gcs::Client* client,
     std::vector<std::tuple<time_t, time_t>> just_modified,
     std::vector<bloom_filter> just_modified_bfs, time_t granularity
 ) {
@@ -373,7 +347,6 @@ int bubble_up_leaves_helper(gcs::Client* client,
         parents[parent].push_back(i);
     }
     if (parents.size() < 2) {
-        std::cout << "only one parent" << std::endl;
         // two possibilities:  we're just propagating up the tree, or we're done here
         // we can tell the difference by whether the parent exists yet and how many children there are
         std::string parent_contents;
@@ -386,11 +359,11 @@ int bubble_up_leaves_helper(gcs::Client* client,
             if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
                 // parent doesn't exist;  we're done here
                 if (children.size() == 1) {
-                    return 0;
+                    return just_modified[children[0]];
                 }
             } else if (!reader) {
                 std::cerr << "Error reading object " << index_bucket << "/" << parent_object << " :" << reader.status() << "\n";
-                return 1;
+                throw std::runtime_error(reader.status().message());
             }
             // now we know parent exists, which means we need to keep propagating up
             bloom_filter parental_bloom_filter;
@@ -414,7 +387,6 @@ int bubble_up_leaves_helper(gcs::Client* client,
         }
     }
 
-    std::cout << "more than one parent" << std::endl;
     std::vector<std::tuple<time_t, time_t>> new_modified;
     std::vector<bloom_filter> new_modified_bfs;
     // normal case:  we have a lot to be writing here
@@ -454,7 +426,27 @@ int bubble_up_leaves(gcs::Client* client, time_t start_time, time_t end_time, st
         }
         newly_modified_bfs.push_back(unioned_bloom);
     }
-    return bubble_up_leaves_helper(client, newly_modified, newly_modified_bfs, granularity);
+    // record the new root in the bucket's metadata
+    auto new_root = bubble_up_leaves_helper(client, newly_modified, newly_modified_bfs, granularity);
+    std::string root_str = std::to_string(std::get<0>(new_root)) + "-"
+            + std::to_string(std::get<1>(new_root));
+    StatusOr<gcs::BucketMetadata> updated_metadata = client->PatchBucket(
+      index_bucket,
+      gcs::BucketMetadataPatchBuilder().SetLabel("root", root_str));
+
+    if (!updated_metadata) {
+      throw std::runtime_error(updated_metadata.status().message());
+    }
+    updated_metadata = client->PatchBucket(
+      index_bucket,
+      gcs::BucketMetadataPatchBuilder().SetLabel("granularity", std::to_string(granularity)));
+
+    if (!updated_metadata) {
+      throw std::runtime_error(updated_metadata.status().message());
+    }
+    return 0;
+
+
 }
 
 // List of object names per batch
@@ -503,6 +495,13 @@ std::vector<struct BatchObjectNames> split_batches_by_leaf(std::vector<std::stri
     return to_return;
 }
 
+int query_index_for_traceID(gcs::Client* client, time_t last_updated, time_t granularity) {
+    // you can go from last updated up the tree to get what the root currently is
+
+
+
+}
+
 int update_index(gcs::Client* client, time_t last_updated) {
     time_t now;
     time(&now);
@@ -512,14 +511,11 @@ int update_index(gcs::Client* client, time_t last_updated) {
     create_index_bucket(client);
     std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, to_update);
     auto batches_by_leaf = split_batches_by_leaf(batches, last_updated, to_update, granularity);
-    std::cout << "len batches by leaf " << batches_by_leaf.size() << std::endl;
 
     int j=0;
     std::vector<Leaf> leaves;
     for (time_t i=last_updated; i<to_update; i+= granularity) {
-        std::cout << "in main loop, i is " << i << std::endl;
         leaves.push_back(make_leaf(client, batches_by_leaf[j], i, i+granularity));
-        std::cout << "pushed back leaf" << std::endl;
         j++;
     }
     bubble_up_leaves(client, last_updated, to_update, leaves, granularity);
