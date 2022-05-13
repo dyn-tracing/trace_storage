@@ -229,10 +229,10 @@ public:
         bf.bit_table_.resize(table_size_ / bits_per_char, static_cast<unsigned char>(0x00));
         bf.salt_.resize(salt_count_, static_cast<unsigned char>(0x00));
         for (unsigned int i=0; i<salt_count_; i++) {
-            bf.salt_[i] = salt_[i]
+            bf.salt_[i] = salt_[i];
         }
         for (unsigned int i=0; i<table_size_; i++) {
-            bf.bit_table_[i] = bit_table_[i]
+            bf.bit_table_[i] = bit_table_[i];
         }
         return bf;
 

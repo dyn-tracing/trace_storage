@@ -338,7 +338,7 @@ Leaf make_leaf(gcs::Client* client, struct BatchObjectNames batch, time_t start_
     }
 
     for (int k=0; k<late_bloom.size(); k++) {
-        leaf.bloom_filters.push_back(early_bloom[k].get());
+        leaf.bloom_filters.push_back(late_bloom[k].get());
     }
     // 5. Put that leaf in storage
     std::stringstream objname_stream;
@@ -370,28 +370,85 @@ int bubble_up_leaves_helper(gcs::Client* client,
         auto parent = get_parent(std::get<0>(just_modified[i]), std::get<1>(just_modified[i]), granularity);
         parents[parent].push_back(i);
     }
-    for (const auto & [parent, children] : parents){
-        
-    }
-    
+    if (parents.size() < 2) {
+        // two possibilities:  we're just propagating up the tree, or we're done here
+        // we can tell the difference by whether the parent exists yet
+        std::string parent_contents;
 
+        for (const auto & [parent, children] : parents) {
+            std::tuple<time_t, time_t> parent_bounds = get_parent(std::get<0>(just_modified[children[0]]),
+                    std::get<1>(just_modified[children[0]]), granularity);
+            std::string parent_object = std::to_string(std::get<0>(parent_bounds)) + "-" + std::to_string(std::get<1>(parent_bounds));
+            auto reader = client->ReadObject(index_bucket, parent_object);
+            if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
+                // parent doesn't exist;  we're done here
+                return 0;
+            } else if (!reader) {
+                std::cerr << "Error reading object " << index_bucket << "/" << parent_object << " :" << reader.status() << "\n";
+                return 1;
+            }
+            // now we know parent exists, which means we need to keep propagating up
+            bloom_filter parental_bloom_filter;
+            parental_bloom_filter.Deserialize(reader);
+            reader.Close();
+            parental_bloom_filter|=just_modified_bfs[0];
+            // now rewrite the parental one back out
+            gcs::ObjectWriteStream stream =
+            client->WriteObject(index_bucket, parent_object);
+            parental_bloom_filter.Serialize(stream);
+            stream.Close();
+            StatusOr<gcs::ObjectMetadata> metadata = std::move(stream).metadata();
+            if (!metadata) {
+              throw std::runtime_error(metadata.status().message());
+            }
+            std::vector<std::tuple<time_t, time_t>> new_modified;
+            new_modified.push_back(parent_bounds);
+            std::vector<bloom_filter> new_bloom;
+            new_bloom.push_back(parental_bloom_filter);
+            return bubble_up_leaves_helper(client, new_modified, new_bloom, granularity);
+        }
+    }
+
+    std::vector<std::tuple<time_t, time_t>> new_modified;
+    std::vector<bloom_filter> new_modified_bfs;
+    // normal case:  we have a lot to be writing here
+    for (const auto & [parent, children] : parents){
+        bloom_filter unioned_filter = just_modified_bfs[children[0]];
+        for (int i=0; i<children.size(); i++) {
+            unioned_filter |= just_modified_bfs[children[i]];
+        }
+        // now write parent
+        std::tuple<time_t, time_t> parent_bounds = get_parent(std::get<0>(just_modified[children[0]]),
+                std::get<1>(just_modified[children[0]]), granularity);
+        std::string parent_object = std::to_string(std::get<0>(parent_bounds)) + "-"
+            + std::to_string(std::get<1>(parent_bounds));
+        gcs::ObjectWriteStream stream = client->WriteObject(index_bucket, parent_object);
+        unioned_filter.Serialize(stream);
+        stream.Close();
+        StatusOr<gcs::ObjectMetadata> metadata = std::move(stream).metadata();
+        if (!metadata) {
+          throw std::runtime_error(metadata.status().message());
+        }
+        new_modified.push_back(parent_bounds);
+        new_modified_bfs.push_back(unioned_filter);
+    }
+    return bubble_up_leaves_helper(client, new_modified, new_modified_bfs, granularity);
 }
 
 int bubble_up_leaves(gcs::Client* client, time_t start_time, time_t end_time, std::vector<Leaf> &leaves, time_t granularity) {
     // we need to bubble up leaf so that means making a bloom filter that is the union of all of them
-    std::map<std::tuple<time_t, time_t>, std::vector<Leaf*>> parents;
+    std::vector<std::tuple<time_t, time_t>> newly_modified;
+    std::vector<bloom_filter> newly_modified_bfs;
     for (int i=0; i<leaves.size(); i++) {
-        // who is my parent?
-        auto parent = get_parent(leaves[i].start_time, leaves[i].end_time, granularity);
-        parents[parent].push_back(&leaves[i]);
+        newly_modified.push_back(std::make_tuple(leaves[i].start_time, leaves[i].end_time));
+        // bloom filter should be union of all
+        bloom_filter unioned_bloom = leaves[i].bloom_filters[0];
+        for (int j=0; j<leaves[i].bloom_filters.size(); j++) {
+            unioned_bloom |= leaves[i].bloom_filters[j];
+        }
+        newly_modified_bfs.push_back(unioned_bloom);
     }
-
-    
-
-
-
-    return 0;
-
+    return bubble_up_leaves_helper(client, newly_modified, newly_modified_bfs, granularity);
 }
 
 // List of object names per batch
@@ -449,12 +506,16 @@ int update_index(gcs::Client* client, time_t last_updated) {
     create_index_bucket(client);
     std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, to_update);
     auto batches_by_leaf = split_batches_by_leaf(batches, last_updated, to_update, granularity);
+    std::cout << "len batches by leaf " << batches_by_leaf.size() << std::endl;
+
     int j=0;
     std::vector<Leaf> leaves;
     for (time_t i=last_updated; i<to_update; i+= granularity) {
+        std::cout << "in main loop, i is " << i << std::endl;
         leaves.push_back(make_leaf(client, batches_by_leaf[j], i, i+granularity));
+        std::cout << "pushed back leaf" << std::endl;
         j++;
     }
-    bubble_up_leaves(client, last_updated, to_update, leaves, granularity);
+    //bubble_up_leaves(client, last_updated, to_update, leaves, granularity);
     return 0;
 }

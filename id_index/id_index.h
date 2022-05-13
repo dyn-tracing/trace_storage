@@ -60,6 +60,7 @@ int bubble_up_leaf(gcs::Client* client, time_t start_time, time_t end_time, Leaf
 std::tuple<time_t, time_t> get_parent(time_t start_time, time_t end_time, time_t granularity);
 int create_index_bucket(gcs::Client* client);
 int bloom_filter_to_storage(gcs::Client* client, std::string object_name, bloom_filter* bf);
+std::tuple<time_t, time_t> get_parent(time_t start_time, time_t end_time, time_t granularity);
 int bubble_up_bloom_filter(gcs::Client* client, bloom_filter bf);
 int update_index(gcs::Client* client, time_t last_updated);
 
