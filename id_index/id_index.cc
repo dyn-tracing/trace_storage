@@ -373,8 +373,9 @@ int bubble_up_leaves_helper(gcs::Client* client,
         parents[parent].push_back(i);
     }
     if (parents.size() < 2) {
+        std::cout << "only one parent" << std::endl;
         // two possibilities:  we're just propagating up the tree, or we're done here
-        // we can tell the difference by whether the parent exists yet
+        // we can tell the difference by whether the parent exists yet and how many children there are
         std::string parent_contents;
 
         for (const auto & [parent, children] : parents) {
@@ -384,7 +385,9 @@ int bubble_up_leaves_helper(gcs::Client* client,
             auto reader = client->ReadObject(index_bucket, parent_object);
             if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
                 // parent doesn't exist;  we're done here
-                return 0;
+                if (children.size() == 1) {
+                    return 0;
+                }
             } else if (!reader) {
                 std::cerr << "Error reading object " << index_bucket << "/" << parent_object << " :" << reader.status() << "\n";
                 return 1;
@@ -411,6 +414,7 @@ int bubble_up_leaves_helper(gcs::Client* client,
         }
     }
 
+    std::cout << "more than one parent" << std::endl;
     std::vector<std::tuple<time_t, time_t>> new_modified;
     std::vector<bloom_filter> new_modified_bfs;
     // normal case:  we have a lot to be writing here
