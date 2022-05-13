@@ -11,8 +11,14 @@ int main(int argc, char* argv[]) {
 	std::string indexed_attribute = ATTR_SPAN_KIND;
 	std::string attribute_value = "server";
 
+	boost::posix_time::ptime start, stop;
+	start = boost::posix_time::microsec_clock::local_time();
 	update_index(&client, last_updated, indexed_attribute, attribute_value);
+	stop = boost::posix_time::microsec_clock::local_time();
 
+	boost::posix_time::time_duration dur = stop - start;
+	int64_t milliseconds = dur.total_milliseconds();
+	std::cout << "Time taken: " << milliseconds << std::endl;
 	return 0;
 }
 
@@ -20,41 +26,29 @@ int update_index(gcs::Client* client, time_t last_updated,
 	std::string indexed_attribute, std::string attribute_value
 ) {
 	std::vector<std::string> span_buckets_names = get_spans_buckets_names(client);
-	/**
-	 * TODO: (i) Following is a bad thing to do. what if all object names do not fit in the memory. 
-	 * (ii) do the error handling for the case when bucket is not present. 
-	 */
 	std::vector<std::string> trace_struct_object_names = get_all_object_names(TRACE_STRUCT_BUCKET, client);
 	trace_struct_object_names = sort_object_names_on_start_time(trace_struct_object_names);
 
 	std::vector<std::pair<std::string, std::future<std::vector<std::string>>>> response_futures;
 
-	int count = 1;
-	std::cout << "Spawning " << trace_struct_object_names.size() << " threads." << std::endl;
 	for (auto object_name : trace_struct_object_names) {
 		response_futures.push_back(std::make_pair(object_name, std::async(std::launch::async,
 			get_trace_ids_with_attribute, object_name, indexed_attribute, attribute_value,
 			std::ref(span_buckets_names), client)));
-		std::cout << count << ", " << std::flush;
-		count++;
 	}
 
-	std::cout << "Spawned." << std::endl;
 	index_batch current_index_batch = index_batch();
 	for (int i = 0; i < response_futures.size(); i++) {
 		auto object_name = response_futures[i].first;
 		auto trace_ids = response_futures[i].second.get();
 
 		current_index_batch.total_trace_ids += trace_ids.size();
-		current_index_batch.trace_ids_with_timestamps.push_back(std::make_pair(
-			extract_batch_timestamps(object_name), trace_ids
-		));
+		current_index_batch.trace_ids_with_timestamps.push_back(std::make_pair(object_name, trace_ids));
 
 		if (true == is_batch_big_enough(current_index_batch)) {
 			export_batch_to_storage(current_index_batch, indexed_attribute, attribute_value, client);
 			current_index_batch = index_batch();
 		}
-		break;
 	}
 
 	export_batch_to_storage(current_index_batch, indexed_attribute, attribute_value, client);
@@ -74,9 +68,10 @@ std::vector<std::string> get_spans_buckets_names(gcs::Client* client) {
 			continue;
 		}
 
-		const auto label_map = bucket_metadata->labels();
-		if (label_map.at(BUCKET_TYPE_LABEL_KEY) == BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS) {
-			response.push_back(bucket_metadata->name());
+		for (auto const& kv : bucket_metadata->labels()) {
+			if (kv.first == BUCKET_TYPE_LABEL_KEY && kv.second == BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS) {
+				response.push_back(bucket_metadata->name());
+			}
 		}
 	}
 
@@ -119,18 +114,14 @@ std::vector<std::string> get_trace_ids_with_attribute(
 	std::string object_name, std::string indexed_attribute, std::string attribute_value,
 	std::vector<std::string>& span_buckets_names, gcs::Client* client
 ) {
-	std::vector<std::future<std::unordered_map<std::string, bool>>> response_futures;
-	for (auto span_bucket : span_buckets_names) {
-		response_futures.push_back(std::async(std::launch::async, calculate_trace_id_to_attribute_map,
-			span_bucket, object_name, indexed_attribute, attribute_value, client));
-	}
-
 	std::unordered_map<std::string, bool> trace_id_to_attribute_membership;
-	for_each(response_futures.begin(), response_futures.end(),
-		[&trace_id_to_attribute_membership](std::future<std::unordered_map<std::string, bool>>& fut){
-			std::unordered_map<std::string, bool> local_trace_id_to_attribute_membership = fut.get();
-			take_per_field_OR(trace_id_to_attribute_membership, local_trace_id_to_attribute_membership);
-	});
+
+	for (auto span_bucket : span_buckets_names) {
+		std::unordered_map<std::string, bool> local_trace_id_to_attribute_membership = calculate_trace_id_to_attribute_map(
+			span_bucket, object_name, indexed_attribute, attribute_value, client);
+
+		take_per_field_OR(trace_id_to_attribute_membership, local_trace_id_to_attribute_membership);
+	}
 
 	std::vector<std::string> response;
 	for (auto& i : trace_id_to_attribute_membership) {
@@ -156,8 +147,11 @@ void take_per_field_OR(std::unordered_map<std::string, bool>& trace_id_to_attrib
 std::unordered_map<std::string, bool> calculate_trace_id_to_attribute_map(std::string span_bucket_name,
 	std::string object_name, std::string indexed_attribute, std::string attribute_value, gcs::Client* client
 ) {
-	std::string raw_span_bucket_obj_content = read_object(span_bucket_name, object_name, client);
 	std::unordered_map<std::string, bool> response;
+	std::string raw_span_bucket_obj_content = read_object(span_bucket_name, object_name, client);
+	if (raw_span_bucket_obj_content.length() < 1) {
+		return response;
+	}
 
 	opentelemetry::proto::trace::v1::TracesData trace_data;
 	bool ret = trace_data.ParseFromString(raw_span_bucket_obj_content);
@@ -217,7 +211,7 @@ void export_batch_to_storage(index_batch& current_index_batch,
 	std::string object_to_write = "";
 
 	for (auto& elem : current_index_batch.trace_ids_with_timestamps) {
-		auto curr_timestamp = elem.first;
+		auto curr_timestamp = extract_batch_timestamps(elem.first);
 		auto curr_trace_ids = elem.second;
 
 		if (consiledated_timestamp.start_time == "" || 
@@ -233,7 +227,7 @@ void export_batch_to_storage(index_batch& current_index_batch,
 		}
 
 		auto serialized_trace_ids = serialize_trace_ids(curr_trace_ids);
-		auto serialized_timestamp = serialize_timestamp(curr_timestamp);
+		auto serialized_timestamp = "Timestamp: " + elem.first;
 
 		object_to_write += (serialized_timestamp + "\n" + serialized_trace_ids);
 	}
@@ -253,8 +247,7 @@ void export_batch_to_storage(index_batch& current_index_batch,
 void write_object(std::string bucket_name, std::string object_name,
 	std::string& object_to_write, gcs::Client* client
 ) {
-	std::cout << "Writing in " << bucket_name << "/" << object_name << ". Total" << object_to_write.length() << std::endl;
-	return;
+	std::cout << "Writing " << bucket_name << "/" << object_name << std::endl;
 	gcs::ObjectWriteStream stream = client->WriteObject(bucket_name, object_name);
 	stream << object_to_write << "\n";
     stream.Close();
@@ -265,14 +258,10 @@ void write_object(std::string bucket_name, std::string object_name,
 		exit(1);
 	}
 }
+
 std::string get_autoscaling_hash_from_start_time(std::string start_time) {
 	auto autoscaling_hash = std::hash<std::string>()(start_time);
 	return std::to_string(autoscaling_hash).substr(0, 2);
-}
-
-std::string serialize_timestamp(batch_timestamp timestamp) {
-	std::string response = "start time: " + timestamp.start_time + ", " + "end time: " + timestamp.end_time;
-	return response;
 }
 
 std::string serialize_trace_ids(std::vector<std::string>& trace_ids) {
@@ -287,6 +276,10 @@ std::string serialize_trace_ids(std::vector<std::string>& trace_ids) {
 std::string read_object(std::string bucket, std::string object, gcs::Client* client) {
 	auto reader = client->ReadObject(bucket, object);
 	if (!reader) {
+		if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
+			return "";
+		}
+
 		std::cerr << "Error reading object " << bucket << "/" << object << " :" << reader.status() << "\n";
 		exit(1);
 	}

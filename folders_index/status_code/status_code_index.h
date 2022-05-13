@@ -15,6 +15,7 @@
 #include "google/cloud/storage/client.h"
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
 #include <boost/algorithm/string.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 const char BUCKET_TYPE_LABEL_KEY[] = "bucket_type";
 const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
@@ -43,7 +44,7 @@ struct batch_timestamp {
 
 struct index_batch {
     int total_trace_ids;
-    std::vector<std::pair<batch_timestamp, std::vector<std::string>>> trace_ids_with_timestamps;
+    std::vector<std::pair<std::string, std::vector<std::string>>> trace_ids_with_timestamps;
     index_batch() {
         total_trace_ids = 0;
     }
@@ -52,16 +53,12 @@ struct index_batch {
 namespace gcs = ::google::cloud::storage;
 using ::google::cloud::StatusOr;
 
-void write_object_dummy(std::string bucket_name, std::string object_name,
-	std::string& object_to_write, gcs::Client* client
-);
 void write_object(std::string bucket_name, std::string object_name,
 	std::string& object_to_write, gcs::Client* client);
 int update_index(gcs::Client* client, time_t last_updated, 
 	std::string indexed_attribute, std::string attribute_value
 );
 std::string get_autoscaling_hash_from_start_time(std::string start_time);
-std::string serialize_timestamp(batch_timestamp timestamp);
 std::string serialize_trace_ids(std::vector<std::string>& trace_ids);
 std::unordered_map<std::string, bool> calculate_trace_id_to_attribute_map(std::string span_bucket_name,
 	std::string object_name, std::string indexed_attribute, std::string attribute_value, gcs::Client* client

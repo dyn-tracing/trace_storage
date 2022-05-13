@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
 	conditions.push_back(condition3);
 
 	boost::posix_time::ptime start, stop;
-    start = boost::posix_time::microsec_clock::local_time();
+	start = boost::posix_time::microsec_clock::local_time();
 
 	// querying
 	auto client = gcs::Client();
@@ -51,8 +51,8 @@ int main(int argc, char* argv[]) {
 	std::cout << "Total results: " << total.size() << std::endl;
 
 	boost::posix_time::time_duration dur = stop - start;
-    int64_t milliseconds = dur.total_milliseconds();
-    std::cout << "Time taken: " << milliseconds << std::endl;
+	int64_t milliseconds = dur.total_milliseconds();
+	std::cout << "Time taken: " << milliseconds << std::endl;
 
 	return 0;
 }
