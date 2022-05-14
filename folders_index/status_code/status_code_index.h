@@ -44,20 +44,25 @@ struct batch_timestamp {
 	}
 };
 
+struct attribute_batch {
+	std::string attribute_value;
+	std::vector<std::pair<std::string, std::vector<std::string>>> trace_ids_with_timestamps;
+};
+
+/**
+ * TODO: No need to keep it a struct now as it contains only one variable
+ */
 struct index_batch {
-	int total_trace_ids;
 	std::vector<std::pair<std::string, std::unordered_map<std::string, std::vector<std::string>>>>
 	trace_ids_with_timestamps;  // vector of pairs, a pair is (timestamp, a map)
 								// the map maps the trace ids to the attribute values 
-								// e.g. one map => {"trace xyz": {"error 404", "error 202"}, "trace abc": {"error 500"}}
-	index_batch() {
-		total_trace_ids = 0;
-	}
+								// e.g. one map => {"error 404": {trace1, trace2}, "error 500": {trace3, trace1}}
 };
 
 namespace gcs = ::google::cloud::storage;
 using ::google::cloud::StatusOr;
 
+int get_total_of_trace_ids(std::unordered_map<std::string, std::vector<std::string>> attr_to_trace_ids);
 void write_object(std::string bucket_name, std::string object_name,
 	std::string& object_to_write, gcs::Client* client);
 int update_index(gcs::Client* client, time_t last_updated, 
@@ -65,7 +70,7 @@ int update_index(gcs::Client* client, time_t last_updated,
 );
 std::string get_autoscaling_hash_from_start_time(std::string start_time);
 std::string serialize_trace_ids(std::vector<std::string>& trace_ids);
-std::unordered_map<std::string, std::vector<std::string>> calculate_trace_id_to_attribute_map(
+std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trace_ids_map_for_microservice(
 	std::string span_bucket_name, std::string object_name, std::string indexed_attribute,
 	std::string attribute_value, gcs::Client* client
 );
@@ -73,16 +78,16 @@ std::vector<std::string> get_spans_buckets_names(gcs::Client* client);
 batch_timestamp extract_batch_timestamps(std::string batch_name);
 std::vector<std::string> get_all_object_names(std::string bucket_name, gcs::Client* client);
 std::vector<std::string> sort_object_names_on_start_time(std::vector<std::string> object_names);
-std::unordered_map<std::string, std::vector<std::string>> get_trace_ids_with_attribute(
+std::unordered_map<std::string, std::vector<std::string>> get_attr_to_trace_ids_map(
 	std::string object_name, std::string indexed_attribute, std::string attribute_value,
 	std::vector<std::string>& span_buckets_names, gcs::Client* client
 );
-void take_per_field_union(std::unordered_map<std::string, std::vector<std::string>>& trace_id_to_attribute_membership,
-	std::unordered_map<std::string, std::vector<std::string>>& local_trace_id_to_attribute_membership
+void take_per_field_union(std::unordered_map<std::string, std::vector<std::string>>& attr_to_trace_ids_map,
+	std::unordered_map<std::string, std::vector<std::string>>& local_attr_to_trace_ids_map
 );
-bool is_batch_big_enough(index_batch& current_index_batch);
-void export_batch_to_storage(index_batch& current_index_batch,
-	std::string indexed_attribute, std::string attribute_value, gcs::Client* client
+std::vector<std::string> get_attr_vals_which_have_enough_data_to_export(index_batch& current_index_batch);
+void export_batch_to_storage(index_batch& current_index_batch, std::string indexed_attribute,
+	std::string attribute_value, std::vector<std::string> attrs_to_export, gcs::Client* client
 );
 std::vector<std::string> split_by_char(std::string input, std::string splitter);
 bool compare_object_names_by_start_time(std::string object_name1, std::string object_name2);

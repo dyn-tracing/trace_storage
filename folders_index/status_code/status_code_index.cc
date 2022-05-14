@@ -22,6 +22,14 @@ int main(int argc, char* argv[]) {
 	return 0;
 }
 
+int get_total_of_trace_ids(std::unordered_map<std::string, std::vector<std::string>> attr_to_trace_ids) {
+	int count = 0;
+	for (auto& ele : attr_to_trace_ids) {
+		count += ele.second.size();
+	}
+	return count;
+}
+
 int update_index(gcs::Client* client, time_t last_updated, 
 	std::string indexed_attribute, std::string attribute_value
 ) {
@@ -42,7 +50,7 @@ int update_index(gcs::Client* client, time_t last_updated,
 
 	for (auto object_name : trace_struct_object_names) {
 		response_futures.push_back(std::make_pair(object_name, std::async(std::launch::async,
-			get_trace_ids_with_attribute, object_name, indexed_attribute, attribute_value,
+			get_attr_to_trace_ids_map, object_name, indexed_attribute, attribute_value,
 			std::ref(span_buckets_names), client)));
 		break;
 	}
@@ -50,18 +58,19 @@ int update_index(gcs::Client* client, time_t last_updated,
 	index_batch current_index_batch = index_batch();
 	for (int i = 0; i < response_futures.size(); i++) {
 		auto object_name = response_futures[i].first;
-		auto trace_ids_with_attributes = response_futures[i].second.get();
+		auto attr_to_trace_ids_map = response_futures[i].second.get();
 
-		current_index_batch.total_trace_ids += trace_ids_with_attributes.size();
-		current_index_batch.trace_ids_with_timestamps.push_back(std::make_pair(object_name, trace_ids_with_attributes));
+		current_index_batch.trace_ids_with_timestamps.push_back(std::make_pair(object_name, attr_to_trace_ids_map));
 
-		if (true == is_batch_big_enough(current_index_batch)) {
-			export_batch_to_storage(current_index_batch, indexed_attribute, attribute_value, client);
+		auto to_export = get_attr_vals_which_have_enough_data_to_export(current_index_batch);
+
+		if (to_export.size() > 0) {
+			export_batch_to_storage(current_index_batch, indexed_attribute, attribute_value, to_export, client);
 			current_index_batch = index_batch();
 		}
 	}
 
-	export_batch_to_storage(current_index_batch, indexed_attribute, attribute_value, client);
+	export_batch_to_storage(current_index_batch, indexed_attribute, attribute_value, {}, client);
 	return 0;
 }
 
@@ -120,48 +129,53 @@ std::vector<std::string> sort_object_names_on_start_time(std::vector<std::string
 	return object_names;	
 }
 
-std::unordered_map<std::string, std::vector<std::string>> get_trace_ids_with_attribute(
+std::unordered_map<std::string, std::vector<std::string>> get_attr_to_trace_ids_map(
 	std::string object_name, std::string indexed_attribute, std::string attribute_value,
 	std::vector<std::string>& span_buckets_names, gcs::Client* client
 ) {
-	std::unordered_map<std::string, std::vector<std::string>> trace_id_to_attribute_membership;
+	std::unordered_map<std::string, std::vector<std::string>> attr_to_trace_ids_map;
 
 	for (auto span_bucket : span_buckets_names) {
-		std::unordered_map<std::string, std::vector<std::string>> local_trace_id_to_attribute_membership = calculate_trace_id_to_attribute_map(
+		std::unordered_map<std::string, std::vector<std::string>> local_attr_to_trace_ids_map = calculate_attr_to_trace_ids_map_for_microservice(
 			span_bucket, object_name, indexed_attribute, attribute_value, client);
 
-		take_per_field_union(trace_id_to_attribute_membership, local_trace_id_to_attribute_membership);
+		take_per_field_union(attr_to_trace_ids_map, local_attr_to_trace_ids_map);
 	}
 
-	return trace_id_to_attribute_membership;
+	return attr_to_trace_ids_map;
 }
 
-void take_per_field_union(std::unordered_map<std::string, std::vector<std::string>>& trace_id_to_attribute_membership,
-	std::unordered_map<std::string, std::vector<std::string>>& local_trace_id_to_attribute_membership
+void take_per_field_union(std::unordered_map<std::string, std::vector<std::string>>& attr_to_trace_ids_map,
+	std::unordered_map<std::string, std::vector<std::string>>& local_attr_to_trace_ids_map
 ) {
-	for (auto& i : local_trace_id_to_attribute_membership) {
-		auto local_trace_id = i.first;
-		auto local_attributes = i.second;
+	for (auto& i : local_attr_to_trace_ids_map) {
+		auto local_attribute = i.first;
+		auto local_trace_ids = &(i.second);
 
-		if (trace_id_to_attribute_membership.find(local_trace_id) == trace_id_to_attribute_membership.end()) {
+		if (attr_to_trace_ids_map.find(local_attribute) == attr_to_trace_ids_map.end()) {
 			std::vector<std::string> vec;
-			trace_id_to_attribute_membership[local_trace_id] = vec;
+			attr_to_trace_ids_map[local_attribute] = vec;
 		}
 
-		auto* response_attrs = &(trace_id_to_attribute_membership[local_trace_id]);
-		for (auto& j : local_attributes) {
-			if (std::find(response_attrs->begin(), response_attrs->end(), j) == response_attrs->end()) {
-				trace_id_to_attribute_membership[local_trace_id].push_back(j);
+		auto* previous_trace_ids = &(attr_to_trace_ids_map[local_attribute]);
+		for (int trace_id_ind = 0; trace_id_ind < local_trace_ids->size(); trace_id_ind++) {
+			if (std::find(
+					previous_trace_ids->begin(),
+					previous_trace_ids->end(),
+					(*local_trace_ids)[trace_id_ind]
+				) == previous_trace_ids->end()
+			) {
+				attr_to_trace_ids_map[local_attribute].push_back((*local_trace_ids)[trace_id_ind]);
 			}
 		}
 	}
 }
 
-std::unordered_map<std::string, std::vector<std::string>> calculate_trace_id_to_attribute_map(
+std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trace_ids_map_for_microservice(
 	std::string span_bucket_name, std::string object_name, std::string indexed_attribute,
 	std::string attribute_value, gcs::Client* client
 ) {
-	std::unordered_map<std::string, std::vector<std::string>> response;
+	std::unordered_map<std::string, std::vector<std::string>> response; // attr_val_to_vec_of_traceids
 	std::string raw_span_bucket_obj_content = read_object(span_bucket_name, object_name, client);
 	if (raw_span_bucket_obj_content.length() < 1) {
 		return response;
@@ -170,7 +184,7 @@ std::unordered_map<std::string, std::vector<std::string>> calculate_trace_id_to_
 	opentelemetry::proto::trace::v1::TracesData trace_data;
 	bool ret = trace_data.ParseFromString(raw_span_bucket_obj_content);
 	if (false == ret) {
-		std::cerr << "Error in calculate_trace_id_to_attribute_map:ParseFromString" << std::endl;
+		std::cerr << "Error in calculate_attr_to_trace_ids_map:ParseFromString" << std::endl;
 		exit(1);
 	}
 
@@ -188,7 +202,7 @@ std::unordered_map<std::string, std::vector<std::string>> calculate_trace_id_to_
 			auto curr_attr_val = val->string_value();
 
 			if (indexed_attribute == curr_attr_key) {
-				response[trace_id].push_back(curr_attr_val);
+				response[curr_attr_val].push_back(trace_id);
 			}
 		}
 	}
@@ -210,18 +224,37 @@ batch_timestamp extract_batch_timestamps(std::string batch_name) {
 /**
  * TODO: Can do better here. 
  */
-bool is_batch_big_enough(index_batch& current_index_batch) {
-	return (current_index_batch.total_trace_ids * 32) >= (1000000 - 100);
+std::vector<std::string> get_attr_vals_which_have_enough_data_to_export(index_batch& current_index_batch) {
+	std::unordered_map<std::string, int> attr_to_trace_ids_total;
+ 
+	for (auto& p : current_index_batch.trace_ids_with_timestamps) {
+		for (auto& map_ele : p.second) {
+			if (attr_to_trace_ids_total.find(map_ele.first) == attr_to_trace_ids_total.end()) {
+				attr_to_trace_ids_total[map_ele.first] = map_ele.second.size();
+			} else {
+				attr_to_trace_ids_total[map_ele.first] += map_ele.second.size();
+			}
+		}
+	}
+
+	std::vector<std::string> big_enough_attrs;
+
+	for (auto& map_ele : attr_to_trace_ids_total) {
+		if (map_ele.second*32 >= (1000000 - 100)) {
+			big_enough_attrs.push_back(map_ele.first);
+		}
+	}
+
+	return big_enough_attrs;
 }
 
 void print_index_batch(index_batch& current_index_batch) {
-	std::cout << current_index_batch.total_trace_ids << std::endl;
 	for (auto p : current_index_batch.trace_ids_with_timestamps) {
 		std::cout << p.first << " : " << std::endl;
 		for (auto m : p.second) {
 			std::cout << m.first << " => ";
 			for (auto a : m.second) {
-				std:: cout << a << std::flush;
+				std:: cout << a << " " << std::flush;
 			}
 			std::cout << std::endl;
 		}
@@ -229,23 +262,25 @@ void print_index_batch(index_batch& current_index_batch) {
 	}
 }
 
-void export_batch_to_storage(index_batch& current_index_batch,
-	std::string indexed_attribute, std::string attribute_value, gcs::Client* client
+/**
+ * If attrs_to_export is empty, then all of them will be exported.
+ */
+void export_batch_to_storage(index_batch& current_index_batch, std::string indexed_attribute,
+	std::string attribute_value, std::vector<std::string> attrs_to_export, gcs::Client* client
 ) {
-	// std::vector<std::pair<std::string, std::unordered_map<std::string, std::vector<std::string>>>> index_batch.trace_ids_with_timestamps
 
-	
-	return;
-	// if (current_index_batch.total_trace_ids < 1) {
-	// 	return;
-	// }
+	print_index_batch(current_index_batch);
+	/**
+	 * TODO: Implement it. 
+	 * 
+	 */
 
 	// batch_timestamp consiledated_timestamp = batch_timestamp();
 	// std::string object_to_write = "";
 
 	// for (auto& elem : current_index_batch.trace_ids_with_timestamps) {
 	// 	auto curr_timestamp = extract_batch_timestamps(elem.first);
-	// 	auto curr_trace_ids = elem.second;
+	// 	auto attr_to_trace_ids_map = elem.second;
 
 	// 	if (consiledated_timestamp.start_time == "" || 
 	// 		(std::stol(curr_timestamp.start_time) < std::stol(consiledated_timestamp.start_time))
