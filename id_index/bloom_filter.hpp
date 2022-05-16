@@ -239,8 +239,6 @@ public:
    }
 
    inline bool ints_match(const bloom_filter& f) const {
-      std::cout << "salt count 1 " << salt_count_ << " salt count 2 " << f.salt_count_ << std::endl;
-      std::cout << "table size1 " << table_size_ << " table size 2 " << f.table_size_ << std::endl;
       return (
         salt_count_ == f.salt_count_ &&
         table_size_ == f.table_size_ &&
@@ -275,9 +273,6 @@ public:
         os.write((char *) &inserted_element_count_, sizeof(unsigned long long int));
         os.write((char *) &random_seed_, sizeof(unsigned long long int));
         os.write((char *) &desired_false_positive_probability_, sizeof(double));
-        long pos = os.tellp();
-        std::cout << "done serializing constants and pos is " << pos << std::endl;
-        std::cout << "end of serializing salt count and it is " << salt_count_ << std::endl;
         for (unsigned int i=0; i<salt_count_; i++) {
             os.write((char *) &salt_[i], sizeof(unsigned int));
         }
@@ -294,9 +289,6 @@ public:
         is.read((char *) &inserted_element_count_, sizeof(unsigned long long int));
         is.read((char *) &random_seed_, sizeof(unsigned long long int));
         is.read((char *) &desired_false_positive_probability_, sizeof(double));
-        long pos = is.tellg();
-        std::cout << "done deserializing constants and pos is " << pos << std::endl;
-        std::cout << "end of deserializing salt count and it is " << salt_count_ << std::endl;
 
         salt_.resize(salt_count_, static_cast<unsigned int> (0x00));
         for (unsigned int i=0; i<salt_count_; i++) {

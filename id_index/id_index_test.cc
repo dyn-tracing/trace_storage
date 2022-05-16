@@ -70,6 +70,9 @@ TEST(Serialization, TestSerializationLeaf) {
     EXPECT_TRUE(leaf1.bloom_filters[i].ints_match(leaf2.bloom_filters[i]));
   }
   EXPECT_TRUE(bloom_filters_equal(leaf1, leaf2));
+  for (int i=0; i<20; i++) {
+    EXPECT_TRUE(leaf2.bloom_filters[i].contains("abc"+std::to_string(i)));
+  }
 }
 
 TEST(Arithmetic, TestGetParentArithmetic) {
