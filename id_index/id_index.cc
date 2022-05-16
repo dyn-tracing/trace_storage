@@ -286,30 +286,29 @@ Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch, time_t start_time, 
 //Leaf make_leaf(gcs::Client* client, time_t start_time, time_t end_time) {
     
     Leaf leaf;
-    /*
     leaf.start_time = start_time;
     leaf.end_time = end_time;
     std::vector<std::future<bloom_filter>> inclusive_bloom;
     std::vector<std::future<bloom_filter>> early_bloom;
     std::vector<std::future<bloom_filter>> late_bloom;
     // 1. Incorporate entire batches
-    for (int i=0; i<batch->inclusive.size(); i++) {
-        leaf.batch_names.push_back(batch->inclusive[i]);
-        inclusive_bloom.push_back(std::async(std::launch::async, create_bloom_filter_entire_batch, client, batch->inclusive[i]));
+    for (int i=0; i<batch.inclusive.size(); i++) {
+        leaf.batch_names.push_back(batch.inclusive[i]);
+        inclusive_bloom.push_back(std::async(std::launch::async, create_bloom_filter_entire_batch, client, batch.inclusive[i]));
     }
 
     // 2. Incorporate batches that overlap the first part of the time range (ie go shorter than it)
-    for (int j=0; j<batch->early.size(); j++) {
-        leaf.batch_names.push_back(batch->early[j]);
-        leaf.bloom_filters.push_back(create_bloom_filter_partial_batch(client, batch->early[j], start_time, end_time));
-        early_bloom.push_back(std::async(std::launch::async, create_bloom_filter_partial_batch, client, batch->early[j], start_time, end_time));
+    for (int j=0; j<batch.early.size(); j++) {
+        leaf.batch_names.push_back(batch.early[j]);
+        leaf.bloom_filters.push_back(create_bloom_filter_partial_batch(client, batch.early[j], start_time, end_time));
+        early_bloom.push_back(std::async(std::launch::async, create_bloom_filter_partial_batch, client, batch.early[j], start_time, end_time));
     }
 
     // 3. Incorporate batches that overlap the later part of the time range (ie go longer than it)
-    for (int k=0; k<batch->late.size(); k++) {
-        leaf.batch_names.push_back(batch->late[k]);
-        leaf.bloom_filters.push_back(create_bloom_filter_partial_batch(client, batch->late[k], start_time, end_time));
-        late_bloom.push_back(std::async(std::launch::async, create_bloom_filter_partial_batch, client, batch->late[k], start_time, end_time));
+    for (int k=0; k<batch.late.size(); k++) {
+        leaf.batch_names.push_back(batch.late[k]);
+        leaf.bloom_filters.push_back(create_bloom_filter_partial_batch(client, batch.late[k], start_time, end_time));
+        late_bloom.push_back(std::async(std::launch::async, create_bloom_filter_partial_batch, client, batch.late[k], start_time, end_time));
     }
 
     // 4. Get all the futures from async calls to be actual values
@@ -335,7 +334,6 @@ Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch, time_t start_time, 
     if (!metadata) {
         throw std::runtime_error(metadata.status().message());
     }
-    */
     return leaf;
 }
 
@@ -351,13 +349,14 @@ std::tuple<time_t, time_t>  bubble_up_leaves_helper(gcs::Client* client,
     std::vector<std::tuple<time_t, time_t>> just_modified,
     std::vector<bloom_filter> just_modified_bfs, time_t granularity
 ) {
-    std::cout << "in bubble up leaves helper" << std::endl << std::flush;
+    std::cout << "in bubble up leaves helper, just modified size is " << just_modified.size() << std::endl << std::flush;
     std::map<std::tuple<time_t, time_t>, std::vector<int>> parents;
     for (int i=0; i < just_modified.size(); i++) {
         // who is my parent?
         auto parent = get_parent(std::get<0>(just_modified[i]), std::get<1>(just_modified[i]), granularity);
         parents[parent].push_back(i);
     }
+    std::cout << "done figuring out parents" << std::endl << std::flush;
     if (parents.size() < 2) {
         std::cout << "only one parent" << std::endl << std::flush;
         // two possibilities:  we're just propagating up the tree, or we're done here
@@ -439,13 +438,29 @@ int bubble_up_leaves(gcs::Client* client, time_t start_time, time_t end_time, st
     std::cout << "in bubble up leaves" << std::endl << std::flush;
     std::vector<bloom_filter> newly_modified_bfs;
     for (int i=0; i<leaves.size(); i++) {
+        std::cout << "getting newly modified leaves.size is " << leaves.size() << std::endl << std::flush;
         newly_modified.push_back(std::make_tuple(leaves[i].start_time, leaves[i].end_time));
-        // bloom filter should be union of all
-        bloom_filter unioned_bloom = leaves[i].bloom_filters[0];
-        for (int j=0; j<leaves[i].bloom_filters.size(); j++) {
-            unioned_bloom |= leaves[i].bloom_filters[j];
+            // bloom filter should be union of all
+        if (leaves[i].bloom_filters.size() > 0) {
+            bloom_filter unioned_bloom = leaves[i].bloom_filters[0];
+            for (int j=0; j<leaves[i].bloom_filters.size(); j++) {
+                unioned_bloom |= leaves[i].bloom_filters[j];
+            }
+            newly_modified_bfs.push_back(unioned_bloom);
+        } else {
+            bloom_parameters parameters;
+
+            // How many elements roughly do we expect to insert?
+            parameters.projected_element_count = 2500;
+
+            // Maximum tolerable false positive probability? (0,1)
+            parameters.false_positive_probability = 0.0001;  // 1 in 10000
+
+            parameters.compute_optimal_parameters();
+            bloom_filter empty(parameters);
+            newly_modified_bfs.push_back(empty);
         }
-        newly_modified_bfs.push_back(unioned_bloom);
+        std::cout << "unioned" << leaves.size() << std::endl << std::flush;
     }
     std::cout << "merged all bfs" << std::endl << std::flush;
     // record the new root in the bucket's metadata
@@ -549,6 +564,7 @@ std::vector<std::string> is_trace_id_in_leaf(
             to_return.push_back(leaf.batch_names[i]);
         }
     }
+    std::cout << "in_trace_id_is_leaf, to return is " << to_return.size() << std::endl;
     return to_return;
 }
 
@@ -618,6 +634,7 @@ std::string query_index_for_traceID(gcs::Client* client, std::string traceID) {
                 got_positive_limits.push_back(visit);
             }
         }
+        std::cout << "iterating through nonterminal list of size " << got_positive.size() << std::endl << std::flush;
         // now we need to see how many of the non-terminal nodes showed up positive
         for (int i=0; i<got_positive.size(); i++) {
             if (got_positive[i].get()) {
@@ -631,16 +648,21 @@ std::string query_index_for_traceID(gcs::Client* client, std::string traceID) {
         for (int i=0; i<new_unvisited.size(); i++) {
             unvisited_nodes.push_back(new_unvisited[i]);
         }
+        std::cout << "unvisited is now " << unvisited_nodes.size() << std::endl << std::flush;
     }
     // now figure out which of the batches actually have your trace ID
     // because false positives are a thing, this could potentially be more than one batch that shows up true
+    std::cout << "batches size is " << batches.size() << std::endl;
     std::vector<std::string> verified_batches;
     for (int i=0; i<batches.size(); i++) {
+        std::cout << "getting batch " << std::endl << std::flush;
         std::vector<std::string> verified = batches[i].get();
+        std::cout << "len verified is " << verified.size() << std::endl << std::flush;
         for (int j=0; j<verified.size(); j++) {
             verified_batches.push_back(verified[j]);
         }
     }
+    std::cout << "verified batches size is " << verified_batches.size() << std::endl << std::flush;
 
     // this is the common case:  no false positives
     if (verified_batches.size() == 1) {
@@ -671,6 +693,8 @@ int update_index(gcs::Client* client, time_t last_updated) {
     //time_t to_update = now-(now%granularity); // this is the right thing;  given I just want to write a little, I override
     time_t to_update = last_updated + (15*granularity);
     create_index_bucket(client);
+
+    /*
     std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, to_update);
     std::vector<BatchObjectNames> batches_by_leaf = split_batches_by_leaf(batches, last_updated, to_update, granularity);
     std::cout << "done with batches by leaf" << std::endl;
@@ -690,6 +714,7 @@ int update_index(gcs::Client* client, time_t last_updated) {
     std::cout << "bubbling up leaves" << std::endl;
     bubble_up_leaves(client, last_updated, to_update, leaves, granularity);
     std::cout << "done bubbling up leaves" << std::endl;
+    */
     std::string batch = query_index_for_traceID(client, "fcdf8b959f048047a937e16805d8592c");
     std::cout << "found trace in batch " << batch << std::endl;
     return 0;
