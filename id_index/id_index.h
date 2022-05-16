@@ -35,8 +35,8 @@ struct Leaf {
     std::vector<bloom_filter> bloom_filters;
 };
 
-void serialize(Leaf leaf, std::ostream& os);
-Leaf deserialize(std::istream& is);
+void serialize_leaf(Leaf leaf, std::ostream& os);
+Leaf deserialize_leaf(std::istream& is);
 bool leaf_sizes_equal(struct Leaf &leaf1, struct Leaf &leaf2);
 bool batch_names_equal(struct Leaf &leaf1, struct Leaf &leaf2);
 bool bloom_filters_equal(struct Leaf &leaf1, struct Leaf &leaf2);
