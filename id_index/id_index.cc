@@ -110,8 +110,6 @@ void serialize_leaf(struct Leaf leaf, std::ostream &os) {
         unsigned int batch_name_len = leaf.batch_names[i].length();
         os.write((char *) &batch_name_len, sizeof(unsigned int));
         os << leaf.batch_names[i];
-        long pos = os.tellp();
-        std::cout << "end of serializing batch name and pos is " << pos << std::endl;
     }
     for (int i=0; i<leaf.bloom_filters.size(); i++) {
         leaf.bloom_filters[i].Serialize(os);
@@ -133,12 +131,10 @@ struct Leaf deserialize_leaf(std::istream &is) {
         std::string batch_name;
         batch_name.assign(tmp.data(), (int)batch_name_len);
         leaf.batch_names.push_back(batch_name);
-        long pos = is.tellg();
-        std::cout << "end of deserializing batch name and pos is " << pos << std::endl;
     }
     for (unsigned int i=0; i<batch_size; i++) {
         bloom_filter bf;
-        //bf.Deserialize(is);
+        bf.Deserialize(is);
         leaf.bloom_filters.push_back(bf);
     }
     return leaf;

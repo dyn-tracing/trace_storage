@@ -50,7 +50,7 @@ TEST(Serialization, TestSerializationBloom) {
 
 TEST(Serialization, TestSerializationLeaf) {
   Leaf leaf1, leaf2;
-  for (int i=0; i<2; i++) {
+  for (int i=0; i<20; i++) {
     leaf1.batch_names.push_back("name"+std::to_string(i));
     bloom_parameters a_param;
       a_param.projected_element_count = 100;
@@ -65,7 +65,11 @@ TEST(Serialization, TestSerializationLeaf) {
   leaf2 = deserialize_leaf(stream);
   EXPECT_TRUE(leaf_sizes_equal(leaf1, leaf2));
   EXPECT_TRUE(batch_names_equal(leaf1, leaf2));
-  //EXPECT_TRUE(bloom_filters_equal(leaf1, leaf2));
+  EXPECT_EQ(leaf1.bloom_filters.size(), leaf2.bloom_filters.size());
+  for (int i=0; i<leaf1.bloom_filters.size(); i++) {
+    EXPECT_TRUE(leaf1.bloom_filters[i].ints_match(leaf2.bloom_filters[i]));
+  }
+  EXPECT_TRUE(bloom_filters_equal(leaf1, leaf2));
 }
 
 TEST(Arithmetic, TestGetParentArithmetic) {
