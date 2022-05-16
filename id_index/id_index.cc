@@ -248,7 +248,7 @@ std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std
         if (trace_and_spans[j].find("Trace ID") != -1) {
             int start = trace_and_spans[j].find("Trace ID");
             std::string trace_id =
-                trace_and_spans[j].substr(start + 8 , trace_and_spans[j].length() - 9);  // 8 is len of Trace ID
+                trace_and_spans[j].substr(start + 10, trace_and_spans[j].length() - 11);  // 8 is len of Trace ID
             to_return.push_back(trace_id);
         }
     }
@@ -270,6 +270,7 @@ bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string b
     for (int i=0; i<trace_ids.size(); i++) {
         //std::cout << "inserting " << trace_ids[i] << std::endl;
         filter.insert(trace_ids[i]);
+        assert(filter.contains(trace_ids[i]));
     }
     std::cout << "batch " << batch << " contains ? " << filter.contains("59d3a3d707273adb442cdf63bc6e6f0a") << std::endl << std::flush;
 
