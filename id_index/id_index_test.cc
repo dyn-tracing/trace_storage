@@ -50,7 +50,7 @@ TEST(Serialization, TestSerializationBloom) {
 
 TEST(Serialization, TestSerializationLeaf) {
   Leaf leaf1, leaf2;
-  for (int i=0; i<20; i++) {
+  for (int i=0; i < 20; i++) {
     leaf1.batch_names.push_back("name"+std::to_string(i));
     bloom_parameters a_param;
       a_param.projected_element_count = 100;
@@ -66,24 +66,23 @@ TEST(Serialization, TestSerializationLeaf) {
   EXPECT_TRUE(leaf_sizes_equal(leaf1, leaf2));
   EXPECT_TRUE(batch_names_equal(leaf1, leaf2));
   EXPECT_EQ(leaf1.bloom_filters.size(), leaf2.bloom_filters.size());
-  for (int i=0; i<leaf1.bloom_filters.size(); i++) {
+  for (int i=0; i < leaf1.bloom_filters.size(); i++) {
     EXPECT_TRUE(leaf1.bloom_filters[i].ints_match(leaf2.bloom_filters[i]));
   }
   EXPECT_TRUE(bloom_filters_equal(leaf1, leaf2));
-  for (int i=0; i<20; i++) {
+  for (int i=0; i < 20; i++) {
     EXPECT_TRUE(leaf2.bloom_filters[i].contains("abc"+std::to_string(i)));
   }
 }
 
 TEST(Arithmetic, TestGetParentArithmetic) {
     auto ret = get_parent(40, 50, 10);
-    std::tuple<time_t, time_t> answer = std::make_tuple(0,100);
+    std::tuple<time_t, time_t> answer = std::make_tuple(0, 100);
     EXPECT_EQ(ret, answer);
     auto ret2 = get_parent(140, 150, 10);
-    std::tuple<time_t, time_t> answer2 = std::make_tuple(100,200);
+    std::tuple<time_t, time_t> answer2 = std::make_tuple(100, 200);
     EXPECT_EQ(ret2, answer2);
     auto ret3 = get_parent(200, 300, 10);
-    std::tuple<time_t, time_t> answer3 = std::make_tuple(0,1000);
+    std::tuple<time_t, time_t> answer3 = std::make_tuple(0, 1000);
     EXPECT_EQ(ret3, answer3);
-
 }

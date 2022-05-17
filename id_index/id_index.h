@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <tuple>
 #include <map>
 #include <boost/regex.hpp>
 #include "google/cloud/storage/client.h"
@@ -47,7 +48,8 @@ struct BatchObjectNames {
     std::vector<std::string> early;
     std::vector<std::string> late;
 };
-std::vector<struct BatchObjectNames> split_batches_by_leaf(std::vector<std::string> object_names, time_t last_updated, time_t to_update, time_t granularity);
+std::vector<struct BatchObjectNames> split_batches_by_leaf(
+    std::vector<std::string> object_names, time_t last_updated, time_t to_update, time_t granularity);
 
 // Core code
 std::vector<std::string> split_string_by_char(const std::string& str, std::string& ch);
@@ -55,7 +57,7 @@ std::vector<std::string> generate_prefixes(time_t earliest, time_t latest);
 std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest);
 bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string batch, time_t earliest, time_t latest);
 bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string batch);
-//Leaf make_leaf(gcs::Client* client, std::vector<BatchObjectNames> batches, time_t start_time, time_t end_time);
+Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch, time_t start_time, time_t end_time);
 int bubble_up_leaf(gcs::Client* client, time_t start_time, time_t end_time, Leaf &leaf);
 std::tuple<time_t, time_t> get_parent(time_t start_time, time_t end_time, time_t granularity);
 int create_index_bucket(gcs::Client* client);
