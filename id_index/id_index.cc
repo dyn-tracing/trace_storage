@@ -80,8 +80,6 @@ bool leaf_sizes_equal(struct Leaf &leaf1, struct Leaf &leaf2) {
 bool batch_names_equal(struct Leaf &leaf1, struct Leaf &leaf2) {
     for (int i=0; i<leaf1.batch_names.size(); i++) {
         if (leaf1.batch_names[i].compare(leaf2.batch_names[i]) != 0) {
-            std::cout << "leaf 1 len is " << leaf1.batch_names[i].length() << " whereas leaf 2 len is " << leaf2.batch_names[i].length() << std::endl << std::flush;
-            std::cout << "leaf1's " << leaf1.batch_names[i] << " is not " << leaf2.batch_names[i] << std::endl << std::flush;
             return false;
         }
     }
@@ -100,19 +98,6 @@ bool bloom_filters_equal(struct Leaf &leaf1, struct Leaf &leaf2) {
 }
 
 bool leaf_equals(struct Leaf &leaf1, struct Leaf &leaf2) {
-    if (!leaf_sizes_equal(leaf1, leaf2)) {
-        std::cout << "leaf sizes not the same " << std::endl;
-        std::cout << "leaf size 1 is " << leaf1.batch_names.size() << std::endl;
-        std::cout << "leaf size 2 is " << leaf2.batch_names.size() << std::endl;
-        std::cout << "leaf size 1 is " << leaf1.bloom_filters.size() << std::endl;
-        std::cout << "leaf size 2 is " << leaf2.bloom_filters.size() << std::endl;
-    }
-    if (!batch_names_equal(leaf1, leaf2)) {
-        std::cout << "batch names aren't equal" << std::endl;
-    }
-    if (!bloom_filters_equal(leaf1, leaf2)) {
-        std::cout << "bloom filters unequal" << std::endl;
-    }
     return leaf_sizes_equal(leaf1, leaf2) && batch_names_equal(leaf1, leaf2) && bloom_filters_equal(leaf1, leaf2);
 }
 
@@ -249,9 +234,6 @@ std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std
             int start = trace_and_spans[j].find("Trace ID");
             std::string trace_id =
                 trace_and_spans[j].substr(start + 10, trace_and_spans[j].length() - 11);  // 8 is len of Trace ID
-            if (trace_id.compare("59d3a3d707273adb442cdf63bc6e6f0a")==0) {
-                std::cout << "found trace id!" << std::endl;
-            }
             to_return.push_back(trace_id);
         }
     }
@@ -271,18 +253,9 @@ bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string b
     bloom_filter filter(parameters);
     auto trace_ids = trace_ids_from_trace_id_object(client, batch);
     for (int i=0; i<trace_ids.size(); i++) {
-        //std::cout << "inserting " << trace_ids[i] << std::endl;
         size_t len = trace_ids[i].length();
         const char* trace_id_c_str = trace_ids[i].c_str();
         filter.insert(trace_id_c_str, len);
-        if (trace_ids[i].compare("59d3a3d707273adb442cdf63bc6e6f0a")==0) {
-            std::cout << "found trace id!" << std::endl;
-            std::string new_str = "59d3a3d707273adb442cdf63bc6e6f0a";
-            const char* new_str_c_str = new_str.c_str();
-            size_t len = new_str.length();
-            std::cout << "batch " << batch << " contains " << filter.contains(new_str_c_str, len) << std::endl << std::flush;
-
-        }
     }
 
     return filter;
@@ -389,16 +362,13 @@ std::tuple<time_t, time_t>  bubble_up_leaves_helper(gcs::Client* client,
     std::vector<std::tuple<time_t, time_t>> just_modified,
     std::vector<bloom_filter> just_modified_bfs, time_t granularity
 ) {
-    std::cout << "in bubble up leaves helper, just modified size is " << just_modified.size() << std::endl << std::flush;
     std::map<std::tuple<time_t, time_t>, std::vector<int>> parents;
     for (int i=0; i < just_modified.size(); i++) {
         // who is my parent?
         auto parent = get_parent(std::get<0>(just_modified[i]), std::get<1>(just_modified[i]), granularity);
         parents[parent].push_back(i);
     }
-    std::cout << "done figuring out parents" << std::endl << std::flush;
     if (parents.size() < 2) {
-        std::cout << "only one parent" << std::endl << std::flush;
         // two possibilities:  we're just propagating up the tree, or we're done here
         // we can tell the difference by whether the parent exists yet and how many children there are
         std::string parent_contents;
@@ -443,13 +413,11 @@ std::tuple<time_t, time_t>  bubble_up_leaves_helper(gcs::Client* client,
         }
         return to_return;
     }
-    std::cout << "More than one parent" << std::endl << std::flush;
 
     std::vector<std::tuple<time_t, time_t>> new_modified;
     std::vector<bloom_filter> new_modified_bfs;
     // normal case:  we have a lot to be writing here
     for (const auto & [parent, children] : parents){
-        std::cout << "creating parent " << std::get<0>(parent) << "  " << std::get<1>(parent) << std::endl;
         bloom_filter unioned_filter = just_modified_bfs[children[0]];
         for (int i=0; i<children.size(); i++) {
             unioned_filter |= just_modified_bfs[children[i]];
@@ -499,7 +467,6 @@ int bubble_up_leaves(gcs::Client* client, time_t start_time, time_t end_time, st
             newly_modified_bfs.push_back(empty);
         }
     }
-    std::cout << "merged all bfs" << std::endl << std::flush;
     // record the new root in the bucket's metadata
     auto new_root = bubble_up_leaves_helper(client, newly_modified, newly_modified_bfs, granularity);
     std::string root_str = std::to_string(std::get<0>(new_root)) + "-"
@@ -655,7 +622,6 @@ std::string query_index_for_traceID(gcs::Client* client, std::string traceID) {
 
     // the way to parallelize this is to do all unvisited_nodes in parallel
     while (unvisited_nodes.size() > 0) {
-        std::cout << "unvisited nodes size" << unvisited_nodes.size() << std::endl;
         std::vector<std::tuple<time_t, time_t>> new_unvisited;
         std::vector<std::future<bool>> got_positive;
         //std::vector<bool> got_positive;
@@ -678,39 +644,30 @@ std::string query_index_for_traceID(gcs::Client* client, std::string traceID) {
                 //got_positive.push_back(is_trace_id_in_nonterminal_node(client, traceID, std::get<0>(visit), std::get<1>(visit)));
             }
         }
-        std::cout << "iterating through nonterminal list of size " << got_positive.size() << std::endl << std::flush;
         // now we need to see how many of the non-terminal nodes showed up positive
         for (int i=0; i<got_positive.size(); i++) {
             if (got_positive[i].get()) {
-            //if (got_positive[i]) {
-                std::cout << "one of my children:  " << std::get<0>(got_positive_limits[i]) << "-" << std::get<1>(got_positive_limits[i]) << std::endl << std::flush;
                 auto children = get_children(got_positive_limits[i], granularity);
                 for (int j=0; j<children.size(); j++) {
                     new_unvisited.push_back(children[j]);
                 }
-            } else {
-                std::cout << "gotta look elsewhere" << std::endl;
             }
         }
         unvisited_nodes.clear();
         for (int i=0; i<new_unvisited.size(); i++) {
             unvisited_nodes.push_back(new_unvisited[i]);
         }
-        std::cout << "unvisited is now " << unvisited_nodes.size() << std::endl << std::flush;
     }
     // now figure out which of the batches actually have your trace ID
     // because false positives are a thing, this could potentially be more than one batch that shows up true
-    std::cout << "batches size is " << batches.size() << std::endl;
     std::vector<std::string> verified_batches;
     for (int i=0; i<batches.size(); i++) {
-        std::cout << "getting batch " << std::endl << std::flush;
         std::vector<std::string> verified = batches[i].get();
         //std::vector<std::string> verified = batches[i];
         for (int j=0; j<verified.size(); j++) {
             verified_batches.push_back(verified[j]);
         }
     }
-    std::cout << "verified batches size is " << verified_batches.size() << std::endl << std::flush;
 
     // this is the common case:  no false positives
     if (verified_batches.size() == 1) {
@@ -719,7 +676,6 @@ std::string query_index_for_traceID(gcs::Client* client, std::string traceID) {
 
     // else we need to actually look up the trace structure objects to differentiate
     for (int i=0; i<verified_batches.size(); i++) {
-        std::cout << "checking batch " << verified_batches[i] << std::endl;
         auto reader = client->ReadObject(trace_struct_bucket, verified_batches[i]);
         if (!reader) {
             std::cerr << "Error reading object: " << reader.status() << "\n";
@@ -759,6 +715,5 @@ int update_index(gcs::Client* client, time_t last_updated) {
     }
     bubble_up_leaves(client, last_updated, to_update, leaves, granularity);
     std::string batch = query_index_for_traceID(client, "c5367e16e960a3452529e44d035a9bec");
-    std::cout << "found trace in batch " << batch << std::endl;
     return 0;
 }
