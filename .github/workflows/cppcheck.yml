@@ -23,3 +23,14 @@ jobs:
         path: "~/.cache/bazel"
         key: bazel
     - run: bazel build //...
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: bazelbuild/setup-bazelisk@v1
+    - name: Mount bazel cache  # Optional
+      uses: actions/cache@v2
+      with:
+        path: "~/.cache/bazel"
+        key: bazel
+    - run: bazel test //...
