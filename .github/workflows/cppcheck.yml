@@ -23,7 +23,7 @@ jobs:
         path: "~/.cache/bazel"
         key: bazel
     - run: bazel build //...
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
