@@ -1,6 +1,6 @@
 // Everything related to creating the trace ID index
-#ifndef  MICROSERVICES_ENV_TRACE_STORAGE_ID_INDEX_ID_INDEX_H_
-#define  MICROSERVICES_ENV_TRACE_STORAGE_ID_INDEX_ID_INDEX_H_
+#ifndef  MICROSERVICES_ENV_TRACE_STORAGE_ID_INDEX_ID_INDEX_H_ // NOLINT
+#define  MICROSERVICES_ENV_TRACE_STORAGE_ID_INDEX_ID_INDEX_H_ // NOLINT
 
 #include <stdlib.h>
 #include <math.h>
@@ -67,4 +67,4 @@ int update_index(gcs::Client* client, time_t last_updated);
 
 
 
-#endif  // MICROSERVICES_ENV_TRACE_STORAGE_ID_INDEX_ID_INDEX_H_
+#endif  // MICROSERVICES_ENV_TRACE_STORAGE_ID_INDEX_ID_INDEX_H_ // NOLINT
