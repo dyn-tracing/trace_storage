@@ -249,6 +249,9 @@ std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std
             int start = trace_and_spans[j].find("Trace ID");
             std::string trace_id =
                 trace_and_spans[j].substr(start + 10, trace_and_spans[j].length() - 11);  // 8 is len of Trace ID
+            if (trace_id.compare("59d3a3d707273adb442cdf63bc6e6f0a")==0) {
+                std::cout << "found trace id!" << std::endl;
+            }
             to_return.push_back(trace_id);
         }
     }
@@ -269,10 +272,18 @@ bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string b
     auto trace_ids = trace_ids_from_trace_id_object(client, batch);
     for (int i=0; i<trace_ids.size(); i++) {
         //std::cout << "inserting " << trace_ids[i] << std::endl;
-        filter.insert(trace_ids[i]);
-        assert(filter.contains(trace_ids[i]));
+        size_t len = trace_ids[i].length();
+        const char* trace_id_c_str = trace_ids[i].c_str();
+        filter.insert(trace_id_c_str, len);
+        if (trace_ids[i].compare("59d3a3d707273adb442cdf63bc6e6f0a")==0) {
+            std::cout << "found trace id!" << std::endl;
+            std::string new_str = "59d3a3d707273adb442cdf63bc6e6f0a";
+            const char* new_str_c_str = new_str.c_str();
+            size_t len = new_str.length();
+            std::cout << "batch " << batch << " contains " << filter.contains(new_str_c_str, len) << std::endl << std::flush;
+
+        }
     }
-    std::cout << "batch " << batch << " contains ? " << filter.contains("59d3a3d707273adb442cdf63bc6e6f0a") << std::endl << std::flush;
 
     return filter;
 }
@@ -474,7 +485,6 @@ int bubble_up_leaves(gcs::Client* client, time_t start_time, time_t end_time, st
                 unioned_bloom |= leaves[i].bloom_filters[j];
             }
             newly_modified_bfs.push_back(unioned_bloom);
-            std::cout << "newly modified " << leaves[i].start_time << "-" << leaves[i].end_time << " contains ? " << unioned_bloom.contains("59d3a3d707273adb442cdf63bc6e6f0a") << std::endl << std::flush;
         } else {
             bloom_parameters parameters;
 
@@ -571,12 +581,16 @@ bool is_trace_id_in_nonterminal_node(
     }
     bloom_filter bf;
     bf.Deserialize(reader);
-    return bf.contains(traceID);
+    const char* traceID_c_str = traceID.c_str();
+    size_t len = traceID.length();
+    return bf.contains(traceID_c_str, len);
 }
 
 std::vector<std::string> is_trace_id_in_leaf(
     gcs::Client* client, std::string traceID, time_t start_time, time_t end_time) {
     std::vector<std::string> to_return;
+    const char* traceID_c_str = traceID.c_str();
+    size_t len = traceID.length();
     std::string leaf_name = std::to_string(start_time) + "-" + std::to_string(end_time);
     auto reader = client->ReadObject(index_bucket, leaf_name);
     if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
@@ -587,7 +601,7 @@ std::vector<std::string> is_trace_id_in_leaf(
     }
     Leaf leaf = deserialize_leaf(reader);
     for (int i=0; i<leaf.batch_names.size(); i++) {
-        if (leaf.bloom_filters[i].contains(traceID)) {
+        if (leaf.bloom_filters[i].contains(traceID_c_str, len)) {
             to_return.push_back(leaf.batch_names[i]);
         }
     }
@@ -636,44 +650,39 @@ std::string query_index_for_traceID(gcs::Client* client, std::string traceID) {
 
     // this will contain lists of batches that have the trace ID according to their bloom filters
     // this is a vector and not a single value because bloom filters may give false positives
-    //std::vector<std::future<std::vector<std::string>>> batches;
-    std::vector<std::vector<std::string>> batches;
+    std::vector<std::future<std::vector<std::string>>> batches;
+    //std::vector<std::vector<std::string>> batches;
 
     // the way to parallelize this is to do all unvisited_nodes in parallel
     while (unvisited_nodes.size() > 0) {
         std::cout << "unvisited nodes size" << unvisited_nodes.size() << std::endl;
         std::vector<std::tuple<time_t, time_t>> new_unvisited;
-        //std::vector<std::future<bool>> got_positive;
-        std::vector<bool> got_positive;
+        std::vector<std::future<bool>> got_positive;
+        //std::vector<bool> got_positive;
         std::vector<std::tuple<time_t, time_t>> got_positive_limits;
         for (int i=0; i<unvisited_nodes.size(); i++) {
             auto visit = unvisited_nodes[i];
             // process
             if (std::get<1>(visit)-std::get<0>(visit) == granularity) {
-                /*
                 // hit a leaf
                 batches.push_back(std::async(std::launch::async, is_trace_id_in_leaf,
                     client, traceID, std::get<0>(visit), std::get<1>(visit)
                 ));
-                */
-                batches.push_back(is_trace_id_in_leaf(client, traceID, std::get<0>(visit), std::get<1>(visit)));
+                //batches.push_back(is_trace_id_in_leaf(client, traceID, std::get<0>(visit), std::get<1>(visit)));
             } else {
                 // async call if it is in nonterminal node
-                /*
+                got_positive_limits.push_back(visit);
                 got_positive.push_back(std::async(std::launch::async, is_trace_id_in_nonterminal_node,
                     client, traceID, std::get<0>(visit), std::get<1>(visit)
                 ));
-                */
-                //got_positive.push_back(false);
-                got_positive.push_back(is_trace_id_in_nonterminal_node(client, traceID, std::get<0>(visit), std::get<1>(visit)));
-                got_positive_limits.push_back(visit);
+                //got_positive.push_back(is_trace_id_in_nonterminal_node(client, traceID, std::get<0>(visit), std::get<1>(visit)));
             }
         }
         std::cout << "iterating through nonterminal list of size " << got_positive.size() << std::endl << std::flush;
         // now we need to see how many of the non-terminal nodes showed up positive
         for (int i=0; i<got_positive.size(); i++) {
-            //if (got_positive[i].get()) {
-            if (got_positive[i]) {
+            if (got_positive[i].get()) {
+            //if (got_positive[i]) {
                 std::cout << "one of my children:  " << std::get<0>(got_positive_limits[i]) << "-" << std::get<1>(got_positive_limits[i]) << std::endl << std::flush;
                 auto children = get_children(got_positive_limits[i], granularity);
                 for (int j=0; j<children.size(); j++) {
@@ -695,8 +704,8 @@ std::string query_index_for_traceID(gcs::Client* client, std::string traceID) {
     std::vector<std::string> verified_batches;
     for (int i=0; i<batches.size(); i++) {
         std::cout << "getting batch " << std::endl << std::flush;
-        //std::vector<std::string> verified = batches[i].get();
-        std::vector<std::string> verified = batches[i];
+        std::vector<std::string> verified = batches[i].get();
+        //std::vector<std::string> verified = batches[i];
         for (int j=0; j<verified.size(); j++) {
             verified_batches.push_back(verified[j]);
         }
