@@ -1,6 +1,3 @@
-// Copyright 2022 Haseeb LLC
-// @author: Muhammad Haseeb <mh6218@nyu.edu>
-
 #ifndef QUERY_CONDITIONS_H_
 #define QUERY_CONDITIONS_H_
 

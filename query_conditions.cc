@@ -1,12 +1,7 @@
-// Copyright 2022 Haseeb LLC
-// @author: Muhammad Haseeb <mh6218@nyu.edu>
-
 #include "query_conditions.h"
 
 
 bool does_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition) {
-    std::string new_value = (sp->*condition.func.string_func)();
-
     switch (condition.type) {
         case string_value: {
             std::string span_value = (sp->*condition.func.string_func)();
@@ -76,7 +71,6 @@ bool does_latency_condition_hold(const opentelemetry::proto::trace::v1::Span* sp
         case Greater_than:
             return latency > std::stol(condition.node_property_value);
         default:
-            std::cout << "damnn" << std::endl;
             return false;
     }
 
