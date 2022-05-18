@@ -135,7 +135,7 @@ bool does_span_satisfy_condition(
 	std::string span_id, std::string service_name,
 	query_condition condition, data_for_verifying_conditions& verification_data
 );
-bool does_trace_satisfy_condition(
+std::vector<int> get_iso_maps_indices_for_which_trace_satifies_condition(
 	std::string trace_id, query_condition condition,
 	int num_iso_maps, std::string object_content,
 	data_for_verifying_conditions& verification_data, int condition_index_in_verification_data

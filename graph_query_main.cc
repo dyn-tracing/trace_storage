@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
 
     // querying
     auto client = gcs::Client();
-    std::vector<std::string> total = get_traces_by_structure(query_trace, 1651700420, 1651700450, conditions, &client);
+    std::vector<std::string> total = get_traces_by_structure(query_trace, 1651700420, 1651700421, conditions, &client);
     std::cout << "Total results: " << total.size() << std::endl;
     return 0;
 }

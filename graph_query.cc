@@ -527,32 +527,45 @@ bool does_trace_satisfy_all_conditions(
 	std::string trace_id, std::string object_content, std::vector<query_condition> conditions,
 	int num_iso_maps, data_for_verifying_conditions& verification_data
 ) {
-	std::vector<std::future<bool>> response_futures;
+	std::vector<std::future<std::vector<int>>> response_futures;
 
 	for (int curr_cond_ind = 0; curr_cond_ind < conditions.size(); curr_cond_ind++) {
 		response_futures.push_back(std::async(
 			std::launch::async,
-			does_trace_satisfy_condition,
+			get_iso_maps_indices_for_which_trace_satifies_condition,
 			trace_id, conditions[curr_cond_ind], num_iso_maps,
 			object_content, std::ref(verification_data), curr_cond_ind));
 	}
 
-	bool current_trace_satisfies_every_condition = true;
+	std::unordered_map<int, int> iso_map_to_num_of_satisfied_conditions;
+	for (int i = 0; i < num_iso_maps; i++) {
+		iso_map_to_num_of_satisfied_conditions[i] = 0;
+	}
+
 	for(int i = 0; i < response_futures.size(); i++) {
-		if (false == response_futures[i].get()) {
-			current_trace_satisfies_every_condition = false;
-			break;
+		auto satisfying_iso_map_indices = response_futures[i].get();
+		for (auto& iso_map_ind: satisfying_iso_map_indices) {
+			iso_map_to_num_of_satisfied_conditions[iso_map_ind] += 1;
 		}
 	}
 
-	return current_trace_satisfies_every_condition;
+	for (int i = 0; i < num_iso_maps; i++) {
+		if (iso_map_to_num_of_satisfied_conditions[i] >= conditions.size()) {
+			std::cout << iso_map_to_num_of_satisfied_conditions[i] << " : " << conditions.size() << std::endl;
+			return true;
+		}
+	}
+
+	return false;
 }
 
-bool does_trace_satisfy_condition(
+
+std::vector<int> get_iso_maps_indices_for_which_trace_satifies_condition(
 	std::string trace_id, query_condition condition,
 	int num_iso_maps, std::string object_content,
 	data_for_verifying_conditions& verification_data, int condition_index_in_verification_data
 ) {
+	std::vector<int> satisfying_iso_map_indices;
 	for (int curr_iso_map_ind = 0; curr_iso_map_ind < num_iso_maps; curr_iso_map_ind++) {
 		auto trace = extract_trace_from_traces_object(trace_id, object_content);
 		auto trace_lines = split_by_line(trace);
@@ -565,14 +578,14 @@ bool does_trace_satisfy_condition(
 				auto span_id = span_info[1];
 				auto service_name = span_info[2];
 				if (true == does_span_satisfy_condition(span_id, service_name, condition, verification_data)) {
-					return true;
+					satisfying_iso_map_indices.push_back(curr_iso_map_ind);
 				}
 				break;
 			}
 		}
 	}
 
-	return false;
+	return satisfying_iso_map_indices;
 }
 
 bool does_span_satisfy_condition(
