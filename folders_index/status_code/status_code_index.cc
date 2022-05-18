@@ -7,16 +7,16 @@ int main(int argc, char* argv[]) {
 	dummy_tests();
 
 	auto client = gcs::Client();
-	time_t last_updated = 0;
-	std::string indexed_attribute = ATTR_SPAN_KIND;
 
-	time_t last_updated = read_bucket_label(
-		get_bucket_name_for_attr(indexed_attribute), "last_updated", client);
+	std::string indexed_attribute = ATTR_SPAN_KIND;
+	create_index_bucket_if_not_present(indexed_attribute, &(client));
+	time_t last_updated = get_last_updated_for_bucket(get_bucket_name_for_attr(
+		indexed_attribute), &(client));
 
 	boost::posix_time::ptime start, stop;
 	start = boost::posix_time::microsec_clock::local_time();
 
-	update_index(&client, last_updated, indexed_attribute);
+	update_index(&(client), last_updated, indexed_attribute);
 
 	stop = boost::posix_time::microsec_clock::local_time();
 
@@ -28,8 +28,6 @@ int main(int argc, char* argv[]) {
 
 int update_index(gcs::Client* client, time_t last_updated, std::string indexed_attribute
 ) {
-	create_index_bucket_if_not_present(indexed_attribute, client);
-
 	std::vector<std::string> span_buckets_names = get_spans_buckets_names(client);
 	std::vector<std::string> trace_struct_object_names = get_all_object_names(TRACE_STRUCT_BUCKET, client);
 	trace_struct_object_names = sort_object_names_on_start_time(trace_struct_object_names);
@@ -44,16 +42,15 @@ int update_index(gcs::Client* client, time_t last_updated, std::string indexed_a
 						std::string>>>>> response_futures;
 
 	std::cout << trace_struct_object_names.size() << std::endl;
-	int count = 0;
 
 	for (auto object_name : trace_struct_object_names) {
+		if(is_batch_older_than_last_updated(object_name, last_updated)) {
+			continue;
+		}
+
 		response_futures.push_back(std::make_pair(object_name, std::async(std::launch::async,
 			get_attr_to_trace_ids_map, object_name, indexed_attribute,
 			std::ref(span_buckets_names), client)));
-		count++;
-		if (count > 100) {
-			break;
-		}
 	}
 
 	index_batch current_index_batch = index_batch();
@@ -474,7 +471,36 @@ void create_index_bucket_if_not_present(std::string indexed_attribute, gcs::Clie
 }
 
 std::string read_bucket_label(std::string bucket_name, std::string label_key, gcs::Client* client) {
+	auto bucket_metadata = client->GetBucketMetadata(bucket_name);
+	if (!bucket_metadata) {
+		std::cerr << "Error in read_bucket_label: " << bucket_metadata.status().message() << std::endl;
+	}
+
+	for (auto const& kv : bucket_metadata->labels()) {
+		if (kv.first == label_key) {
+			return kv.second;
+		}
+	}
+
 	return "";
+}
+
+time_t get_last_updated_for_bucket(std::string bucket_name, gcs::Client* client) {
+	auto last_updated = read_bucket_label(bucket_name, "last_updated", client);
+	if (last_updated == "") {
+		return 0;
+	}
+
+	return (time_t) std::stol(last_updated, NULL, 10); 
+}
+
+/**
+ * TODO: should it be <= or < ???
+ * seems like <=
+ */
+bool is_batch_older_than_last_updated(std::string batch_name, time_t last_updated) {
+	auto timestamp = extract_batch_timestamps(batch_name);
+	return (time_t)std::stol(timestamp.end_time, NULL, 10) <= last_updated;
 }
 
 int dummy_tests() {
