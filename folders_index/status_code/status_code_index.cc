@@ -261,7 +261,7 @@ std::vector<std::string> get_attr_vals_which_have_enough_data_to_export(index_ba
 	std::vector<std::string> big_enough_attrs;
 
 	for (auto& map_ele : attr_to_trace_ids_total) {
-		if (map_ele.second*32 >= (1000000 - 100)) {
+		if (map_ele.second*32 >= (1000000 - 100)) {  // Using TRACE_ID_LENGTH
 			big_enough_attrs.push_back(map_ele.first);
 		}
 	}
