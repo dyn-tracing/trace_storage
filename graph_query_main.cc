@@ -18,18 +18,14 @@ int main(int argc, char* argv[]) {
 
     query_condition condition1;
     condition1.node_index = 2;
-    condition1.node_property_name = Latency;
+    condition1.type = int_value;
+    get_value_func condition_1_union;
+    condition_1_union.int_func = &opentelemetry::proto::trace::v1::Span::start_time_unix_nano;
+    condition1.func = condition_1_union;
     condition1.node_property_value = "10000000";  // 1e+7 ns, 10 ms
     condition1.comp = Lesser_than;
 
-    query_condition condition2;
-    condition2.node_index = 2;
-    condition2.node_property_name = Latency;
-    condition2.node_property_value = "10000000";  // 1e+7 ns, 10 ms
-    condition2.comp = Lesser_than;
-
     conditions.push_back(condition1);
-    conditions.push_back(condition2);
 
     // querying
     auto client = gcs::Client();

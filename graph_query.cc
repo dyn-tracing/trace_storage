@@ -588,22 +588,7 @@ bool does_span_satisfy_condition(
 
 		std::string current_span_id = hex_str(sp->span_id(), sp->span_id().length());
 		if (current_span_id == span_id) {
-			switch (condition.node_property_name) {
-				case Latency:
-					return does_latency_condition_hold(sp, condition);
-				case Start_time:
-					return does_start_time_condition_hold(sp, condition);
-				case End_time:
-					return does_end_time_condition_hold(sp, condition);
-				case Attribute_parent_name:
-					std::cerr << "Under construction." << std::endl;
-					exit(1);
-				default:
-					std::cerr << "Condition not supported." << std::endl;
-					exit(1);
-			}
-
-			break;
+            return does_condition_hold(sp, condition);
 		}
 	}
 
