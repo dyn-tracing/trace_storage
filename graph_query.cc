@@ -551,7 +551,6 @@ bool does_trace_satisfy_all_conditions(
 
 	for (int i = 0; i < num_iso_maps; i++) {
 		if (iso_map_to_num_of_satisfied_conditions[i] >= conditions.size()) {
-			std::cout << iso_map_to_num_of_satisfied_conditions[i] << " : " << conditions.size() << std::endl;
 			return true;
 		}
 	}
