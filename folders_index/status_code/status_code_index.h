@@ -1,8 +1,8 @@
 // Copyright 2022 Haseeb LLC
 // @author: Muhammad Haseeb <mh6218@nyu.edu>
 
-#ifndef STATUS_CODE_INDEX_H_
-#define STATUS_CODE_INDEX_H_
+#ifndef STATUS_CODE_INDEX_H_  // NOLINT
+#define STATUS_CODE_INDEX_H_  // NOLINT
 
 #include <algorithm>
 #include <future>
@@ -65,7 +65,7 @@ std::vector<std::string> get_all_attr_values(index_batch& current_index_batch);
 int get_total_of_trace_ids(std::unordered_map<std::string, std::vector<std::string>> attr_to_trace_ids);
 void write_object(std::string bucket_name, std::string object_name,
 	std::string& object_to_write, gcs::Client* client);
-int update_index(gcs::Client* client, time_t last_updated, 
+int update_index(gcs::Client* client, time_t last_updated,
 	std::string indexed_attribute
 );
 std::string get_autoscaling_hash_from_start_time(std::string start_time);
@@ -99,4 +99,4 @@ void create_index_bucket_if_not_present(std::string indexed_attribute, gcs::Clie
 void print_index_batch(index_batch& current_index_batch);
 int dummy_tests();
 
-#endif  // STATUS_CODE_INDEX_H_
+#endif  // STATUS_CODE_INDEX_H_   // NOLINT

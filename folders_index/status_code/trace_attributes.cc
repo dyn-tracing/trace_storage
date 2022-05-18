@@ -1,3 +1,6 @@
+// Copyright 2022 Haseeb LLC
+// @author: Muhammad Haseeb <mh6218@nyu.edu>
+
 #include "trace_attributes.h"
 
 /**

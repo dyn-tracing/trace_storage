@@ -37,7 +37,7 @@ int update_index(gcs::Client* client, time_t last_updated, std::string indexed_a
 			std::string,
 			std::future<
 				std::unordered_map<
-					std::string, 
+					std::string,
 					std::vector<
 						std::string>>>>> response_futures;
 
@@ -147,7 +147,7 @@ bool compare_object_names_by_start_time(std::string object_name1, std::string ob
 
 std::vector<std::string> sort_object_names_on_start_time(std::vector<std::string> object_names) {
 	sort(object_names.begin(), object_names.end(), compare_object_names_by_start_time);
-	return object_names;	
+	return object_names;
 }
 
 std::unordered_map<std::string, std::vector<std::string>> get_attr_to_trace_ids_map(
@@ -157,8 +157,10 @@ std::unordered_map<std::string, std::vector<std::string>> get_attr_to_trace_ids_
 	std::unordered_map<std::string, std::vector<std::string>> attr_to_trace_ids_map;
 
 	for (auto span_bucket : span_buckets_names) {
-		std::unordered_map<std::string, std::vector<std::string>> local_attr_to_trace_ids_map = calculate_attr_to_trace_ids_map_for_microservice(
-			span_bucket, object_name, indexed_attribute, client);
+		std::unordered_map<
+			std::string,
+			std::vector<std::string>> local_attr_to_trace_ids_map = calculate_attr_to_trace_ids_map_for_microservice(
+				span_bucket, object_name, indexed_attribute, client);
 
 		take_per_field_union(attr_to_trace_ids_map, local_attr_to_trace_ids_map);
 	}
@@ -183,8 +185,7 @@ void take_per_field_union(std::unordered_map<std::string, std::vector<std::strin
 			if (std::find(
 					previous_trace_ids->begin(),
 					previous_trace_ids->end(),
-					(*local_trace_ids)[trace_id_ind]
-				) == previous_trace_ids->end()
+					(*local_trace_ids)[trace_id_ind]) == previous_trace_ids->end()
 			) {
 				attr_to_trace_ids_map[local_attribute].push_back((*local_trace_ids)[trace_id_ind]);
 			}
@@ -195,7 +196,7 @@ void take_per_field_union(std::unordered_map<std::string, std::vector<std::strin
 std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trace_ids_map_for_microservice(
 	std::string span_bucket_name, std::string object_name, std::string indexed_attribute, gcs::Client* client
 ) {
-	std::unordered_map<std::string, std::vector<std::string>> response; // attr_val_to_vec_of_traceids
+	std::unordered_map<std::string, std::vector<std::string>> response;  // attr_val_to_vec_of_traceids
 	std::string raw_span_bucket_obj_content = read_object(span_bucket_name, object_name, client);
 	if (raw_span_bucket_obj_content.length() < 1) {
 		return response;
@@ -246,7 +247,7 @@ batch_timestamp extract_batch_timestamps(std::string batch_name) {
  */
 std::vector<std::string> get_attr_vals_which_have_enough_data_to_export(index_batch& current_index_batch) {
 	std::unordered_map<std::string, int> attr_to_trace_ids_total;
- 
+
 	for (auto& p : current_index_batch.trace_ids_with_timestamps) {
 		for (auto& map_ele : p.second) {
 			if (attr_to_trace_ids_total.find(map_ele.first) == attr_to_trace_ids_total.end()) {
@@ -301,21 +302,21 @@ void export_batch_to_storage(index_batch& current_index_batch, std::string index
 
 		for (auto& elem : current_index_batch.trace_ids_with_timestamps) {
 			auto* attr_to_trace_ids_map = &(elem.second);
-			
-			if (attr_to_trace_ids_map->find(attr_being_exported) == attr_to_trace_ids_map->end() 
+
+			if (attr_to_trace_ids_map->find(attr_being_exported) == attr_to_trace_ids_map->end()
 			|| ((*attr_to_trace_ids_map)[attr_being_exported].size() < 1)) {
 				continue;
 			}
 
 			auto curr_timestamp = extract_batch_timestamps(elem.first);
 
-			if (consiledated_timestamp.start_time == "" || 
+			if (consiledated_timestamp.start_time == "" ||
 				(std::stol(curr_timestamp.start_time) < std::stol(consiledated_timestamp.start_time))
 			) {
 				consiledated_timestamp.start_time = curr_timestamp.start_time;
 			}
 
-			if (consiledated_timestamp.end_time == "" || 
+			if (consiledated_timestamp.end_time == "" ||
 				(std::stol(curr_timestamp.end_time) > std::stol(consiledated_timestamp.end_time))
 			) {
 				consiledated_timestamp.end_time = curr_timestamp.end_time;
@@ -491,7 +492,7 @@ time_t get_last_updated_for_bucket(std::string bucket_name, gcs::Client* client)
 		return 0;
 	}
 
-	return (time_t) std::stol(last_updated, NULL, 10); 
+	return (time_t) std::stol(last_updated, NULL, 10);
 }
 
 /**
@@ -524,7 +525,7 @@ int dummy_tests() {
 	// 	std::cout << std::endl;
 	// }
 
-	// std::size_t hash = std::hash<std::string>()("foo");	
+	// std::size_t hash = std::hash<std::string>()("foo");
 	// std::cout << std::to_string(hash).substr(0, 2) << std::endl;
 	// exit(1);
 	return 0;
