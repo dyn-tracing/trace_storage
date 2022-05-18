@@ -544,7 +544,7 @@ bool does_trace_satisfy_all_conditions(
 
 	for(int i = 0; i < response_futures.size(); i++) {
 		auto satisfying_iso_map_indices = response_futures[i].get();
-		for (auto& iso_map_ind: satisfying_iso_map_indices) {
+		for (auto& iso_map_ind : satisfying_iso_map_indices) {
 			iso_map_to_num_of_satisfied_conditions[iso_map_ind] += 1;
 		}
 	}
