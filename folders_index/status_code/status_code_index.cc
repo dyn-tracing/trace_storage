@@ -10,23 +10,20 @@ int main(int argc, char* argv[]) {
 	time_t last_updated = 0;
 	std::string indexed_attribute = ATTR_SPAN_KIND;
 
+	time_t last_updated = read_bucket_label(
+		get_bucket_name_for_attr(indexed_attribute), "last_updated", client);
+
 	boost::posix_time::ptime start, stop;
 	start = boost::posix_time::microsec_clock::local_time();
+
 	update_index(&client, last_updated, indexed_attribute);
+
 	stop = boost::posix_time::microsec_clock::local_time();
 
 	boost::posix_time::time_duration dur = stop - start;
 	int64_t milliseconds = dur.total_milliseconds();
 	std::cout << "Time taken: " << milliseconds << std::endl;
 	return 0;
-}
-
-int get_total_of_trace_ids(std::unordered_map<std::string, std::vector<std::string>> attr_to_trace_ids) {
-	int count = 0;
-	for (auto& ele : attr_to_trace_ids) {
-		count += ele.second.size();
-	}
-	return count;
 }
 
 int update_index(gcs::Client* client, time_t last_updated, std::string indexed_attribute
@@ -47,10 +44,16 @@ int update_index(gcs::Client* client, time_t last_updated, std::string indexed_a
 						std::string>>>>> response_futures;
 
 	std::cout << trace_struct_object_names.size() << std::endl;
+	int count = 0;
+
 	for (auto object_name : trace_struct_object_names) {
 		response_futures.push_back(std::make_pair(object_name, std::async(std::launch::async,
 			get_attr_to_trace_ids_map, object_name, indexed_attribute,
 			std::ref(span_buckets_names), client)));
+		count++;
+		if (count > 100) {
+			break;
+		}
 	}
 
 	index_batch current_index_batch = index_batch();
@@ -69,6 +72,14 @@ int update_index(gcs::Client* client, time_t last_updated, std::string indexed_a
 
 	export_batch_to_storage(current_index_batch, indexed_attribute, get_all_attr_values(current_index_batch), client);
 	return 0;
+}
+
+int get_total_of_trace_ids(std::unordered_map<std::string, std::vector<std::string>> attr_to_trace_ids) {
+	int count = 0;
+	for (auto& ele : attr_to_trace_ids) {
+		count += ele.second.size();
+	}
+	return count;
 }
 
 /**
@@ -330,7 +341,20 @@ void export_batch_to_storage(index_batch& current_index_batch, std::string index
 			consiledated_timestamp.start_time + "-" + consiledated_timestamp.end_time;
 
 		write_object(bucket_name, object_name, object_to_write, client);
+		update_bucket_label(bucket_name, "last_updated", consiledated_timestamp.end_time, client);
 		remove_exported_data_from_index_batch(current_index_batch, attr_being_exported);
+	}
+
+	return;
+}
+
+void update_bucket_label(std::string bucket_name, std::string label_key, std::string label_val, gcs::Client* client) {
+	auto updated_metadata = client->PatchBucket(bucket_name, gcs::BucketMetadataPatchBuilder().SetLabel(
+		label_key, label_val));
+
+	if (!updated_metadata) {
+		std::cerr << "Error in update_bucket_label " << updated_metadata.status().message() << std::endl;
+		exit(1);
 	}
 
 	return;
@@ -447,6 +471,10 @@ void create_index_bucket_if_not_present(std::string indexed_attribute, gcs::Clie
 		std::cerr << "Error creating bucket " << bucket_name << ", status=" << bucket_metadata.status() << "\n";
 		exit(1);
 	}
+}
+
+std::string read_bucket_label(std::string bucket_name, std::string label_key, gcs::Client* client) {
+	return "";
 }
 
 int dummy_tests() {

@@ -57,6 +57,7 @@ struct index_batch {
 namespace gcs = ::google::cloud::storage;
 using ::google::cloud::StatusOr;
 
+void update_bucket_label(std::string bucket_name, std::string label_key, std::string label_val, gcs::Client* client);
 std::vector<std::string> get_all_attr_values(index_batch& current_index_batch);
 int get_total_of_trace_ids(std::unordered_map<std::string, std::vector<std::string>> attr_to_trace_ids);
 void write_object(std::string bucket_name, std::string object_name,
