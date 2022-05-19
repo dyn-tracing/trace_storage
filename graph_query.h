@@ -27,9 +27,9 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket3";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket3";
-const char SERVICES_BUCKETS_SUFFIX[] = "-snicket3";
+const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket4";
+const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket4";
+const char SERVICES_BUCKETS_SUFFIX[] = "-snicket4";
 const char ASTERISK_SERVICE[] = "NONE";
 
 const int TRACE_ID_LENGTH = 32;
@@ -135,7 +135,7 @@ bool does_span_satisfy_condition(
 	std::string span_id, std::string service_name,
 	query_condition condition, data_for_verifying_conditions& verification_data
 );
-bool does_trace_satisfy_condition(
+std::vector<int> get_iso_maps_indices_for_which_trace_satifies_condition(
 	std::string trace_id, query_condition condition,
 	int num_iso_maps, std::string object_content,
 	data_for_verifying_conditions& verification_data, int condition_index_in_verification_data

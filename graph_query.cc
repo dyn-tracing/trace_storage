@@ -1,61 +1,6 @@
-// Copyright 2022 Haseeb LLC
 // @author: Muhammad Haseeb <mh6218@nyu.edu>
 
 #include "graph_query.h"
-
-int main(int argc, char* argv[]) {
-	dummy_tests();
-
-	// query trace structure
-	trace_structure query_trace;
-	query_trace.num_nodes = 3;
-	query_trace.node_names.insert(std::make_pair(0, "frontend"));
-	query_trace.node_names.insert(std::make_pair(1, "adservice"));
-	query_trace.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
-
-	query_trace.edges.insert(std::make_pair(0, 1));
-	query_trace.edges.insert(std::make_pair(1, 2));
-
-	// query conditions
-	std::vector<query_condition> conditions;
-
-	query_condition condition1;
-	condition1.node_index = 2;
-	condition1.node_property_name = Latency;
-	condition1.node_property_value = "10000000";  // 1e+7 ns, 10 ms
-	condition1.comp = Lesser_than;
-
-	query_condition condition2;
-	condition2.node_index = 1;
-	condition2.node_property_name = Latency;
-	condition2.node_property_value = "100000000000";  // 1e+7 ns, 10 ms
-	condition2.comp = Lesser_than;
-
-	query_condition condition3;
-	condition3.node_index = 0;
-	condition3.node_property_name = Latency;
-	condition3.node_property_value = "100000000000";  // 1e+7 ns, 10 ms
-	condition3.comp = Lesser_than;
-
-	conditions.push_back(condition1);
-	conditions.push_back(condition2);
-	conditions.push_back(condition3);
-
-	boost::posix_time::ptime start, stop;
-	start = boost::posix_time::microsec_clock::local_time();
-
-	// querying
-	auto client = gcs::Client();
-	std::vector<std::string> total = get_traces_by_structure(query_trace, 1651696797, 1651696798, conditions, &client);
-	stop = boost::posix_time::microsec_clock::local_time();
-	std::cout << "Total results: " << total.size() << std::endl;
-
-	boost::posix_time::time_duration dur = stop - start;
-	int64_t milliseconds = dur.total_milliseconds();
-	std::cout << "Time taken: " << milliseconds << std::endl;
-
-	return 0;
-}
 
 /**
  * @brief Get the traces by structure object
@@ -582,32 +527,44 @@ bool does_trace_satisfy_all_conditions(
 	std::string trace_id, std::string object_content, std::vector<query_condition> conditions,
 	int num_iso_maps, data_for_verifying_conditions& verification_data
 ) {
-	std::vector<std::future<bool>> response_futures;
+	std::vector<std::future<std::vector<int>>> response_futures;
 
 	for (int curr_cond_ind = 0; curr_cond_ind < conditions.size(); curr_cond_ind++) {
 		response_futures.push_back(std::async(
 			std::launch::async,
-			does_trace_satisfy_condition,
+			get_iso_maps_indices_for_which_trace_satifies_condition,
 			trace_id, conditions[curr_cond_ind], num_iso_maps,
 			object_content, std::ref(verification_data), curr_cond_ind));
 	}
 
-	bool current_trace_satisfies_every_condition = true;
+	std::unordered_map<int, int> iso_map_to_num_of_satisfied_conditions;
+	for (int i = 0; i < num_iso_maps; i++) {
+		iso_map_to_num_of_satisfied_conditions[i] = 0;
+	}
+
 	for(int i = 0; i < response_futures.size(); i++) {
-		if (false == response_futures[i].get()) {
-			current_trace_satisfies_every_condition = false;
-			break;
+		auto satisfying_iso_map_indices = response_futures[i].get();
+		for (auto& iso_map_ind : satisfying_iso_map_indices) {
+			iso_map_to_num_of_satisfied_conditions[iso_map_ind] += 1;
 		}
 	}
 
-	return current_trace_satisfies_every_condition;
+	for (int i = 0; i < num_iso_maps; i++) {
+		if (iso_map_to_num_of_satisfied_conditions[i] >= conditions.size()) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
-bool does_trace_satisfy_condition(
+
+std::vector<int> get_iso_maps_indices_for_which_trace_satifies_condition(
 	std::string trace_id, query_condition condition,
 	int num_iso_maps, std::string object_content,
 	data_for_verifying_conditions& verification_data, int condition_index_in_verification_data
 ) {
+	std::vector<int> satisfying_iso_map_indices;
 	for (int curr_iso_map_ind = 0; curr_iso_map_ind < num_iso_maps; curr_iso_map_ind++) {
 		auto trace = extract_trace_from_traces_object(trace_id, object_content);
 		auto trace_lines = split_by_line(trace);
@@ -620,14 +577,14 @@ bool does_trace_satisfy_condition(
 				auto span_id = span_info[1];
 				auto service_name = span_info[2];
 				if (true == does_span_satisfy_condition(span_id, service_name, condition, verification_data)) {
-					return true;
+					satisfying_iso_map_indices.push_back(curr_iso_map_ind);
 				}
 				break;
 			}
 		}
 	}
 
-	return false;
+	return satisfying_iso_map_indices;
 }
 
 bool does_span_satisfy_condition(
@@ -643,22 +600,7 @@ bool does_span_satisfy_condition(
 
 		std::string current_span_id = hex_str(sp->span_id(), sp->span_id().length());
 		if (current_span_id == span_id) {
-			switch (condition.node_property_name) {
-				case Latency:
-					return does_latency_condition_hold(sp, condition);
-				case Start_time:
-					return does_start_time_condition_hold(sp, condition);
-				case End_time:
-					return does_end_time_condition_hold(sp, condition);
-				case Attribute_parent_name:
-					std::cerr << "Under construction." << std::endl;
-					exit(1);
-				default:
-					std::cerr << "Condition not supported." << std::endl;
-					exit(1);
-			}
-
-			break;
+            return does_condition_hold(sp, condition);
 		}
 	}
 
