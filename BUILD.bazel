@@ -112,3 +112,21 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_binary(
+    name = "status_code_index",
+    srcs = [
+        "folders_index/status_code/status_code_index.cc",
+        "folders_index/status_code/status_code_index.h",
+        "folders_index/status_code/trace_attributes.cc",
+        "folders_index/status_code/trace_attributes.h"
+    ],
+    deps = [
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:algorithm",
+        "@boost//:graph",
+        "@boost//:date_time",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+    ],
+)

@@ -51,7 +51,6 @@ std::string hex_str(std::string data, int len) {
 	return s;
 }
 
-
 opentelemetry::proto::trace::v1::Span get_span(
     int hash1, int hash2, std::string microservice, std::string start_time,
     std::string end_time, gcs::Client* client, std::string span_id) {
