@@ -113,14 +113,13 @@ cc_test(
     ],
 )
 
-cc_binary(
-    name = "folders_index",
+cc_library(
+    name = "folders_index_lib",
     srcs = [
         "folders_index/folders_index.cc",
-        "folders_index/folders_index.h",
         "folders_index/trace_attributes.cc",
-        "folders_index/trace_attributes.h"
     ],
+    hdrs = ["folders_index/folders_index.h", "folders_index/trace_attributes.h"],
     deps = [
         "@com_github_googleapis_google_cloud_cpp//:storage",
         "@boost//:algorithm",
@@ -128,5 +127,16 @@ cc_binary(
         "@boost//:date_time",
         "@com_google_protobuf//:protobuf",
         "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+    ],
+    visibility = ["//main:__pkg__"],
+)
+
+cc_binary(
+    name = "folders_index",
+    srcs = [
+        "folders_index/main.cc"
+    ],
+    deps = [
+        "//:folders_index_lib"
     ],
 )
