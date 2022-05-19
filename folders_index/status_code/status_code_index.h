@@ -57,6 +57,10 @@ struct index_batch {
 namespace gcs = ::google::cloud::storage;
 using ::google::cloud::StatusOr;
 
+void update_index_batched(gcs::Client* client, time_t last_updated, std::string indexed_attribute,
+	std::vector<std::string> span_buckets_names, std::vector<std::string>& trace_struct_object_names,
+	int batch_start_ind, int batch_size
+);
 bool is_batch_older_than_last_updated(std::string batch_name, time_t last_updated);
 time_t get_last_updated_for_bucket(std::string bucket_name, gcs::Client* client);
 std::string read_bucket_label(std::string bucket_name, std::string label_key, gcs::Client* client);
