@@ -513,7 +513,7 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 	for (int i = trace_ids_start_index; (i < trace_ids.size() && i < trace_ids_start_index + 99); i++) {
 		auto current_trace_id = trace_ids[i];
 		bool satisfies_conditions = does_trace_satisfy_all_conditions(
-			current_trace_id, object_content, conditions, num_iso_maps, required_data);
+			current_trace_id, object_content, conditions, num_iso_maps, required_data, ret);
 
 		if (true == satisfies_conditions) {
 			response.push_back(current_trace_id);
@@ -523,9 +523,9 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 	return response;
 }
 
-bool does_trace_satisfy_all_conditions(
+std::tuple<bool, std::string> does_trace_satisfy_all_conditions(
 	std::string trace_id, std::string object_content, std::vector<query_condition> conditions,
-	int num_iso_maps, data_for_verifying_conditions& verification_data
+	int num_iso_maps, data_for_verifying_conditions& verification_data, return_value ret,
 ) {
 	std::vector<std::future<std::vector<int>>> response_futures;
 
@@ -551,11 +551,36 @@ bool does_trace_satisfy_all_conditions(
 
 	for (int i = 0; i < num_iso_maps; i++) {
 		if (iso_map_to_num_of_satisfied_conditions[i] >= conditions.size()) {
+            auto trace = extract_trace_from_traces_object(trace_id, object_content);
+            auto trace_lines = split_by_line(trace);
+            // now just find the return value
+            auto condition_service = verification_data.service_name_for_condition_with_isomap[
+                i][curr_iso_map_ind];
+            for (auto line : trace_lines) {
+                if (line.find(condition_service) != std::string::npos) {
+                    auto span_info = split_by_char(line, ":");
+                    auto span_id = span_info[1];
+                    auto service_name = span_info[2];
+                    opentelemetry::proto::trace::v1::TracesData* trace_data = &(
+                        verification_data.service_name_to_respective_object[service_name]);
+
+                    const opentelemetry::proto::trace::v1::Span* sp;
+                    for (int i=0; i < trace_data->resource_spans(0).scope_spans(0).spans_size(); i++) {
+                        sp = &(trace_data->resource_spans(0).scope_spans(0).spans(i));
+
+                        std::string current_span_id = hex_str(sp->span_id(), sp->span_id().length());
+                        if (current_span_id == span_id) {
+                            return does_condition_hold(sp, condition);
+                        }
+                    }
+                    break;
+                }
+            }
 			return true;
 		}
 	}
 
-	return false;
+	return std::make_tuple(false, "");
 }
 
 

@@ -10,13 +10,6 @@ enum property_comparison {
 	Greater_than
 };
 
-enum node_properties {
-	Latency,  // string(nano-secons)
-	Start_time,  // string(nano-seconds)
-	End_time,  // string(nano-seconds)
-	Attribute_parent_name  // string
-};
-
 enum property_type {
     string_value,
     bool_value,
@@ -24,7 +17,6 @@ enum property_type {
     double_value,
     bytes_value
 };
-
 
 // https://stackoverflow.com/questions/16770690/function-pointer-to-different-functions-with-different-arguments-in-c
 typedef union {
@@ -42,6 +34,12 @@ struct query_condition {
 	std::string node_property_value;
 	property_comparison comp;
 };
+
+struct return_value {
+    int node_index;
+    property_type type;
+    get_value_func func;
+}
 
 bool does_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition);
 
