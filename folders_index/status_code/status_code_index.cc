@@ -75,7 +75,7 @@ int update_index(gcs::Client* client, time_t last_updated, std::string indexed_a
 
 	std::cout << trace_struct_object_names.size() << std::endl;
 
-	int thread_pool_size = 200;
+	int thread_pool_size = 500;
 	for (int i=0; i < trace_struct_object_names.size(); i=i+thread_pool_size) {
 		update_index_batched(client, last_updated, indexed_attribute, span_buckets_names, trace_struct_object_names, i, thread_pool_size);
 	}
