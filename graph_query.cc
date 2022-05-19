@@ -510,7 +510,7 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 ) {
 	std::vector<std::string> response;
 
-	for (int i = trace_ids_start_index; (i < trace_ids.size() && i < trace_ids_start_index + 99); i++) {
+	for (int i = trace_ids_start_index; (i < trace_ids.size() && i < trace_ids_start_index + 100); i++) {
 		auto current_trace_id = trace_ids[i];
 		bool satisfies_conditions = does_trace_satisfy_all_conditions(
 			current_trace_id, object_content, conditions, num_iso_maps, required_data);
