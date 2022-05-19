@@ -1,7 +1,7 @@
 // Copyright 2022 Haseeb LLC
 // @author: Muhammad Haseeb <mh6218@nyu.edu>
 
-#include "status_code_index.h"
+#include "folders_index.h"
 
 int main(int argc, char* argv[]) {
 	dummy_tests();
