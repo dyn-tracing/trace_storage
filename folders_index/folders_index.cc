@@ -3,6 +3,21 @@
 
 #include "folders_index.h"
 
+int update_index(gcs::Client* client, time_t last_updated, std::string indexed_attribute
+) {
+	std::vector<std::string> span_buckets_names = get_spans_buckets_names(client);
+	std::vector<std::string> trace_struct_object_names = get_all_object_names(TRACE_STRUCT_BUCKET, client);
+	trace_struct_object_names = sort_object_names_on_start_time(trace_struct_object_names);
+
+	int thread_pool_size = 500;
+	for (int i=0; i < trace_struct_object_names.size(); i=i+thread_pool_size) {
+		update_index_batched(client, last_updated, indexed_attribute, span_buckets_names,
+			trace_struct_object_names, i, thread_pool_size);
+	}
+
+	return 0;
+}
+
 void update_index_batched(gcs::Client* client, time_t last_updated, std::string indexed_attribute,
 	std::vector<std::string> span_buckets_names, std::vector<std::string>& trace_struct_object_names,
 	int batch_start_ind, int batch_size
@@ -15,6 +30,7 @@ void update_index_batched(gcs::Client* client, time_t last_updated, std::string 
 					std::string,
 					std::vector<
 						std::string>>>>> response_futures;
+
 	for (int i = batch_start_ind; (i < trace_struct_object_names.size() && i < batch_start_ind+batch_size); i++) {
 		auto object_name = trace_struct_object_names[i];
 		if(is_batch_older_than_last_updated(object_name, last_updated)) {
@@ -42,23 +58,6 @@ void update_index_batched(gcs::Client* client, time_t last_updated, std::string 
 
 	export_batch_to_storage(current_index_batch, indexed_attribute, get_all_attr_values(current_index_batch), client);
 	return;
-}
-
-int update_index(gcs::Client* client, time_t last_updated, std::string indexed_attribute
-) {
-	std::vector<std::string> span_buckets_names = get_spans_buckets_names(client);
-	std::vector<std::string> trace_struct_object_names = get_all_object_names(TRACE_STRUCT_BUCKET, client);
-	trace_struct_object_names = sort_object_names_on_start_time(trace_struct_object_names);
-
-	std::cout << trace_struct_object_names.size() << std::endl;
-
-	int thread_pool_size = 500;
-	for (int i=0; i < trace_struct_object_names.size(); i=i+thread_pool_size) {
-		update_index_batched(client, last_updated, indexed_attribute, span_buckets_names,
-			trace_struct_object_names, i, thread_pool_size);
-	}
-
-	return 0;
 }
 
 int get_total_of_trace_ids(std::unordered_map<std::string, std::vector<std::string>> attr_to_trace_ids) {
