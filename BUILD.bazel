@@ -47,6 +47,25 @@ cc_library(
         "@boost//:date_time",
         "@com_google_protobuf//:protobuf",
         "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+        "//:get_traces_by_structure"
+    ],
+    visibility = ["//main:__pkg__"],
+)
+
+cc_library(
+    name = "get_traces_by_structure",
+    srcs = [
+        "get_traces_by_structure.cc",
+        "get_traces_by_structure.h",
+    ],
+    hdrs = ["get_traces_by_structure.h"],
+    deps = [
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:algorithm",
+        "@boost//:graph",
+        "@boost//:date_time",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
     ],
     visibility = ["//main:__pkg__"],
 )
