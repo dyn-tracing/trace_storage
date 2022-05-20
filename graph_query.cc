@@ -23,7 +23,7 @@ std::vector<std::string> get_traces_by_structure(
 			exit(1);
 		}
 
-		auto result = *std::move(prefix);  // what the bleep
+		auto result = *std::move(prefix);
 		if (false == absl::holds_alternative<std::string>(result)) {
 			std::cerr << "Error in getting prefixes" << std::endl;
 			exit(1);
@@ -72,8 +72,19 @@ std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace
 		}
 
 		std::string object_content = read_object(TRACE_STRUCT_BUCKET, batch_name, client);
-		std::string trace = extract_trace_from_traces_object(response_trace_ids[0], object_content);
+		if (object_content == "") {
+			continue;
+		}
+
+		std::string trace = extract_any_trace(response_trace_ids, object_content);
+		if (trace == "") {
+			continue;
+		}
+
 		trace_structure candidate_trace = morph_trace_object_to_trace_structure(trace);
+		if (candidate_trace.num_nodes < 1) {
+			continue;
+		}
 
 		if (iso_maps.size() < 1) {
 			iso_maps = get_isomorphism_mappings(candidate_trace, query_trace);
@@ -84,10 +95,13 @@ std::vector<std::string> process_trace_hashes_prefix_and_retrieve_relevant_trace
 
 		response_trace_ids = filter_trace_ids_based_on_query_timestamp(
 			response_trace_ids, batch_name, object_content, start_time, end_time, client);
+		if (response_trace_ids.size() < 1) {
+			continue;
+		}
 
 		auto required_data = get_gcs_objects_required_for_verifying_conditions(
 			conditions, iso_maps, candidate_trace.node_names, query_trace.node_names, batch_name,
-			extract_trace_from_traces_object(response_trace_ids[0], object_content), client);
+			extract_any_trace(response_trace_ids, object_content), client);
 
 		all_required_data.push_back(required_data);
 
@@ -183,7 +197,7 @@ std::string read_object(std::string bucket, std::string object, gcs::Client* cli
 	auto reader = client->ReadObject(bucket, object);
 	if (!reader) {
 		std::cerr << "Error reading object " << bucket << "/" << object << " :" << reader.status() << "\n";
-		exit(1);
+		return "";
 	}
 
 	std::string object_content{std::istreambuf_iterator<char>{reader}, {}};
@@ -192,6 +206,9 @@ std::string read_object(std::string bucket, std::string object, gcs::Client* cli
 
 std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client) {
 	std::string object_content = read_object(TRACE_HASHES_BUCKET, object_name, client);
+	if (object_content == "") {
+		return std::vector<std::string>();
+	}
 	std::vector<std::string> trace_ids = split_by_line(object_content);
 
 	return trace_ids;
@@ -209,16 +226,28 @@ std::pair<int, int> extract_batch_timestamps(std::string batch_name) {
 	boost::split(result, batch_name, boost::is_any_of("-"));
 	if (result.size() != 3) {
 		std::cerr << "Error in extract_batch_timestamps with batch name: " << batch_name << std::endl;
+		exit(1);
 	}
 
 	return std::make_pair(std::stoi(result[1]), std::stoi(result[2]));
 }
 
-std::string extract_trace_from_traces_object(std::string trace_id, std::string object_content) {
+std::string extract_any_trace(std::vector<std::string>& trace_ids, std::string& object_content) {
+	for (auto& curr_trace_id : trace_ids) {
+		auto res = extract_trace_from_traces_object(curr_trace_id, object_content);
+		if (res != "") {
+			return res;
+		}
+	}
+
+	return "";
+}
+
+std::string extract_trace_from_traces_object(std::string trace_id, std::string& object_content) {
 	int start_ind = object_content.find("Trace ID: " + trace_id + ":");
 	if (start_ind == std::string::npos) {
 		std::cerr << "trace_id (" << trace_id << ") not found in the object_content" << std::endl;
-		exit(1);
+		return "";
 	}
 
 	int end_ind = object_content.find("Trace ID", start_ind+1);
@@ -255,7 +284,7 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
 		std::vector<std::string> span_info = split_by_char(line, ":");
 		if (span_info.size() != 4) {
 			std::cerr << "Malformed trace found: \n" << trace << std::endl;
-			exit(1);
+			return response;
 		}
 
 		span_to_service.insert(std::make_pair(span_info[1], span_info[2]+":"+span_info[3]));
@@ -282,8 +311,6 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
 			reverse_node_names[span_to_service[elem.second]]));
 	}
 
-	// print_trace_structure(response);
-	// exit(1);
 	return response;
 }
 
@@ -353,10 +380,7 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
 	std::map<std::string, std::string> trace_id_to_root_service_map = get_trace_id_to_root_service_map(object_content);
 	std::map<std::string, std::vector<std::string>> root_service_to_trace_ids_map = get_root_service_to_trace_ids_map(
 		trace_id_to_root_service_map);
-	/**
-	 * We could do this stuff async as well. but almost every time, the root service is same
-	 * so we mostly might not see the async benefit. 
-	 */
+
 	for (auto const& elem : root_service_to_trace_ids_map) {
 		std::string bucket = elem.first + SERVICES_BUCKETS_SUFFIX;
 		std::string spans_data = read_object(bucket, batch_name, client);
@@ -451,8 +475,11 @@ opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
 	std::string bucket, std::string object_name, gcs::Client* client
 ) {
 	auto data = read_object(bucket, object_name, client);
-
 	opentelemetry::proto::trace::v1::TracesData trace_data;
+	if (data == "") {
+		return trace_data;
+	}
+
 	bool ret = trace_data.ParseFromString(data);
 	if (false == ret) {
 		std::cerr << "Error in read_object_and_parse_traces_data:ParseFromString" << std::endl;
