@@ -122,6 +122,7 @@ graph_type;
 typedef boost::property_map<graph_type, boost::vertex_name_t>::type vertex_name_map_t;
 typedef property_map_equivalent_custom<vertex_name_map_t, vertex_name_map_t> vertex_comp_t;
 
+std::string extract_any_trace(std::vector<std::string>& trace_ids, std::string& object_content);
 opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
 	std::string bucket, std::string object_name, gcs::Client* client
 );
@@ -165,7 +166,7 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 );
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph);
 void print_trace_structure(trace_structure trace);
-std::string extract_trace_from_traces_object(std::string trace_id, std::string object_content);
+std::string extract_trace_from_traces_object(std::string trace_id, std::string& object_content);
 std::pair<int, int> extract_batch_timestamps(std::string batch_name);
 std::string extract_batch_name(std::string object_name);
 std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(

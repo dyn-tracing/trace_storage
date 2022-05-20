@@ -196,8 +196,12 @@ bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, i
 std::string read_object(std::string bucket, std::string object, gcs::Client* client) {
 	auto reader = client->ReadObject(bucket, object);
 	if (!reader) {
+		if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
+			return "";
+		}
+
 		std::cerr << "Error reading object " << bucket << "/" << object << " :" << reader.status() << "\n";
-		return "";
+		exit(1);
 	}
 
 	std::string object_content{std::istreambuf_iterator<char>{reader}, {}};
