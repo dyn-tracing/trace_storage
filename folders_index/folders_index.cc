@@ -231,7 +231,7 @@ std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trac
 			}
 
 			if (indexed_attribute == curr_attr_key) {
-				response[curr_attr_val].push_back(trace_id);
+				response[curr_attr_val].push_back(trace_id); // NOLINT
 			}
 		}
 	}

@@ -10,12 +10,14 @@ enum property_comparison {
 	Greater_than
 };
 
-enum node_properties {
-	Latency,  // string(nano-secons)
-	Start_time,  // string(nano-seconds)
-	End_time,  // string(nano-seconds)
-	Attribute_parent_name  // string
-};
+// https://stackoverflow.com/questions/16770690/function-pointer-to-different-functions-with-different-arguments-in-c
+typedef union {
+  std::string (opentelemetry::proto::trace::v1::Span::*string_func)() const;
+  bool (opentelemetry::proto::trace::v1::Span::*bool_func)() const;
+  uint64_t (opentelemetry::proto::trace::v1::Span::*int_func)() const;
+  double (opentelemetry::proto::trace::v1::Span::*double_func)() const;
+  char* (opentelemetry::proto::trace::v1::Span::*bytes_func)() const;
+} get_value_func;
 
 enum property_type {
     string_value,
@@ -25,15 +27,11 @@ enum property_type {
     bytes_value
 };
 
-
-// https://stackoverflow.com/questions/16770690/function-pointer-to-different-functions-with-different-arguments-in-c
-typedef union {
-  std::string (opentelemetry::proto::trace::v1::Span::*string_func)() const;
-  bool (opentelemetry::proto::trace::v1::Span::*bool_func)() const;
-  uint64_t (opentelemetry::proto::trace::v1::Span::*int_func)() const;
-  double (opentelemetry::proto::trace::v1::Span::*double_func)() const;
-  char* (opentelemetry::proto::trace::v1::Span::*bytes_func)() const;
-} get_value_func;
+struct return_value {
+    int node_index;
+    property_type type;
+    get_value_func func;
+};
 
 struct query_condition {
 	int node_index;

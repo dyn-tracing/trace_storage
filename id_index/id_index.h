@@ -18,14 +18,9 @@
 #include <boost/algorithm/string/regex.hpp>
 #include "graph_query.h"
 
-// Constants
-namespace gcs = ::google::cloud::storage;
+// TODO(jessica): these are already defined in common under different names
 const char trace_struct_bucket[] = "dyntraces-snicket4";
 const char index_bucket[] = "idindex-snicket4";
-const char bucket_suffix[] = "snicket4";
-const char hyphen[] = "-";
-const char newline[] = "\n";
-const char colon[] = ":";
 const int branching_factor = 10;
 
 // Leaf struct
@@ -52,7 +47,6 @@ std::vector<struct BatchObjectNames> split_batches_by_leaf(
     std::vector<std::string> object_names, time_t last_updated, time_t to_update, time_t granularity);
 
 // Core code
-std::vector<std::string> split_string_by_char(const std::string& str, std::string& ch);
 std::vector<std::string> generate_prefixes(time_t earliest, time_t latest);
 std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest);
 bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string batch, time_t earliest, time_t latest);

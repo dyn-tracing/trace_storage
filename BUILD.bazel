@@ -32,6 +32,24 @@ cc_binary(
 )
 
 cc_library(
+    name = "common",
+    srcs = [
+        "common.cc",
+        "common.h",
+    ],
+    hdrs = ["common.h"],
+    deps = [
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:algorithm",
+        "@boost//:graph",
+        "@boost//:date_time",
+        "@boost//:regex",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+    ],
+    visibility = ["//main:__pkg__"],
+)
+cc_library(
     name = "graph_query_lib",
     srcs = [
         "graph_query.cc",
@@ -47,6 +65,27 @@ cc_library(
         "@boost//:date_time",
         "@com_google_protobuf//:protobuf",
         "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+        "//:get_traces_by_structure",
+        "//:common",
+    ],
+    visibility = ["//main:__pkg__"],
+)
+
+cc_library(
+    name = "get_traces_by_structure",
+    srcs = [
+        "get_traces_by_structure.cc",
+        "get_traces_by_structure.h",
+    ],
+    hdrs = ["get_traces_by_structure.h"],
+    deps = [
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:algorithm",
+        "@boost//:graph",
+        "@boost//:date_time",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+        "//:common",
     ],
     visibility = ["//main:__pkg__"],
 )
@@ -60,6 +99,7 @@ cc_library(
     hdrs = ["id_index/id_index.h", "id_index/bloom_filter.hpp"],
     deps = [
         "//:graph_query_lib",
+        "//:common",
         "@com_github_googleapis_google_cloud_cpp//:storage",
         "@boost//:regex",
         "@boost//:algorithm",
@@ -81,6 +121,7 @@ cc_binary(
         "@boost//:graph",
         "@com_google_protobuf//:protobuf",
         "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+        "//:common",
     ],
 )
 
@@ -150,6 +191,6 @@ cc_binary(
     ],
     deps = [
         "//:graph_query_lib",
-         "//:folders_index_lib",
+        "//:folders_index_lib",
     ],
 )
