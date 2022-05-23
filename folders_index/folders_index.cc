@@ -209,7 +209,27 @@ std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trac
 			attribute =  &(sp->attributes(j));
 			const opentelemetry::proto::common::v1::AnyValue* val = &(attribute->value());
 			auto curr_attr_key = attribute->key();
-			auto curr_attr_val = val->string_value();
+			std::string curr_attr_val = "";
+
+			switch (val->value_case())
+			{
+			case 1:
+				curr_attr_val = val->string_value();
+				break;
+			case 2:
+				curr_attr_val = val->bool_value() ? "true" : "false";
+				break;
+			case 3:
+				curr_attr_val = std::to_string(val->int_value());
+				break;
+			case 4:
+				curr_attr_val = std::to_string(val->double_value());
+				break;
+			default:
+				std::cerr << "Not supported attr type." << std::endl;
+				exit(1);
+				break;
+			}
 
 			if (indexed_attribute == curr_attr_key) {
 				response[curr_attr_val].push_back(trace_id);

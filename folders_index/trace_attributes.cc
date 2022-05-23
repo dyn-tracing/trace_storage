@@ -8,12 +8,9 @@
  * name will exist. Thats up to you. 
  */
 std::string get_bucket_name_for_attr(std::string indexed_attribute) {
-    if (indexed_attribute == ATTR_SPAN_KIND) {
-        return "index-span-kind";
-    }
-    std::cerr << "Error in get_bucket_name_for_attr(" << indexed_attribute << ")" << std::endl;
-    exit(1);
-    return "";
+	std::string bucket_name = indexed_attribute;
+	replaceAll(bucket_name, ".", "-");
+	return "index-" + bucket_name;
 }
 
 /**
@@ -21,5 +18,17 @@ std::string get_bucket_name_for_attr(std::string indexed_attribute) {
  * gcs object.. maybe remove the special characters??
  */
 std::string get_folder_name_from_attr_value(std::string attr_value) {
-    return attr_value;
+	return attr_value;
+}
+
+void replaceAll(std::string& str, const std::string& from, const std::string& to) {
+	if(from.empty()) {
+		return;
+	}
+
+	size_t start_pos = 0;
+	while((start_pos = str.find(from, start_pos)) != std::string::npos) {
+		str.replace(start_pos, from.length(), to);
+		start_pos += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
+	}
 }
