@@ -71,18 +71,24 @@ bool does_trace_satisfy_all_conditions(
 	std::string trace_id, std::string object_content, std::vector<query_condition> conditions,
 	int num_iso_maps, data_for_verifying_conditions& verification_data
 );
-std::vector<objname_to_matching_trace_ids> get_traces_by_indexed_condition(
+objname_to_matching_trace_ids get_traces_by_indexed_condition(
     int start_time, int end_time, query_condition *condition, gcs::Client* client);
-std::vector<objname_to_matching_trace_ids> filter_based_on_conditions(
-        std::vector<objname_to_matching_trace_ids> &intersection,
+objname_to_matching_trace_ids filter_based_on_conditions(
+        objname_to_matching_trace_ids &intersection,
         traces_by_structure &structural_results,
-        std::vector<query_condition> &conditions, gcs::Client* client);
+        std::vector<query_condition> &conditions,
+        trace_structure &query_trace,
+        struct fetched_data &fetched,
+        gcs::Client* client);
+bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
+    std::vector<std::unordered_map<int, int>> iso_maps, std::vector<query_condition> &conditions,
+    struct fetched_data);
 
 // ***************** query-related ******************************************
 std::vector<std::string> get_return_value(
-    std::vector<objname_to_matching_trace_ids> filtered, return_value ret, gcs::Client* client);
-std::vector<objname_to_matching_trace_ids> intersect_index_results(
-    std::vector<std::vector<objname_to_matching_trace_ids>> index_results,
+    objname_to_matching_trace_ids filtered, return_value ret, gcs::Client* client);
+objname_to_matching_trace_ids intersect_index_results(
+    std::vector<objname_to_matching_trace_ids> index_results,
     traces_by_structure structural_results);
 int dummy_tests();
 

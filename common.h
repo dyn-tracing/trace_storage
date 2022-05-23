@@ -31,7 +31,7 @@ const char newline[] = "\n";
 const char colon[] = ":";
 
 namespace gcs = ::google::cloud::storage;
-typedef std::tuple<std::string, std::vector<std::string>> objname_to_matching_trace_ids;
+typedef std::map<std::string, std::vector<std::string>> objname_to_matching_trace_ids;
 
 
 

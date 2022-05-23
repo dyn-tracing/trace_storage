@@ -18,13 +18,15 @@ namespace bg = boost::graph;
 
 class traces_by_structure {
     public: // NOLINT - I don't understand why lint is complaining
+        // values
         std::vector<std::string> trace_ids;
         std::vector<std::string> object_names;
         std::vector<std::unordered_map<int, int>> iso_maps;
         std::vector<std::unordered_map<int, std::string>> trace_node_names;
+        // maps
         std::map<int, int> iso_map_to_trace_node_names;
         std::map<int, std::vector<int>> object_name_to_trace_ids_of_interest;
-        std::map<int, std::vector<int>> trace_id_to_isomap;
+        std::map<std::string, std::vector<int>> trace_id_to_isomap_indices;
 
 };
 

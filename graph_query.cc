@@ -10,7 +10,7 @@ std::vector<std::string> query(
     std::future<traces_by_structure> struct_filter_obj = std::async(std::launch::async,
         get_traces_by_structure,
         query_trace, start_time, end_time, client);
-    std::vector<std::future<std::vector<objname_to_matching_trace_ids>>> index_results_futures;
+    std::vector<std::future<objname_to_matching_trace_ids>> index_results_futures;
     for (int i=0; i < conditions.size(); i++) {
         if (is_indexed(&conditions[i], client)) {
             index_results_futures.push_back(std::async(std::launch::async, get_traces_by_indexed_condition,
@@ -18,17 +18,18 @@ std::vector<std::string> query(
         }
     }
 
-    std::vector<std::vector<objname_to_matching_trace_ids>> index_results;
+    std::vector<objname_to_matching_trace_ids> index_results;
     for (int i=0; i < index_results_futures.size(); i++) {
         index_results.push_back(index_results_futures[i].get());
     }
     auto struct_results = struct_filter_obj.get();
 
-    std::vector<objname_to_matching_trace_ids> intersection = intersect_index_results(index_results, struct_results);
+    objname_to_matching_trace_ids intersection = intersect_index_results(index_results, struct_results);
 
-    // struct fetched_data = fetch_data(??) // TODO(jessica)
-    std::vector<objname_to_matching_trace_ids> filtered = filter_based_on_conditions(
-        intersection, struct_results, conditions, client);
+    // struct fetched_data = // ?
+    struct fetched_data fetched;
+    objname_to_matching_trace_ids filtered = filter_based_on_conditions(
+        intersection, struct_results, conditions, query_trace, fetched, client);
 
     return get_return_value(filtered, ret, client);
 }
@@ -38,29 +39,49 @@ bool is_indexed(query_condition *condition, gcs::Client* client) {
     return false;
 }
 
-std::vector<objname_to_matching_trace_ids> get_traces_by_indexed_condition(
+objname_to_matching_trace_ids get_traces_by_indexed_condition(
     int start_time, int end_time, query_condition *condition, gcs::Client* client) {
     // TODO(jessica)
-    std::vector<objname_to_matching_trace_ids> to_return;
+    objname_to_matching_trace_ids to_return;
     return to_return;
 }
 
-std::vector<objname_to_matching_trace_ids> filter_based_on_conditions(
-        std::vector<objname_to_matching_trace_ids> &intersection,
+objname_to_matching_trace_ids filter_based_on_conditions(
+        objname_to_matching_trace_ids &intersection,
         traces_by_structure &structural_results,
         std::vector<query_condition> &conditions,
+        trace_structure &query_trace,
+        struct fetched_data &fetched,
         gcs::Client* client) {
+
+        objname_to_matching_trace_ids to_return;
+        for (const auto &object_to_trace : intersection) {
+            for (int i=0; i < object_to_trace.second.size(); i++) {
+                std::vector<std::unordered_map<int, int>> isomaps;
+                std::vector<int> isomap_indices = structural_results.trace_id_to_isomap_indices[object_to_trace.second[i]];
+                for (int k=0; k < isomap_indices.size(); k++) {
+                    isomaps.push_back(structural_results.iso_maps[isomap_indices[k]]);
+                }
+                if (does_trace_satisfy_conditions(object_to_trace.second[i], object_to_trace.first,
+                    isomaps, conditions, fetched)) {
+                    to_return[object_to_trace.first].push_back(object_to_trace.second[i]);
+                }
+
+            }
+        }
+        return to_return;
+
     // TODO(jessica)
 }
 
-std::vector<objname_to_matching_trace_ids> intersect_index_results(
-    std::vector<std::vector<objname_to_matching_trace_ids>> index_results,
+objname_to_matching_trace_ids intersect_index_results(
+    std::vector<objname_to_matching_trace_ids> index_results,
     traces_by_structure structural_results) {
     // TODO(jessica)
 }
 
 std::vector<std::string> get_return_value(
-    std::vector<objname_to_matching_trace_ids> filtered, return_value ret, gcs::Client* client) {
+    objname_to_matching_trace_ids filtered, return_value ret, gcs::Client* client) {
     // TODO(jessica)
 }
 

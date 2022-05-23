@@ -55,12 +55,12 @@ traces_by_structure get_traces_by_structure(
                 }
             }
 
-            for (const auto &pair : new_trace_by_struct.trace_id_to_isomap) {
+            for (const auto &pair : new_trace_by_struct.trace_id_to_isomap_indices) {
                 std::vector<int> isomap_indices;
                 for (int i=0; i < pair.second.size(); i++) {
                     isomap_indices.push_back(pair.second[i] + iso_map_offset);
                 }
-                response.trace_id_to_isomap[pair.first + trace_id_offset] = isomap_indices;
+                response.trace_id_to_isomap_indices[pair.first] = isomap_indices;
             }
 
             // then finally deal with trace node name stuff
@@ -137,7 +137,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
         int batch_name_index = to_return.object_names.size()-1;
         for (int i=0; i < to_return.trace_ids.size(); i++) {
             for (int j=0; j < to_return.iso_maps.size(); j++) {
-                to_return.trace_id_to_isomap[i].push_back(j);
+                to_return.trace_id_to_isomap_indices[to_return.trace_ids[i]].push_back(j);
             }
             if (i == 0) {
                 std::vector<int> trace_id_ind;
