@@ -47,7 +47,7 @@ process_findex_object_and_retrieve_obj_name_to_trace_ids_map(
 	auto sections = split_by_string(object_content, "Timestamp: ");
 
 	for (auto& curr_section : sections) {
-		auto lines = split_by_line(curr_section);
+		auto lines = split_by_string(curr_section, newline);
 		auto obj_name = lines[0];
 		std::vector<std::string> trace_ids;
 		for (int i = 1; i < lines.size(); i++) {

@@ -9,10 +9,9 @@
 #include <vector>
 #include <future>
 
-#include "query_conditions.h"
+#include "common.h"
 #include "folders_index/trace_attributes.h"
 #include "google/cloud/storage/client.h"
-#include "graph_query.h"
 
 namespace gcs = ::google::cloud::storage;
 using ::google::cloud::StatusOr;

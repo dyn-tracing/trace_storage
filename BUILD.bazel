@@ -190,7 +190,7 @@ cc_binary(
         "folders_index_query.h",
     ],
     deps = [
-        "//:graph_query_lib",
         "//:folders_index_lib",
+        "//:common",
     ],
 )
