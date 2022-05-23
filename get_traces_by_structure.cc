@@ -1,14 +1,5 @@
 #include "get_traces_by_structure.h"
 
-/**                                                                             
- * @brief Get the traces by structure object                                    
- *                                                                              
- * @param query_trace                                                           
- * @param start_time                                                            
- * @param end_time                                                              
- * @param client                                                                
- * @return std::vector<std::string>                                             
- */                                                                             
 std::vector<traces_by_structure> get_traces_by_structure(                       
     trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
     std::vector<std::future<traces_by_structure>> response_futures;        
@@ -203,4 +194,14 @@ graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph
     return output_graph;                                                        
 } 
 
-
+void print_trace_structure(trace_structure trace) {                             
+    std::cout << "n: " << trace.num_nodes << std::endl;                         
+    std::cout << "node names:" << std::endl;                                    
+    for (const auto& elem : trace.node_names) {                                 
+        std::cout << elem.first << " : " << elem.second << std::endl;           
+    }                                                                           
+    std::cout << "edges:" << std::endl;                                         
+    for (const auto& elem : trace.edges) {                                      
+        std::cout << elem.first << " : " << elem.second << std::endl;           
+    }                                                                           
+}

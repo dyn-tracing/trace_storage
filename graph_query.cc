@@ -55,25 +55,12 @@ std::vector<objname_to_matching_trace_ids> filter_based_on_non_indexed_condition
 }
 
 std::vector<objname_to_matching_trace_ids> intersect_index_results(std::vector<std::vector<objname_to_matching_trace_ids>> index_results, std::vector<traces_by_structure> structural_results) {
-    // TODO
+    
 }
 
 std::vector<std::string> get_return_value(std::vector<objname_to_matching_trace_ids> filtered, return_value ret, gcs::Client* client) {
     // TODO
 }
-
-void print_trace_structure(trace_structure trace) {
-	std::cout << "n: " << trace.num_nodes << std::endl;
-	std::cout << "node names:" << std::endl;
-	for (const auto& elem : trace.node_names) {
-		std::cout << elem.first << " : " << elem.second << std::endl;
-	}
-	std::cout << "edges:" << std::endl;
-	for (const auto& elem : trace.edges) {
-		std::cout << elem.first << " : " << elem.second << std::endl;
-	}
-}
-
 
 data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
 	std::vector<query_condition> conditions, std::vector<std::unordered_map<int, int>> iso_maps,

@@ -1,3 +1,8 @@
+/*
+ * Contains various common functions for interacting with cloud storage
+ * according to the format we've stored trace data.
+*/
+
 #ifndef COMMON_H_                                                            
 #define COMMON_H_ 
 
@@ -15,24 +20,37 @@
 const char SERVICES_BUCKETS_SUFFIX[] = "-snicket4";
 const int TRACE_ID_LENGTH = 32;
 const int SPAN_ID_LENGTH = 16;
+const int element_count = 10000;
 
 namespace gcs = ::google::cloud::storage;
+typedef std::tuple<std::string, std::vector<std::string>> objname_to_matching_trace_ids;
 
+
+
+/// **************** pure string processing ********************************
+// TODO(jessica) all split by's should be made into the same function
 std::vector<std::string> split_by_char(std::string input, std::string splitter);
 std::vector<std::string> split_by_line(std::string input);
+std::vector<std::string> split_by_string(std::string input, std::string splitter);
 std::string hex_str(std::string data, int len);
+std::string strip_from_the_end(std::string object, char stripper);
+
+/// *********** string processing according to system conventions **********
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
     std::string spans_data, std::vector<std::string> trace_ids);
-std::vector<std::string> split_by_string(std::string input, std::string splitter);
-opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
-    std::string bucket, std::string object_name, gcs::Client* client
-);
-
-std::string read_object(std::string bucket, std::string object, gcs::Client* client);
 bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, int end_time);
-std::string strip_from_the_end(std::string object, char stripper);
 std::string extract_batch_name(std::string object_name);
 std::pair<int, int> extract_batch_timestamps(std::string batch_name);
+std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string object_content);
+std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_map(
+    std::map<std::string, std::string> trace_id_to_root_service_map);
+std::string extract_any_trace(std::vector<std::string>& trace_ids, std::string& object_content);
+std::string extract_trace_from_traces_object(std::string trace_id, std::string& object_content);
+
+/// **************** GCS processing ********************************
+opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
+    std::string bucket, std::string object_name, gcs::Client* client);
+std::string read_object(std::string bucket, std::string object, gcs::Client* client);
 
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     std::vector<std::string> trace_ids,
@@ -41,12 +59,5 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     int start_time,
     int end_time,
     gcs::Client* client);
-
-std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string object_content);
-std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_map(
-    std::map<std::string, std::string> trace_id_to_root_service_map);
-std::string extract_any_trace(std::vector<std::string>& trace_ids, std::string& object_content);
-std::string extract_trace_from_traces_object(std::string trace_id, std::string& object_content);
-
 
 #endif // COMMON_H_

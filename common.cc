@@ -255,3 +255,5 @@ std::string extract_trace_from_traces_object(std::string trace_id, std::string& 
 	trace = strip_from_the_end(trace, '\n');
 	return trace;
 }
+
+
