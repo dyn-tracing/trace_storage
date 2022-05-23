@@ -1,5 +1,13 @@
 #include "common.h"
 
+std::vector<std::string> split_by_string(std::string& str, const char* ch) {
+    std::vector<std::string> tokens;
+    std::string ch_str(ch);
+    std::string reg = "(" + ch_str + ")+";
+    split_regex(tokens, str, boost::regex(reg));
+    return tokens;
+}
+
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(     
     std::string spans_data, std::vector<std::string> trace_ids) {               
     std::map<std::string, std::pair<int, int>> response;                        
@@ -39,34 +47,6 @@ std::string hex_str(std::string data, int len) {
 }
 
 
-std::vector<std::string> split_by_char(std::string input, std::string splitter) {
-    std::vector<std::string> result;
-    boost::split(result, input, boost::is_any_of(splitter));
-    return result;
-}
-
-
-std::vector<std::string> split_by_string(std::string input, std::string splitter) {
-    std::vector<std::string> result;
-
-    size_t pos = 0;
-    std::string token;
-    while ((pos = input.find(splitter)) != std::string::npos) {
-        token = input.substr(0, pos);
-        token = strip_from_the_end(token, '\n');
-        if (token.length() > 0) {
-            result.push_back(token);
-        }
-        input.erase(0, pos + splitter.length());
-    }
-
-    input = strip_from_the_end(input, '\n');
-    if (input.length() > 0) {
-        result.push_back(input);
-    }
-
-    return result;
-}
 
 opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
     std::string bucket, std::string object_name, gcs::Client* client
@@ -154,15 +134,6 @@ std::pair<int, int> extract_batch_timestamps(std::string batch_name) {
     return std::make_pair(std::stoi(result[1]), std::stoi(result[2]));
 }
 
-std::vector<std::string> split_by_line(std::string input) {
-    std::vector<std::string> result = split_by_char(input, "\n");
-    if (result[result.size()-1].length() < 1) {
-        result.pop_back();
-    }
-
-    return result;
-}
-
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     std::vector<std::string> trace_ids,
     std::string batch_name,
@@ -201,11 +172,11 @@ std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string 
     std::vector<std::string> all_traces = split_by_string(object_content, "Trace ID: ");
 
     for (std::string i : all_traces) {
-        std::vector<std::string> trace = split_by_char(i, "\n");
+        std::vector<std::string> trace = split_by_string(i, newline);
         std::string trace_id = trace[0].substr(0, TRACE_ID_LENGTH);
         for (int ind = 1; ind < trace.size(); ind ++) {
             if (trace[ind].substr(0, 1) == ":") {
-                std::vector<std::string> root_span_info = split_by_char(trace[ind], ":");
+                std::vector<std::string> root_span_info = split_by_string(trace[ind], colon);
                 std::string root_service = root_span_info[2];
                 response.insert(std::make_pair(trace_id, root_service));
                 break;

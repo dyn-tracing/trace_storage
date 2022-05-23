@@ -43,8 +43,8 @@ struct property_map_equivalent_custom {
             return true;
         }
 
-        auto prop1 = split_by_char(get(m_property_map1, item1), ":")[0];
-        auto prop2 = split_by_char(get(m_property_map2, item2), ":")[0];
+        auto prop1 = split_by_string(get(m_property_map1, item1), colon)[0];
+        auto prop2 = split_by_string(get(m_property_map2, item2), colon)[0];
 
         return prop1 == prop2;
     }

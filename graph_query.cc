@@ -79,7 +79,7 @@ data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
 			auto condition_service = trace_node_names[trace_node_index];
 			iso_map_to_service.push_back(condition_service);
 
-			auto service_name_without_hash_id = split_by_char(condition_service, ":")[0];
+			auto service_name_without_hash_id = split_by_string(condition_service, colon)[0];
 			if (response.service_name_to_respective_object.find(
 				service_name_without_hash_id) == response.service_name_to_respective_object.end()
 			) {
@@ -166,14 +166,14 @@ std::vector<int> get_iso_maps_indices_for_which_trace_satifies_condition(
 ) {
 	std::vector<int> satisfying_iso_map_indices;
 	for (int curr_iso_map_ind = 0; curr_iso_map_ind < num_iso_maps; curr_iso_map_ind++) {
-		auto trace = extract_trace_from_traces_object(trace_id, object_content);
-		auto trace_lines = split_by_line(trace);
+		std::string trace = extract_trace_from_traces_object(trace_id, object_content);
+		std::vector<std::string> trace_lines = split_by_string(trace, newline);
 
 		auto condition_service = verification_data.service_name_for_condition_with_isomap[
 			condition_index_in_verification_data][curr_iso_map_ind];
 		for (auto line : trace_lines) {
 			if (line.find(condition_service) != std::string::npos) {
-				auto span_info = split_by_char(line, ":");
+				auto span_info = split_by_string(line, colon);
 				auto span_id = span_info[1];
 				auto service_name = span_info[2];
 				if (true == does_span_satisfy_condition(span_id, service_name, condition, verification_data)) {

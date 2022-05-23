@@ -16,11 +16,16 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/vf2_sub_graph_iso.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/regex.hpp>
+#include <boost/algorithm/string/regex.hpp>
 
 const char SERVICES_BUCKETS_SUFFIX[] = "-snicket4";
 const int TRACE_ID_LENGTH = 32;
 const int SPAN_ID_LENGTH = 16;
 const int element_count = 10000;
+const char hyphen[] = "-";
+const char newline[] = "\n";
+const char colon[] = ":";
 
 namespace gcs = ::google::cloud::storage;
 typedef std::tuple<std::string, std::vector<std::string>> objname_to_matching_trace_ids;
@@ -28,10 +33,7 @@ typedef std::tuple<std::string, std::vector<std::string>> objname_to_matching_tr
 
 
 /// **************** pure string processing ********************************
-// TODO(jessica) all split by's should be made into the same function
-std::vector<std::string> split_by_char(std::string input, std::string splitter);
-std::vector<std::string> split_by_line(std::string input);
-std::vector<std::string> split_by_string(std::string input, std::string splitter);
+std::vector<std::string> split_by_string(std::string& str,  const char* ch);
 std::string hex_str(std::string data, int len);
 std::string strip_from_the_end(std::string object, char stripper);
 

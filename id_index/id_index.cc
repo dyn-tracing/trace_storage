@@ -2,14 +2,6 @@
 
 using ::google::cloud::StatusOr;
 
-std::vector<std::string> split_string_by_char(std::string& str, const char* ch) {
-    std::vector<std::string> tokens;
-    std::string ch_str(ch);
-    std::string reg = "(" + ch_str + ")+";
-    split_regex(tokens, str, boost::regex(reg));
-    return tokens;
-}
-
 bool less_than(time_t first, std::string second) {
     std::stringstream sec_stream;
     sec_stream << second;
@@ -144,7 +136,7 @@ std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix
         // before we push back, should make sure that it's actually between the bounds
         std::string name = object_metadata->name();
         to_return.push_back(name);
-        std::vector<std::string> times = split_string_by_char(name, hyphen);
+        std::vector<std::string> times = split_by_string(name, hyphen);
         // we care about three of these:
         // if we are neatly between earliest and latest, or if we overlap on one side
         if (less_than(earliest, times[1]) && less_than(earliest, times[2])) {
@@ -177,7 +169,7 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
         auto names = object_names[m].get();
         for (int n=0; n < names.size(); n++) {
             // check that these are actually within range
-            std::vector<std::string> timestamps = split_string_by_char(names[n], hyphen);
+            std::vector<std::string> timestamps = split_by_string(names[n], hyphen);
             std::stringstream stream;
             stream << timestamps[1];
             std::string str = stream.str();
@@ -218,14 +210,14 @@ int create_index_bucket(gcs::Client* client) {
 
 std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std::string obj_name) {
     std::vector<std::string> to_return;
-    auto batch_split = split_string_by_char(obj_name, hyphen);
+    auto batch_split = split_by_string(obj_name, hyphen);
     auto reader = client->ReadObject(trace_struct_bucket, obj_name);
     if (!reader) {
         std::cerr << "Error reading object: " << reader.status() << "\n";
         throw std::runtime_error("Error reading trace object");
     }
     std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-    std::vector<std::string> trace_and_spans = split_string_by_char(contents, newline);
+    std::vector<std::string> trace_and_spans = split_by_string(contents, newline);
     for (int j=0; j < trace_and_spans.size(); j++) {
         if (trace_and_spans[j].find("Trace ID") != -1) {
             int start = trace_and_spans[j].find("Trace ID");
@@ -503,7 +495,7 @@ std::vector<struct BatchObjectNames> split_batches_by_leaf(
     }
 
     for (int i=0; i < object_names.size(); i++) {
-        std::vector<std::string> timestamps = split_string_by_char(object_names[i], hyphen);
+        std::vector<std::string> timestamps = split_by_string(object_names[i], hyphen);
         // are the timestamps in between a range that I have?
         // to do so, mod it by granularity
         std::stringstream stream;
@@ -587,7 +579,7 @@ void get_root_and_granularity(gcs::Client* client, std::tuple<time_t, time_t> &r
     for (auto const& kv : bucket_metadata->labels()) {
         if (kv.first == "root") {
             std::string root_name = kv.second;
-            std::vector<std::string> times = split_string_by_char(root_name, hyphen);
+            std::vector<std::string> times = split_by_string(root_name, hyphen);
             root = std::make_tuple(
                 time_t_from_string(times[0]),
                 time_t_from_string(times[1]));

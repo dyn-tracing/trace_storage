@@ -137,7 +137,7 @@ std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string obje
     if (object_content == "") {                                                 
         return std::vector<std::string>();                                      
     }                                                                           
-    std::vector<std::string> trace_ids = split_by_line(object_content);         
+    std::vector<std::string> trace_ids = split_by_string(object_content, newline);    
                                                                                 
     return trace_ids;                                                           
 }                                                                               
@@ -145,7 +145,7 @@ std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string obje
 trace_structure morph_trace_object_to_trace_structure(std::string trace) {
     trace_structure response;
 
-    std::vector<std::string> trace_lines = split_by_line(trace);
+    std::vector<std::string> trace_lines = split_by_string(trace, newline);
     std::unordered_map<std::string, std::string> span_to_service;
     std::unordered_map<std::string, int> reverse_node_names;
     std::multimap<std::string, std::string> edges;
@@ -155,7 +155,7 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
             continue;
         }
 
-        std::vector<std::string> span_info = split_by_char(line, ":");
+        std::vector<std::string> span_info = split_by_string(line, colon);
         if (span_info.size() != 4) {
             std::cerr << "Malformed trace found: \n" << trace << std::endl;
             return response;
