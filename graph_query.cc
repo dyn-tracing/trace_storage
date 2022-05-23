@@ -26,7 +26,7 @@ std::vector<std::string> query(
 
     std::vector<objname_to_matching_trace_ids> intersection = intersect_index_results(index_results, struct_results);
 
-    //struct fetched_data = fetch_data(??) // TODO(jessica)
+    // struct fetched_data = fetch_data(??) // TODO(jessica)
     std::vector<objname_to_matching_trace_ids> filtered = filter_based_on_conditions(
         intersection, struct_results, conditions, client);
 
@@ -38,11 +38,11 @@ bool is_indexed(query_condition *condition, gcs::Client* client) {
     return false;
 }
 
-std::vector<objname_to_matching_trace_ids> get_traces_by_indexed_condition(int start_time, int end_time, query_condition *condition, gcs::Client* client) {
+std::vector<objname_to_matching_trace_ids> get_traces_by_indexed_condition(
+    int start_time, int end_time, query_condition *condition, gcs::Client* client) {
     // TODO(jessica)
     std::vector<objname_to_matching_trace_ids> to_return;
     return to_return;
-
 }
 
 std::vector<objname_to_matching_trace_ids> filter_based_on_conditions(
@@ -50,17 +50,18 @@ std::vector<objname_to_matching_trace_ids> filter_based_on_conditions(
         std::vector<traces_by_structure> &structural_results,
         std::vector<query_condition> &conditions,
         gcs::Client* client) {
-    // TODO
+    // TODO(jessica)
 }
 
 std::vector<objname_to_matching_trace_ids> intersect_index_results(
     std::vector<std::vector<objname_to_matching_trace_ids>> index_results,
     std::vector<traces_by_structure> structural_results) {
-    
+    // TODO(jessica)
 }
 
-std::vector<std::string> get_return_value(std::vector<objname_to_matching_trace_ids> filtered, return_value ret, gcs::Client* client) {
-    // TODO
+std::vector<std::string> get_return_value(
+    std::vector<objname_to_matching_trace_ids> filtered, return_value ret, gcs::Client* client) {
+    // TODO(jessica)
 }
 
 struct fetched_data fetch_data(
@@ -77,7 +78,7 @@ struct fetched_data fetch_data(
 }
 
 bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
-    std::vector<std::unordered_map<int, int>> iso_maps, std::vector<query_condition> &conditions, 
+    std::vector<std::unordered_map<int, int>> iso_maps, std::vector<query_condition> &conditions,
     struct fetched_data) {
     // TODO(haseeb)
 }

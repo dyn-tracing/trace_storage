@@ -8,30 +8,30 @@ std::vector<std::string> split_by_string(std::string& str, const char* ch) {
     return tokens;
 }
 
-std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(     
-    std::string spans_data, std::vector<std::string> trace_ids) {               
-    std::map<std::string, std::pair<int, int>> response;                        
-                                                                                
-    opentelemetry::proto::trace::v1::TracesData trace_data;                     
-    bool ret = trace_data.ParseFromString(spans_data);                          
-    if (false == ret) {                                                         
-        std::cerr << "Error in ParseFromString" << std::endl;                   
-        exit(1);                                                                
-    }                                                                           
-                                                                                
+std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
+    std::string spans_data, std::vector<std::string> trace_ids) {
+    std::map<std::string, std::pair<int, int>> response;
+
+    opentelemetry::proto::trace::v1::TracesData trace_data;
+    bool ret = trace_data.ParseFromString(spans_data);
+    if (false == ret) {
+        std::cerr << "Error in ParseFromString" << std::endl;
+        exit(1);
+    }
+
     for (int i=0; i < trace_data.resource_spans(0).scope_spans(0).spans_size(); i++) {
         opentelemetry::proto::trace::v1::Span sp = trace_data.resource_spans(0).scope_spans(0).spans(i);
-                                                                                
-        std::string trace_id = hex_str(sp.trace_id(), sp.trace_id().length());  
-                                                                                
+
+        std::string trace_id = hex_str(sp.trace_id(), sp.trace_id().length());
+
         // getting timestamps and converting from nanosecond precision to seconds precision
         int start_time = std::stoi(std::to_string(sp.start_time_unix_nano()).substr(0, 10));
         int end_time = std::stoi(std::to_string(sp.end_time_unix_nano()).substr(0, 10));
-                                                                                
+
         response.insert(std::make_pair(trace_id, std::make_pair(start_time, end_time)));
-    }                                                                           
-                                                                                
-    return response;                                                            
+    }
+
+    return response;
 }
 
 std::string hex_str(std::string data, int len) {
@@ -155,7 +155,7 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
         trace_id_to_timestamp_map = get_timestamp_map_for_trace_ids(spans_data, trace_ids);
 
         std::vector<std::string> successful_trace_ids;
-        for(auto const& trace_id : elem.second) {
+        for (auto const& trace_id : elem.second) {
             std::pair<int, int> trace_timestamp = trace_id_to_timestamp_map[trace_id];
             if (is_object_within_timespan(trace_timestamp, start_time, end_time)) {
                 successful_trace_ids.push_back(trace_id);

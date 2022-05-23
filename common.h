@@ -3,15 +3,17 @@
  * according to the format we've stored trace data.
 */
 
-#ifndef COMMON_H_                                                            
-#define COMMON_H_ 
+#ifndef COMMON_H_ // NOLINT
+#define COMMON_H_
 
-#include <map>                                                                  
-#include <string>                                                               
-#include <vector>                                                               
-#include <future>                                                               
-#include "google/cloud/storage/client.h"                                        
-#include "opentelemetry/proto/trace/v1/trace.pb.h" 
+#include <map>
+#include <string>
+#include <vector>
+#include <future>
+#include <tuple>
+#include <utility>
+#include "google/cloud/storage/client.h"
+#include "opentelemetry/proto/trace/v1/trace.pb.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/vf2_sub_graph_iso.hpp>
@@ -63,4 +65,4 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     int end_time,
     gcs::Client* client);
 
-#endif // COMMON_H_
+#endif  // COMMON_H_ // NOLINT

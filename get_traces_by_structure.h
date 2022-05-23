@@ -1,9 +1,12 @@
-#ifndef BY_STRUCT_H_                                                          
-#define BY_STRUCT_H_                                                          
-                                                                                
-#include <iostream>                                                             
-#include <unordered_map>                                                        
-#include <utility>                                                              
+#ifndef BY_STRUCT_H_ // NOLINT
+#define BY_STRUCT_H_
+
+#include <iostream>
+#include <unordered_map>
+#include <utility>
+#include <map>
+#include <string>
+#include <vector>
 #include "common.h"
 
 const char TRACE_HASHES_BUCKET_PREFIX[] = "tracehashes";
@@ -26,7 +29,7 @@ struct trace_structure {
 };
 
 // This is the highest level function
-std::vector<traces_by_structure> get_traces_by_structure(                       
+std::vector<traces_by_structure> get_traces_by_structure(
     trace_structure query_trace, int start_time, int end_time, gcs::Client* client);
 
 template < typename PropertyMapFirst, typename PropertyMapSecond >
@@ -48,7 +51,7 @@ struct property_map_equivalent_custom {
         return prop1 == prop2;
     }
 
-    private:
+        private:
         const PropertyMapFirst m_property_map1;
         const PropertyMapSecond m_property_map2;
 };
@@ -66,7 +69,7 @@ property_map_equivalent_custom< PropertyMapFirst, PropertyMapSecond > make_prope
 }
 
 typedef boost::property<boost::vertex_name_t, std::string, boost::property<boost::vertex_index_t, int> >
-vertex_property;                                                                
+vertex_property;
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, vertex_property>
 graph_type;
 typedef boost::property_map<graph_type, boost::vertex_name_t>::type vertex_name_map_t;
@@ -110,4 +113,4 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace);
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph);
 std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client);
 void print_trace_structure(trace_structure trace);
-#endif // BY_STRUCT_H_                                                          
+#endif  // BY_STRUCT_H_ // NOLINT

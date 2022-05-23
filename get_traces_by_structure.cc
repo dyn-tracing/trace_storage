@@ -1,38 +1,38 @@
 #include "get_traces_by_structure.h"
 
-std::vector<traces_by_structure> get_traces_by_structure(                       
+std::vector<traces_by_structure> get_traces_by_structure(
     trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
     std::vector<std::future<traces_by_structure>> response_futures;
 
     std::string prefix(TRACE_HASHES_BUCKET_PREFIX);
     std::string suffix(SERVICES_BUCKETS_SUFFIX);
-                                                                                
+
     for (auto&& prefix : client->ListObjectsAndPrefixes(prefix+suffix, gcs::Delimiter("/"))) {
-        if (!prefix) {                                                          
-            std::cerr << "Error in getting prefixes" << std::endl;              
-            exit(1);                                                            
-        }                                                                       
-                                                                                
-        auto result = *std::move(prefix);                                       
-        if (false == absl::holds_alternative<std::string>(result)) {            
-            std::cerr << "Error in getting prefixes" << std::endl;              
-            exit(1);                                                            
-        }                                                                       
-        std::string prefix_ = absl::get<std::string>(result);                   
-                                                                                
-        response_futures.push_back(std::async(                                  
+        if (!prefix) {
+            std::cerr << "Error in getting prefixes" << std::endl;
+            exit(1);
+        }
+
+        auto result = *std::move(prefix);
+        if (false == absl::holds_alternative<std::string>(result)) {
+            std::cerr << "Error in getting prefixes" << std::endl;
+            exit(1);
+        }
+        std::string prefix_ = absl::get<std::string>(result);
+
+        response_futures.push_back(std::async(
             std::launch::async, process_trace_hashes_prefix_and_retrieve_relevant_trace_ids,
-            prefix_, query_trace, start_time, end_time, client));               
-    }                                                                           
-                                                                                
-    std::vector<traces_by_structure> response;                                  
-    for_each(response_futures.begin(), response_futures.end(),                  
-        [&response](std::future<traces_by_structure>& fut){                     
-            traces_by_structure to_return = fut.get();                          
-            response.push_back(to_return);                                      
-    });                                                                         
-    return response;                                                            
-} 
+            prefix_, query_trace, start_time, end_time, client));
+    }
+
+    std::vector<traces_by_structure> response;
+    for_each(response_futures.begin(), response_futures.end(),
+        [&response](std::future<traces_by_structure>& fut){
+            traces_by_structure to_return = fut.get();
+            response.push_back(to_return);
+    });
+    return response;
+}
 
 traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
     std::string prefix, trace_structure query_trace, int start_time, int end_time,
@@ -134,13 +134,13 @@ std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string obje
     std::string trace_hashes_bucket(TRACE_HASHES_BUCKET_PREFIX);
     std::string suffix(SERVICES_BUCKETS_SUFFIX);
     std::string object_content = read_object(trace_hashes_bucket+suffix, object_name, client);
-    if (object_content == "") {                                                 
-        return std::vector<std::string>();                                      
-    }                                                                           
-    std::vector<std::string> trace_ids = split_by_string(object_content, newline);    
-                                                                                
-    return trace_ids;                                                           
-}                                                                               
+    if (object_content == "") {
+        return std::vector<std::string>();
+    }
+    std::vector<std::string> trace_ids = split_by_string(object_content, newline);
+
+    return trace_ids;
+}
 
 trace_structure morph_trace_object_to_trace_structure(std::string trace) {
     trace_structure response;
@@ -172,14 +172,14 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
 
     // Filling response.node_names
     int count = 0;
-    for(const auto& elem : span_to_service) {
+    for (const auto& elem : span_to_service) {
         response.node_names.insert(make_pair(count, elem.second));
         reverse_node_names.insert(make_pair(elem.second, count));
         count++;
     }
 
     // Filling response.edges
-    for(const auto& elem : edges) {
+    for (const auto& elem : edges) {
         response.edges.insert(std::make_pair(
             reverse_node_names[span_to_service[elem.first]],
             reverse_node_names[span_to_service[elem.second]]));
@@ -189,27 +189,27 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
 }
 
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph) {
-    graph_type output_graph;                                                    
-                                                                                
-    for (int i = 0; i < input_graph.num_nodes; i++) {                           
-        boost::add_vertex(vertex_property(input_graph.node_names[i], i), output_graph);
-    }                                                                           
-                                                                                
-    for (const auto& elem : input_graph.edges) {                                
-        boost::add_edge(elem.first, elem.second, output_graph);                 
-    }                                                                           
-                                                                                
-    return output_graph;                                                        
-} 
+    graph_type output_graph;
 
-void print_trace_structure(trace_structure trace) {                             
-    std::cout << "n: " << trace.num_nodes << std::endl;                         
-    std::cout << "node names:" << std::endl;                                    
-    for (const auto& elem : trace.node_names) {                                 
-        std::cout << elem.first << " : " << elem.second << std::endl;           
-    }                                                                           
-    std::cout << "edges:" << std::endl;                                         
-    for (const auto& elem : trace.edges) {                                      
-        std::cout << elem.first << " : " << elem.second << std::endl;           
-    }                                                                           
+    for (int i = 0; i < input_graph.num_nodes; i++) {
+        boost::add_vertex(vertex_property(input_graph.node_names[i], i), output_graph);
+    }
+
+    for (const auto& elem : input_graph.edges) {
+        boost::add_edge(elem.first, elem.second, output_graph);
+    }
+
+    return output_graph;
+}
+
+void print_trace_structure(trace_structure trace) {
+    std::cout << "n: " << trace.num_nodes << std::endl;
+    std::cout << "node names:" << std::endl;
+    for (const auto& elem : trace.node_names) {
+        std::cout << elem.first << " : " << elem.second << std::endl;
+    }
+    std::cout << "edges:" << std::endl;
+    for (const auto& elem : trace.edges) {
+        std::cout << elem.first << " : " << elem.second << std::endl;
+    }
 }
