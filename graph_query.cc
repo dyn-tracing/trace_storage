@@ -1,6 +1,5 @@
 #include "graph_query.h"
 
-/*
 std::vector<std::string> query(
     trace_structure query_trace, int start_time, int end_time,
     std::vector<query_condition> conditions, return_value ret, gcs::Client* client) {
@@ -10,32 +9,32 @@ std::vector<std::string> query(
     // first, get all matches to indexed query conditions
     // note that structural is always indexed
 
-    std::future<std::vector<objname_to_matching_trace_ids>> struct_filter_objs = std::async(std::launch_async(get_traces_by_structure,
-        query_trace, start_time, end_time, client));
+    std::future<std::vector<traces_by_structure>> struct_filter_objs = std::async(std::launch::async,
+        get_traces_by_structure,
+        query_trace, start_time, end_time, client);
     std::vector<std::future<std::vector<objname_to_matching_trace_ids>>> index_results_futures;
     for (int i=0; i<conditions.size(); i++) {
-        if (is_indexed(conditions[i]), client) {
-            index_results_futures.push_back(std::async(std::launch_async(get_traces_by_indexed_condition,
-            start_time, end_time, conditions[i], client);
+        if (is_indexed(&conditions[i], client)) {
+            index_results_futures.push_back(std::async(std::launch::async, get_traces_by_indexed_condition,
+            start_time, end_time, &conditions[i], client));
         } else {
-            non_indexed_conditions.push_back(&condition);
+            non_indexed_conditions.push_back(&conditions[i]);
         }
     }
 
     std::vector<std::vector<objname_to_matching_trace_ids>> index_results;
-    for (int i=0; i<index_results_futures[i].size(); i++) {
+    for (int i=0; i<index_results_futures.size(); i++) {
         index_results.push_back(index_results_futures[i].get());
     }
-    index_results.push_back(struct_filter_objs.get());
+    auto struct_results = struct_filter_objs.get();
 
-    std::vector<objname_to_matching_trace_ids> intersection = intersect_index_results(index_results);
+    std::vector<objname_to_matching_trace_ids> intersection = intersect_index_results(index_results, struct_results);
 
     std::vector<objname_to_matching_trace_ids> filtered = filter_based_on_non_indexed_conditions(
         intersection, non_indexed_conditions, client);
 
     return get_return_value(filtered, ret, client);
 }
-*/
 
 bool is_indexed(query_condition *condition, gcs::Client* client) {
     // TODO
@@ -49,7 +48,13 @@ std::vector<objname_to_matching_trace_ids> get_traces_by_indexed_condition(int s
 
 }
 
-std::vector<objname_to_matching_trace_ids> intersect_index_results(std::vector<std::vector<objname_to_matching_trace_ids>>) {
+std::vector<objname_to_matching_trace_ids> filter_based_on_non_indexed_conditions(
+        std::vector<objname_to_matching_trace_ids> intersection, std::vector<query_condition*> non_indexed_conditions, gcs::Client* client) {
+    // TODO
+
+}
+
+std::vector<objname_to_matching_trace_ids> intersect_index_results(std::vector<std::vector<objname_to_matching_trace_ids>> index_results, std::vector<traces_by_structure> structural_results) {
     // TODO
 }
 

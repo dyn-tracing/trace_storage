@@ -34,12 +34,7 @@ struct data_for_verifying_conditions {
 	std::unordered_map<std::string, opentelemetry::proto::trace::v1::TracesData> service_name_to_respective_object;
 };
 
-std::vector<std::string> split_by_char(std::string input, std::string splitter);
-
-std::string extract_any_trace(std::vector<std::string>& trace_ids, std::string& object_content);
-opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
-	std::string bucket, std::string object_name, gcs::Client* client
-);
+bool is_indexed(query_condition *condition, gcs::Client* client);
 data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
 	std::vector<query_condition> conditions, std::vector<std::unordered_map<int, int>> iso_maps,
 	std::unordered_map<int, std::string> trace_node_names,
@@ -58,15 +53,6 @@ std::vector<int> get_iso_maps_indices_for_which_trace_satifies_condition(
 std::vector<std::string> process_trace_hashes_object_and_retrieve_relevant_trace_ids(
 	StatusOr<gcs::ObjectMetadata> object_metadata, trace_structure query_trace,
 	int start_time, int end_time, std::vector<query_condition> conditions, gcs::Client* client);
-std::string hex_str(std::string data, int len);
-std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
-	std::string spans_data, std::vector<std::string> trace_ids);
-std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_map(
-	std::map<std::string, std::string> trace_id_to_root_service_map);
-std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string object_content);
-std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
-	std::vector<std::string> trace_ids, std::string batch_name, std::string object_content,
-	int start_time, int end_time, gcs::Client* client);
 std::vector<std::string> filter_trace_ids_based_on_conditions(
 	std::vector<std::string> trace_ids,
 	int trace_ids_start_index,
@@ -77,23 +63,17 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 );
 void print_trace_structure(trace_structure trace);
 std::string extract_trace_from_traces_object(std::string trace_id, std::string& object_content);
-std::pair<int, int> extract_batch_timestamps(std::string batch_name);
-std::string extract_batch_name(std::string object_name);
-std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
-	trace_structure candidate_trace, trace_structure query_trace);
-std::vector<std::string> split_by_line(std::string input);
-bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, int end_time);
-std::string read_object(std::string bucket, std::string object, gcs::Client* client);
 std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client);
 int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* client);
-trace_structure morph_trace_object_to_trace_structure(std::string trace);
 bool does_trace_satisfy_all_conditions(
 	std::string trace_id, std::string object_content, std::vector<query_condition> conditions,
 	int num_iso_maps, data_for_verifying_conditions& verification_data
 );
-bool is_indexed(query_condition *condition, gcs::Client* client);
 std::vector<objname_to_matching_trace_ids> get_traces_by_indexed_condition(int start_time, int end_time, query_condition *condition, gcs::Client* client);
 std::vector<std::string> get_return_value(std::vector<objname_to_matching_trace_ids> filtered, return_value ret, gcs::Client* client);
+std::vector<objname_to_matching_trace_ids> intersect_index_results(std::vector<std::vector<objname_to_matching_trace_ids>>index_results, std::vector<traces_by_structure> structural_results);
+std::vector<objname_to_matching_trace_ids> filter_based_on_non_indexed_conditions(
+        std::vector<objname_to_matching_trace_ids> intersection, std::vector<query_condition*> non_indexed_conditions, gcs::Client* client);
 int dummy_tests();
 
 #endif  // GRAPH_QUERY_H_

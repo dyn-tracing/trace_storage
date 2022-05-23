@@ -135,6 +135,5 @@ std::pair<int, int> extract_batch_timestamps(std::string batch_name);
 std::string strip_from_the_end(std::string object, char stripper);
 trace_structure morph_trace_object_to_trace_structure(std::string trace);
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph);
-std::string strip_from_the_end(std::string object, char stripper);
 std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client);
 #endif // BY_STRUCT_H_                                                          
