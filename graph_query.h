@@ -43,6 +43,16 @@ struct fetched_data {
     // TODO(haseeb)
 };
 
+struct fetched_data fetch_data(
+    std::vector<std::unordered_map<int, int>> &iso_maps,
+    std::vector<std::unordered_map<int, std::string>> trace_node_names,
+    std::unordered_map<int, std::string> query_node_names,
+    std::map<std::string, std::vector<std::string>> object_name_to_trace_ids_of_interest,
+    std::map<std::string, std::vector<int>> trace_id_to_isomap_indices,
+    std::map<int, int> iso_map_to_trace_node_names,
+    std::vector<query_condition> &conditions,
+    gcs::Client* client);
+
 data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
 	std::vector<query_condition> conditions, std::vector<std::unordered_map<int, int>> iso_maps,
 	std::unordered_map<int, std::string> trace_node_names,

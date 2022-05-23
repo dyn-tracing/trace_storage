@@ -27,7 +27,15 @@ std::vector<std::string> query(
     objname_to_matching_trace_ids intersection = intersect_index_results(index_results, struct_results);
 
     // struct fetched_data = // ?
-    struct fetched_data fetched;
+    struct fetched_data fetched = fetch_data(struct_results.iso_maps,
+                                             struct_results.trace_node_names,
+                                             query_trace.node_names,
+                                             intersection,
+                                             struct_results.trace_id_to_isomap_indices,
+                                             struct_results.iso_map_to_trace_node_names,
+                                             conditions,
+                                             client);
+
     objname_to_matching_trace_ids filtered = filter_based_on_conditions(
         intersection, struct_results, conditions, query_trace, fetched, client);
 
@@ -70,8 +78,6 @@ objname_to_matching_trace_ids filter_based_on_conditions(
             }
         }
         return to_return;
-
-    // TODO(jessica)
 }
 
 objname_to_matching_trace_ids intersect_index_results(
@@ -86,13 +92,12 @@ std::vector<std::string> get_return_value(
 }
 
 struct fetched_data fetch_data(
-    std::vector<std::string> &object_names,
-    std::vector<std::string> &trace_ids,
     std::vector<std::unordered_map<int, int>> &iso_maps,
-    std::unordered_map<int, std::string> trace_node_names,
+    std::vector<std::unordered_map<int, std::string>> trace_node_names,
 	std::unordered_map<int, std::string> query_node_names,
-    std::map<int, int> object_name_to_trace_ids_of_interest,
-    std::map<int, int> trace_id_to_isomap,
+    std::map<std::string, std::vector<std::string>> object_name_to_trace_ids_of_interest,
+    std::map<std::string, std::vector<int>> trace_id_to_isomap_indices,
+    std::map<int, int> iso_map_to_trace_node_names,
     std::vector<query_condition> &conditions,
     gcs::Client* client) {
     // TODO(hasseb)
