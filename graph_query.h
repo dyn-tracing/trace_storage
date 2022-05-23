@@ -39,6 +39,10 @@ struct data_for_verifying_conditions {
 	std::unordered_map<std::string, opentelemetry::proto::trace::v1::TracesData> service_name_to_respective_object;
 };
 
+struct fetched_data {
+    // TODO(haseeb)
+};
+
 data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
 	std::vector<query_condition> conditions, std::vector<std::unordered_map<int, int>> iso_maps,
 	std::unordered_map<int, std::string> trace_node_names,
@@ -68,8 +72,10 @@ bool does_trace_satisfy_all_conditions(
 	int num_iso_maps, data_for_verifying_conditions& verification_data
 );
 std::vector<objname_to_matching_trace_ids> get_traces_by_indexed_condition(int start_time, int end_time, query_condition *condition, gcs::Client* client);
-std::vector<objname_to_matching_trace_ids> filter_based_on_non_indexed_conditions(
-        std::vector<objname_to_matching_trace_ids> intersection, std::vector<query_condition*> non_indexed_conditions, gcs::Client* client);
+std::vector<objname_to_matching_trace_ids> filter_based_on_conditions(
+        std::vector<objname_to_matching_trace_ids> &intersection,
+        std::vector<traces_by_structure> &structural_results,
+        std::vector<query_condition> &conditions, gcs::Client* client);
 
 // ***************** query-related ******************************************
 std::vector<std::string> get_return_value(
