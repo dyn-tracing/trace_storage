@@ -7,7 +7,7 @@ std::vector<std::string> query(
     // first, get all matches to indexed query conditions
     // note that structural is always indexed
 
-    std::future<std::vector<traces_by_structure>> struct_filter_objs = std::async(std::launch::async,
+    std::future<traces_by_structure> struct_filter_obj = std::async(std::launch::async,
         get_traces_by_structure,
         query_trace, start_time, end_time, client);
     std::vector<std::future<std::vector<objname_to_matching_trace_ids>>> index_results_futures;
@@ -22,7 +22,7 @@ std::vector<std::string> query(
     for (int i=0; i < index_results_futures.size(); i++) {
         index_results.push_back(index_results_futures[i].get());
     }
-    auto struct_results = struct_filter_objs.get();
+    auto struct_results = struct_filter_obj.get();
 
     std::vector<objname_to_matching_trace_ids> intersection = intersect_index_results(index_results, struct_results);
 
@@ -47,7 +47,7 @@ std::vector<objname_to_matching_trace_ids> get_traces_by_indexed_condition(
 
 std::vector<objname_to_matching_trace_ids> filter_based_on_conditions(
         std::vector<objname_to_matching_trace_ids> &intersection,
-        std::vector<traces_by_structure> &structural_results,
+        traces_by_structure &structural_results,
         std::vector<query_condition> &conditions,
         gcs::Client* client) {
     // TODO(jessica)
@@ -55,7 +55,7 @@ std::vector<objname_to_matching_trace_ids> filter_based_on_conditions(
 
 std::vector<objname_to_matching_trace_ids> intersect_index_results(
     std::vector<std::vector<objname_to_matching_trace_ids>> index_results,
-    std::vector<traces_by_structure> structural_results) {
+    traces_by_structure structural_results) {
     // TODO(jessica)
 }
 
