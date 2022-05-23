@@ -1,7 +1,6 @@
 #include "id_index/id_index.h"
 
 using ::google::cloud::StatusOr;
-int element_count = 100000;
 
 std::vector<std::string> split_string_by_char(std::string& str, const char* ch) {
     std::vector<std::string> tokens;

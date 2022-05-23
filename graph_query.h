@@ -26,6 +26,7 @@
 #include <boost/graph/vf2_sub_graph_iso.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include "get_traces_by_structure.h"
+#include "common.h"
 
 
 struct data_for_verifying_conditions {
@@ -85,17 +86,14 @@ bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, i
 std::string read_object(std::string bucket, std::string object, gcs::Client* client);
 std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client);
 int get_trace(std::string traceID, int start_time, int end_time, gcs::Client* client);
-std::vector<std::string> get_traces_by_structure(
-	trace_structure query_trace, int start_time, int end_time,
-	std::vector<query_condition> conditions, gcs::Client* client);
-std::string strip_from_the_end(std::string object, char stripper);
 trace_structure morph_trace_object_to_trace_structure(std::string trace);
 bool does_trace_satisfy_all_conditions(
 	std::string trace_id, std::string object_content, std::vector<query_condition> conditions,
 	int num_iso_maps, data_for_verifying_conditions& verification_data
 );
 bool is_indexed(query_condition *condition, gcs::Client* client);
-std::vector<obj_name_to_matching_trace_ids> get_traces_by_indexed_condition(int start_time, int end_time, *condition, gcs::Client* client);
+std::vector<objname_to_matching_trace_ids> get_traces_by_indexed_condition(int start_time, int end_time, query_condition *condition, gcs::Client* client);
+std::vector<std::string> get_return_value(std::vector<objname_to_matching_trace_ids> filtered, return_value ret, gcs::Client* client);
 int dummy_tests();
 
 #endif  // GRAPH_QUERY_H_

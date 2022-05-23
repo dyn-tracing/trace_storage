@@ -32,6 +32,23 @@ cc_binary(
 )
 
 cc_library(
+    name = "common",
+    srcs = [
+        "common.cc",
+        "common.h",
+    ],
+    hdrs = ["common.h"],
+    deps = [
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:algorithm",
+        "@boost//:graph",
+        "@boost//:date_time",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+    ],
+    visibility = ["//main:__pkg__"],
+)
+cc_library(
     name = "graph_query_lib",
     srcs = [
         "graph_query.cc",
@@ -47,7 +64,8 @@ cc_library(
         "@boost//:date_time",
         "@com_google_protobuf//:protobuf",
         "@com_github_opentelemetry_proto//:trace_service_proto_cc",
-        "//:get_traces_by_structure"
+        "//:get_traces_by_structure",
+        "//:common",
     ],
     visibility = ["//main:__pkg__"],
 )
@@ -66,6 +84,7 @@ cc_library(
         "@boost//:date_time",
         "@com_google_protobuf//:protobuf",
         "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+        "//:common",
     ],
     visibility = ["//main:__pkg__"],
 )
@@ -100,6 +119,7 @@ cc_binary(
         "@boost//:graph",
         "@com_google_protobuf//:protobuf",
         "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+        "//:common",
     ],
 )
 

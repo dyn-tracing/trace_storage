@@ -1,21 +1,20 @@
-// @author: Muhammad Haseeb <mh6218@nyu.edu>
-
 #include "graph_query.h"
 
+/*
 std::vector<std::string> query(
     trace_structure query_trace, int start_time, int end_time,
     std::vector<query_condition> conditions, return_value ret, gcs::Client* client) {
 
-    std::vector<*conditions> non_indexed_conditions;
+    std::vector<query_condition*> non_indexed_conditions;
 
     // first, get all matches to indexed query conditions
     // note that structural is always indexed
 
     std::future<std::vector<objname_to_matching_trace_ids>> struct_filter_objs = std::async(std::launch_async(get_traces_by_structure,
         query_trace, start_time, end_time, client));
-    std::future<std::vector<std::vector<objname_to_matching_trace_ids>>> index_results_futures;
+    std::vector<std::future<std::vector<objname_to_matching_trace_ids>>> index_results_futures;
     for (int i=0; i<conditions.size(); i++) {
-        if (is_indexed(conditions[i])) {
+        if (is_indexed(conditions[i]), client) {
             index_results_futures.push_back(std::async(std::launch_async(get_traces_by_indexed_condition,
             start_time, end_time, conditions[i], client);
         } else {
@@ -23,7 +22,7 @@ std::vector<std::string> query(
         }
     }
 
-    std::vector<std::vector<obj_name_to_matching_trace_ids>> index_results;
+    std::vector<std::vector<objname_to_matching_trace_ids>> index_results;
     for (int i=0; i<index_results_futures[i].size(); i++) {
         index_results.push_back(index_results_futures[i].get());
     }
@@ -36,106 +35,26 @@ std::vector<std::string> query(
 
     return get_return_value(filtered, ret, client);
 }
+*/
 
 bool is_indexed(query_condition *condition, gcs::Client* client) {
     // TODO
     return false;
 }
 
-std::vector<obj_name_to_matching_trace_ids> get_traces_by_indexed_condition(int start_time, int end_time, *condition, gcs::Client* client) {
+std::vector<objname_to_matching_trace_ids> get_traces_by_indexed_condition(int start_time, int end_time, query_condition *condition, gcs::Client* client) {
     // TODO
-    std::vector<obj_name_to_matching_trace_ids> to_return;
+    std::vector<objname_to_matching_trace_ids> to_return;
     return to_return;
 
 }
-std::vector<std::string> split_by_line(std::string input) {
-	std::vector<std::string> result = split_by_char(input, "\n");
-	if (result[result.size()-1].length() < 1) {
-		result.pop_back();
-	}
 
-	return result;
-}
-
-std::vector<objname_to_matching_trace_ids> intersect_index_results(std::vector<std::vector<obj_name_to_matching_trace_ids>>) {
+std::vector<objname_to_matching_trace_ids> intersect_index_results(std::vector<std::vector<objname_to_matching_trace_ids>>) {
     // TODO
 }
 
 std::vector<std::string> get_return_value(std::vector<objname_to_matching_trace_ids> filtered, return_value ret, gcs::Client* client) {
     // TODO
-}
-
-bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, int end_time) {
-	std::pair<int, int> query_timespan = std::make_pair(start_time, end_time);
-
-	// query timespan between object timespan
-	if (batch_time.first <= query_timespan.first && batch_time.second >= query_timespan.second) {
-		return true;
-	}
-
-	// query timespan contains object timespan
-	if (batch_time.first >= query_timespan.first && batch_time.second <= query_timespan.second) {
-		return true;
-	}
-
-	// batch timespan overlaps but starts before query timespan
-	if (batch_time.first <= query_timespan.first && batch_time.second <= query_timespan.second
-	&& batch_time.second >= query_timespan.first) {
-		return true;
-	}
-
-	// vice versa
-	if (batch_time.first >= query_timespan.first && batch_time.second >= query_timespan.second
-	&& batch_time.first <= query_timespan.second) {
-		return true;
-	}
-
-	return false;
-}
-
-std::string read_object(std::string bucket, std::string object, gcs::Client* client) {
-	auto reader = client->ReadObject(bucket, object);
-	if (!reader) {
-		if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
-			return "";
-		}
-
-		std::cerr << "Error reading object " << bucket << "/" << object << " :" << reader.status() << "\n";
-		exit(1);
-	}
-
-	std::string object_content{std::istreambuf_iterator<char>{reader}, {}};
-	return object_content;
-}
-
-
-
-std::vector<std::string> split_by_string(std::string input, std::string splitter) {
-	std::vector<std::string> result;
-
-	size_t pos = 0;
-	std::string token;
-	while ((pos = input.find(splitter)) != std::string::npos) {
-		token = input.substr(0, pos);
-		token = strip_from_the_end(token, '\n');
-		if (token.length() > 0) {
-			result.push_back(token);
-		}
-		input.erase(0, pos + splitter.length());
-	}
-
-	input = strip_from_the_end(input, '\n');
-	if (input.length() > 0) {
-		result.push_back(input);
-	}
-
-	return result;
-}
-
-std::vector<std::string> split_by_char(std::string input, std::string splitter) {
-	std::vector<std::string> result;
-	boost::split(result, input, boost::is_any_of(splitter));
-	return result;
 }
 
 void print_trace_structure(trace_structure trace) {
@@ -150,92 +69,6 @@ void print_trace_structure(trace_structure trace) {
 	}
 }
 
-std::string hex_str(std::string data, int len) {
-	constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-
-	std::string s(len * 2, ' ');
-	for (int i = 0; i < len; ++i) {
-		s[2 * i]     = hexmap[(data[i] & 0xF0) >> 4];
-		s[2 * i + 1] = hexmap[data[i] & 0x0F];
-	}
-
-	return s;
-}
-
-std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
-	std::string spans_data, std::vector<std::string> trace_ids) {
-	std::map<std::string, std::pair<int, int>> response;
-
-	opentelemetry::proto::trace::v1::TracesData trace_data;
-	bool ret = trace_data.ParseFromString(spans_data);
-	if (false == ret) {
-		std::cerr << "Error in ParseFromString" << std::endl;
-		exit(1);
-	}
-
-	for (int i=0; i < trace_data.resource_spans(0).scope_spans(0).spans_size(); i++) {
-		opentelemetry::proto::trace::v1::Span sp = trace_data.resource_spans(0).scope_spans(0).spans(i);
-
-		std::string trace_id = hex_str(sp.trace_id(), sp.trace_id().length());
-
-		// getting timestamps and converting from nanosecond precision to seconds precision
-		int start_time = std::stoi(std::to_string(sp.start_time_unix_nano()).substr(0, 10));
-		int end_time = std::stoi(std::to_string(sp.end_time_unix_nano()).substr(0, 10));
-
-		response.insert(std::make_pair(trace_id, std::make_pair(start_time, end_time)));
-	}
-
-	return response;
-}
-
-std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string object_content) {
-	std::map<std::string, std::string> response;
-	std::vector<std::string> all_traces = split_by_string(object_content, "Trace ID: ");
-
-	for (std::string i : all_traces) {
-		std::vector<std::string> trace = split_by_char(i, "\n");
-		std::string trace_id = trace[0].substr(0, TRACE_ID_LENGTH);
-		for (int ind = 1; ind < trace.size(); ind ++) {
-			if (trace[ind].substr(0, 1) == ":") {
-				std::vector<std::string> root_span_info = split_by_char(trace[ind], ":");
-				std::string root_service = root_span_info[2];
-				response.insert(std::make_pair(trace_id, root_service));
-				break;
-			}
-		}
-	}
-
-	return response;
-}
-
-std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_map(
-	std::map<std::string, std::string> trace_id_to_root_service_map) {
-	std::map<std::string, std::vector<std::string>> response;
-
-	for (auto const& elem : trace_id_to_root_service_map) {
-		response[elem.second].push_back(elem.first);
-	}
-
-	return response;
-}
-
-opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
-	std::string bucket, std::string object_name, gcs::Client* client
-) {
-	auto data = read_object(bucket, object_name, client);
-	opentelemetry::proto::trace::v1::TracesData trace_data;
-	if (data == "") {
-		return trace_data;
-	}
-
-	bool ret = trace_data.ParseFromString(data);
-	if (false == ret) {
-		std::cerr << "Error in read_object_and_parse_traces_data:ParseFromString" << std::endl;
-		exit(1);
-	}
-
-	return trace_data;
-}
 
 data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
 	std::vector<query_condition> conditions, std::vector<std::unordered_map<int, int>> iso_maps,

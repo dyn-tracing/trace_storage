@@ -1,0 +1,257 @@
+#include "common.h"
+
+std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(     
+    std::string spans_data, std::vector<std::string> trace_ids) {               
+    std::map<std::string, std::pair<int, int>> response;                        
+                                                                                
+    opentelemetry::proto::trace::v1::TracesData trace_data;                     
+    bool ret = trace_data.ParseFromString(spans_data);                          
+    if (false == ret) {                                                         
+        std::cerr << "Error in ParseFromString" << std::endl;                   
+        exit(1);                                                                
+    }                                                                           
+                                                                                
+    for (int i=0; i < trace_data.resource_spans(0).scope_spans(0).spans_size(); i++) {
+        opentelemetry::proto::trace::v1::Span sp = trace_data.resource_spans(0).scope_spans(0).spans(i);
+                                                                                
+        std::string trace_id = hex_str(sp.trace_id(), sp.trace_id().length());  
+                                                                                
+        // getting timestamps and converting from nanosecond precision to seconds precision
+        int start_time = std::stoi(std::to_string(sp.start_time_unix_nano()).substr(0, 10));
+        int end_time = std::stoi(std::to_string(sp.end_time_unix_nano()).substr(0, 10));
+                                                                                
+        response.insert(std::make_pair(trace_id, std::make_pair(start_time, end_time)));
+    }                                                                           
+                                                                                
+    return response;                                                            
+}
+
+std::string hex_str(std::string data, int len) {
+    constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
+    std::string s(len * 2, ' ');
+    for (int i = 0; i < len; ++i) {
+        s[2 * i]     = hexmap[(data[i] & 0xF0) >> 4];
+        s[2 * i + 1] = hexmap[data[i] & 0x0F];
+    }
+
+    return s;
+}
+
+
+std::vector<std::string> split_by_char(std::string input, std::string splitter) {
+    std::vector<std::string> result;
+    boost::split(result, input, boost::is_any_of(splitter));
+    return result;
+}
+
+
+std::vector<std::string> split_by_string(std::string input, std::string splitter) {
+    std::vector<std::string> result;
+
+    size_t pos = 0;
+    std::string token;
+    while ((pos = input.find(splitter)) != std::string::npos) {
+        token = input.substr(0, pos);
+        token = strip_from_the_end(token, '\n');
+        if (token.length() > 0) {
+            result.push_back(token);
+        }
+        input.erase(0, pos + splitter.length());
+    }
+
+    input = strip_from_the_end(input, '\n');
+    if (input.length() > 0) {
+        result.push_back(input);
+    }
+
+    return result;
+}
+
+opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
+    std::string bucket, std::string object_name, gcs::Client* client
+) {
+    auto data = read_object(bucket, object_name, client);
+    opentelemetry::proto::trace::v1::TracesData trace_data;
+    if (data == "") {
+        return trace_data;
+    }
+
+    bool ret = trace_data.ParseFromString(data);
+    if (false == ret) {
+        std::cerr << "Error in read_object_and_parse_traces_data:ParseFromString" << std::endl;
+        exit(1);
+    }
+
+    return trace_data;
+}
+
+std::string read_object(std::string bucket, std::string object, gcs::Client* client) {
+    auto reader = client->ReadObject(bucket, object);
+    if (!reader) {
+        if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
+            return "";
+        }
+
+        std::cerr << "Error reading object " << bucket << "/" << object << " :" << reader.status() << "\n";
+        exit(1);
+    }
+
+    std::string object_content{std::istreambuf_iterator<char>{reader}, {}};
+    return object_content;
+}
+
+bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, int end_time) {
+    std::pair<int, int> query_timespan = std::make_pair(start_time, end_time);
+
+    // query timespan between object timespan
+    if (batch_time.first <= query_timespan.first && batch_time.second >= query_timespan.second) {
+        return true;
+    }
+
+    // query timespan contains object timespan
+    if (batch_time.first >= query_timespan.first && batch_time.second <= query_timespan.second) {
+        return true;
+    }
+
+    // batch timespan overlaps but starts before query timespan
+    if (batch_time.first <= query_timespan.first && batch_time.second <= query_timespan.second
+    && batch_time.second >= query_timespan.first) {
+        return true;
+    }
+
+    // vice versa
+    if (batch_time.first >= query_timespan.first && batch_time.second >= query_timespan.second
+    && batch_time.first <= query_timespan.second) {
+        return true;
+    }
+
+    return false;
+}
+
+std::string strip_from_the_end(std::string object, char stripper) {
+    if (!object.empty() && object[object.length()-1] == stripper) {
+        object.erase(object.length()-1);
+    }
+    return object;
+}
+
+std::string extract_batch_name(std::string object_name) {
+    std::vector<std::string> result;
+    boost::split(result, object_name, boost::is_any_of("/"));
+
+    return result[1];
+}
+
+std::pair<int, int> extract_batch_timestamps(std::string batch_name) {
+    std::vector<std::string> result;
+    boost::split(result, batch_name, boost::is_any_of("-"));
+    if (result.size() != 3) {
+        std::cerr << "Error in extract_batch_timestamps with batch name: " << batch_name << std::endl;
+        exit(1);
+    }
+
+    return std::make_pair(std::stoi(result[1]), std::stoi(result[2]));
+}
+
+std::vector<std::string> split_by_line(std::string input) {
+    std::vector<std::string> result = split_by_char(input, "\n");
+    if (result[result.size()-1].length() < 1) {
+        result.pop_back();
+    }
+
+    return result;
+}
+
+std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
+    std::vector<std::string> trace_ids,
+    std::string batch_name,
+    std::string object_content,
+    int start_time,
+    int end_time,
+    gcs::Client* client) {
+    std::vector<std::string> response;
+
+    std::map<std::string, std::string> trace_id_to_root_service_map = get_trace_id_to_root_service_map(object_content);
+    std::map<std::string, std::vector<std::string>> root_service_to_trace_ids_map = get_root_service_to_trace_ids_map(
+        trace_id_to_root_service_map);
+
+    for (auto const& elem : root_service_to_trace_ids_map) {
+        std::string bucket = elem.first + SERVICES_BUCKETS_SUFFIX;
+        std::string spans_data = read_object(bucket, batch_name, client);
+
+        std::map<std::string, std::pair<int, int>>
+        trace_id_to_timestamp_map = get_timestamp_map_for_trace_ids(spans_data, trace_ids);
+
+        std::vector<std::string> successful_trace_ids;
+        for(auto const& trace_id : elem.second) {
+            std::pair<int, int> trace_timestamp = trace_id_to_timestamp_map[trace_id];
+            if (is_object_within_timespan(trace_timestamp, start_time, end_time)) {
+                successful_trace_ids.push_back(trace_id);
+            }
+        }
+
+        response.insert(response.end(), successful_trace_ids.begin(), successful_trace_ids.end());
+    }
+
+    return response;
+}
+std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string object_content) {
+    std::map<std::string, std::string> response;
+    std::vector<std::string> all_traces = split_by_string(object_content, "Trace ID: ");
+
+    for (std::string i : all_traces) {
+        std::vector<std::string> trace = split_by_char(i, "\n");
+        std::string trace_id = trace[0].substr(0, TRACE_ID_LENGTH);
+        for (int ind = 1; ind < trace.size(); ind ++) {
+            if (trace[ind].substr(0, 1) == ":") {
+                std::vector<std::string> root_span_info = split_by_char(trace[ind], ":");
+                std::string root_service = root_span_info[2];
+                response.insert(std::make_pair(trace_id, root_service));
+                break;
+            }
+        }
+    }
+
+    return response;
+}
+
+std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_map(
+    std::map<std::string, std::string> trace_id_to_root_service_map) {
+    std::map<std::string, std::vector<std::string>> response;
+
+    for (auto const& elem : trace_id_to_root_service_map) {
+        response[elem.second].push_back(elem.first);
+    }
+
+    return response;
+}
+
+std::string extract_any_trace(std::vector<std::string>& trace_ids, std::string& object_content) {
+	for (auto& curr_trace_id : trace_ids) {
+		auto res = extract_trace_from_traces_object(curr_trace_id, object_content);
+		if (res != "") {
+			return res;
+		}
+	}
+
+	return "";
+}
+
+std::string extract_trace_from_traces_object(std::string trace_id, std::string& object_content) {
+	int start_ind = object_content.find("Trace ID: " + trace_id + ":");
+	if (start_ind == std::string::npos) {
+		std::cerr << "trace_id (" << trace_id << ") not found in the object_content" << std::endl;
+		return "";
+	}
+
+	int end_ind = object_content.find("Trace ID", start_ind+1);
+	if (end_ind == std::string::npos) {
+		// not necessarily required as end_ind=npos does the same thing, but for clarity:
+		end_ind = object_content.length() - start_ind;
+	}
+
+	std::string trace = object_content.substr(start_ind, end_ind-start_ind);
+	trace = strip_from_the_end(trace, '\n');
+	return trace;
+}
