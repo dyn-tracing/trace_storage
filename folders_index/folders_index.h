@@ -98,10 +98,10 @@ void export_batch_to_storage(index_batch& current_index_batch, std::string index
 );
 std::vector<std::string> split_by_char(std::string input, std::string splitter);
 bool compare_object_names_by_start_time(std::string object_name1, std::string object_name2);
-std::string read_object(std::string bucket, std::string object, gcs::Client* client);
-std::vector<std::string> split_by_string(std::string input, std::string splitter);
-std::string strip_from_the_end(std::string object, char stripper);
-std::string hex_str(std::string data, int len);
+std::string read_object2(std::string bucket, std::string object, gcs::Client* client);
+std::vector<std::string> split_by_string2(std::string input, std::string splitter);
+std::string strip_from_the_end2(std::string object, char stripper);
+std::string hex_str2(std::string data, int len);
 void create_index_bucket_if_not_present(std::string indexed_attribute, gcs::Client* client);
 void print_index_batch(index_batch& current_index_batch);
 int dummy_tests();
