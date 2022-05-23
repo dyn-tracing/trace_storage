@@ -20,7 +20,7 @@ std::unordered_map<std::string, std::vector<std::string>> get_obj_name_to_trace_
 		}
 
 		response_futures.push_back(std::async(
-			std::launch::async, 
+			std::launch::async,
 			process_findex_object_and_retrieve_obj_name_to_trace_ids_map,
 			object_metadata->name(), bucket_name, client));
 	}
@@ -37,8 +37,8 @@ std::unordered_map<std::string, std::vector<std::string>> get_obj_name_to_trace_
 	return response;
 }
 
-std::unordered_map<std::string, std::vector<std::string>> 
-process_findex_object_and_retrieve_obj_name_to_trace_ids_map (
+std::unordered_map<std::string, std::vector<std::string>>
+process_findex_object_and_retrieve_obj_name_to_trace_ids_map(
 	std::string findex_obj_name, std::string findex_bucket_name, gcs::Client* client
 ) {
 	std::unordered_map<std::string, std::vector<std::string>> response;
