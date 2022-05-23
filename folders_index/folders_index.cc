@@ -202,7 +202,7 @@ std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trac
 	for (int i=0; i < trace_data.resource_spans(0).scope_spans(0).spans_size(); i++) {
 		sp = &(trace_data.resource_spans(0).scope_spans(0).spans(i));
 
-		std::string trace_id = hex_str2(sp->trace_id(), sp->trace_id().length());
+		std::string trace_id = hex_str(sp->trace_id(), sp->trace_id().length());
 
 		const opentelemetry::proto::common::v1::KeyValue* attribute;
 		for (int j=0; j < sp->attributes_size(); j++) {
@@ -239,11 +239,11 @@ std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trac
 	return response;
 }
 
-batch_timestamp extract_batch_timestamps(std::string batch_name) {
+batch_timestamp extract_batch_timestamps_struct(std::string batch_name) {
 	std::vector<std::string> result;
 	boost::split(result, batch_name, boost::is_any_of("-"));
 	if (result.size() != 3) {
-		std::cerr << "Error in extract_batch_timestamps with batch name: " << batch_name << std::endl;
+		std::cerr << "Error in extract_batch_timestamps_struct with batch name: " << batch_name << std::endl;
 	}
 
 	batch_timestamp timestamp = {result[1], result[2]};
@@ -316,7 +316,7 @@ void export_batch_to_storage(index_batch& current_index_batch, std::string index
 				continue;
 			}
 
-			auto curr_timestamp = extract_batch_timestamps(elem.first);
+			auto curr_timestamp = extract_batch_timestamps_struct(elem.first);
 
 			if (consiledated_timestamp.start_time == "" ||
 				(std::stol(curr_timestamp.start_time) < std::stol(consiledated_timestamp.start_time))
@@ -435,47 +435,6 @@ std::string read_object2(std::string bucket, std::string object, gcs::Client* cl
 	return object_content;
 }
 
-std::vector<std::string> split_by_string2(std::string input, std::string splitter) {
-	std::vector<std::string> result;
-
-	size_t pos = 0;
-	std::string token;
-	while ((pos = input.find(splitter)) != std::string::npos) {
-		token = input.substr(0, pos);
-		token = strip_from_the_end2(token, '\n');
-		if (token.length() > 0) {
-			result.push_back(token);
-		}
-		input.erase(0, pos + splitter.length());
-	}
-
-	input = strip_from_the_end2(input, '\n');
-	if (input.length() > 0) {
-		result.push_back(input);
-	}
-
-	return result;
-}
-
-std::string strip_from_the_end2(std::string object, char stripper) {
-	if (!object.empty() && object[object.length()-1] == stripper) {
-		object.erase(object.length()-1);
-	}
-	return object;
-}
-
-std::string hex_str2(std::string data, int len) {
-	constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-
-	std::string s(len * 2, ' ');
-	for (int i = 0; i < len; ++i) {
-		s[2 * i]     = hexmap[(data[i] & 0xF0) >> 4];
-		s[2 * i + 1] = hexmap[data[i] & 0x0F];
-	}
-
-	return s;
-}
-
 void create_index_bucket_if_not_present(std::string indexed_attribute, gcs::Client* client) {
 	auto bucket_name = get_bucket_name_for_attr(indexed_attribute);
 
@@ -519,7 +478,7 @@ time_t get_last_updated_for_bucket(std::string bucket_name, gcs::Client* client)
  * seems like <=
  */
 bool is_batch_older_than_last_updated(std::string batch_name, time_t last_updated) {
-	auto timestamp = extract_batch_timestamps(batch_name);
+	auto timestamp = extract_batch_timestamps_struct(batch_name);
 	return (time_t)std::stol(timestamp.end_time, NULL, 10) <= last_updated;
 }
 

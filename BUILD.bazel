@@ -168,6 +168,7 @@ cc_library(
         "@boost//:date_time",
         "@com_google_protobuf//:protobuf",
         "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+        "//:common"
     ],
     visibility = ["//main:__pkg__"],
 )
