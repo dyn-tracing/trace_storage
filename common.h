@@ -19,6 +19,7 @@
 #include <boost/regex.hpp>
 #include <boost/algorithm/string/regex.hpp>
 
+const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
 const char SERVICES_BUCKETS_SUFFIX[] = "-snicket4";
 const int TRACE_ID_LENGTH = 32;
 const int SPAN_ID_LENGTH = 16;

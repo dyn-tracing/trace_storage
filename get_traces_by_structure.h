@@ -6,7 +6,6 @@
 #include <utility>                                                              
 #include "common.h"
 
-const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
 const char TRACE_HASHES_BUCKET_PREFIX[] = "tracehashes";
 const char ASTERISK_SERVICE[] = "NONE";
 
