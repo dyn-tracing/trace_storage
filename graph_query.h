@@ -185,6 +185,7 @@ bool does_trace_satisfy_all_conditions(
 	std::string trace_id, std::string object_content, std::vector<query_condition> conditions,
 	int num_iso_maps, data_for_verifying_conditions& verification_data
 );
+std::vector<std::string> split_by_string(std::string input, std::string splitter);
 int dummy_tests();
 
 #endif  // GRAPH_QUERY_H_

@@ -137,7 +137,8 @@ cc_binary(
         "folders_index/main.cc"
     ],
     deps = [
-        "//:folders_index_lib"
+        "//:folders_index_lib",
+        "//:graph_query_lib",
     ],
 )
 
