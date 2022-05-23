@@ -211,8 +211,7 @@ std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trac
 			auto curr_attr_key = attribute->key();
 			std::string curr_attr_val = "";
 
-			switch (val->value_case())
-			{
+			switch (val->value_case()) {
 			case 1:
 				curr_attr_val = val->string_value();
 				break;
