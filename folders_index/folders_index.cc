@@ -211,8 +211,7 @@ std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trac
 			auto curr_attr_key = attribute->key();
 			std::string curr_attr_val = "";
 
-			switch (val->value_case())
-			{
+			switch (val->value_case()) {
 			case 1:
 				curr_attr_val = val->string_value();
 				break;
@@ -348,10 +347,21 @@ void export_batch_to_storage(index_batch& current_index_batch, std::string index
 			consiledated_timestamp.start_time + "-" + consiledated_timestamp.end_time;
 
 		write_object(bucket_name, object_name, object_to_write, client);
-		update_bucket_label(bucket_name, "last_updated", consiledated_timestamp.end_time, client);
+		update_last_updated_label_if_needed(bucket_name, consiledated_timestamp.end_time, client);
 		remove_exported_data_from_index_batch(current_index_batch, attr_being_exported);
 	}
 
+	return;
+}
+
+void update_last_updated_label_if_needed(
+	std::string bucket_name, std::string new_last_updated, gcs::Client* client
+) {
+	auto prev_last_updated = get_last_updated_for_bucket(bucket_name, client);
+	time_t new_last_updated_t = (time_t) std::stol(new_last_updated, NULL, 10);
+	if (prev_last_updated < new_last_updated_t) {
+		update_bucket_label(bucket_name, "last_updated", new_last_updated, client);
+	}
 	return;
 }
 

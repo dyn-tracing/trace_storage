@@ -61,6 +61,9 @@ void update_index_batched(gcs::Client* client, time_t last_updated, std::string 
 	std::vector<std::string> span_buckets_names, std::vector<std::string>& trace_struct_object_names,
 	int batch_start_ind, int batch_size
 );
+void update_last_updated_label_if_needed(
+	std::string bucket_name, std::string new_last_updated, gcs::Client* client
+);
 bool is_batch_older_than_last_updated(std::string batch_name, time_t last_updated);
 time_t get_last_updated_for_bucket(std::string bucket_name, gcs::Client* client);
 std::string read_bucket_label(std::string bucket_name, std::string label_key, gcs::Client* client);
