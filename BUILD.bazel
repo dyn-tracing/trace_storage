@@ -140,3 +140,15 @@ cc_binary(
         "//:folders_index_lib"
     ],
 )
+
+cc_binary(
+    name = "folders_index_query",
+    srcs = [
+        "folders_index_query.cc",
+        "folders_index_query.h",
+    ],
+    deps = [
+        "//:graph_query_lib",
+         "//:folders_index_lib",
+    ],
+)
