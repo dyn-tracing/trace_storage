@@ -6,9 +6,8 @@
 #include <utility>                                                              
 #include "common.h"
 
-// TODO(jessica) trace struct and hashes should be keywords followed by SERVICES_BUCKETS_SUFFIX
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket4";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket4";
+const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
+const char TRACE_HASHES_BUCKET_PREFIX[] = "tracehashes";
 const char ASTERISK_SERVICE[] = "NONE";
 
 namespace gcs = ::google::cloud::storage;

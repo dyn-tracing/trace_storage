@@ -2,9 +2,12 @@
 
 std::vector<traces_by_structure> get_traces_by_structure(                       
     trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
-    std::vector<std::future<traces_by_structure>> response_futures;        
+    std::vector<std::future<traces_by_structure>> response_futures;
+
+    std::string prefix(TRACE_HASHES_BUCKET_PREFIX);
+    std::string suffix(SERVICES_BUCKETS_SUFFIX);
                                                                                 
-    for (auto&& prefix : client->ListObjectsAndPrefixes(TRACE_HASHES_BUCKET, gcs::Delimiter("/"))) {
+    for (auto&& prefix : client->ListObjectsAndPrefixes(prefix+suffix, gcs::Delimiter("/"))) {
         if (!prefix) {                                                          
             std::cerr << "Error in getting prefixes" << std::endl;              
             exit(1);                                                            
@@ -37,7 +40,10 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 ) {
     traces_by_structure to_return;
 
-    for (auto&& object_metadata : client->ListObjects(TRACE_HASHES_BUCKET, gcs::Prefix(prefix))) {
+    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string trace_hashes_bucket(TRACE_HASHES_BUCKET_PREFIX);
+
+    for (auto&& object_metadata : client->ListObjects(trace_hashes_bucket+suffix, gcs::Prefix(prefix))) {
         if (!object_metadata) {
             std::cerr << object_metadata.status().message() << std::endl;
             exit(1);
@@ -56,7 +62,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
             continue;
         }
 
-        std::string object_content = read_object(TRACE_STRUCT_BUCKET, batch_name, client);
+        std::string object_content = read_object(trace_hashes_bucket+suffix, batch_name, client);
         if (object_content == "") {
             continue;
         }
@@ -125,7 +131,9 @@ std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
 }
 
 std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client) {
-    std::string object_content = read_object(TRACE_HASHES_BUCKET, object_name, client);
+    std::string trace_hashes_bucket(TRACE_HASHES_BUCKET_PREFIX);
+    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string object_content = read_object(trace_hashes_bucket+suffix, object_name, client);
     if (object_content == "") {                                                 
         return std::vector<std::string>();                                      
     }                                                                           
