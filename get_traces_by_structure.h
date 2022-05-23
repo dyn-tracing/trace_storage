@@ -17,7 +17,7 @@ using ::google::cloud::StatusOr;
 namespace bg = boost::graph;
 
 class traces_by_structure {
-    public:
+    public: // NOLINT - I don't understand why lint is complaining
         std::vector<objname_to_matching_trace_ids> obj_to_trace_ids;
         std::vector<std::unordered_map<int, int>> iso_maps;
 };
@@ -51,7 +51,7 @@ struct property_map_equivalent_custom {
         return prop1 == prop2;
     }
 
-        private:
+    private:  // NOLINT
         const PropertyMapFirst m_property_map1;
         const PropertyMapSecond m_property_map2;
 };
@@ -98,7 +98,7 @@ struct vf2_callback_custom {
         return true;
     }
 
-    private:
+    private: // NOLINT
         const Graph1& graph1_;
         const Graph2& graph2_;
         IsomorphismMaps& isomorphism_maps_;
