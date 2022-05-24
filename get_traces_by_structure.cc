@@ -82,7 +82,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 
     std::string suffix(SERVICES_BUCKETS_SUFFIX);
     std::string trace_hashes_bucket(TRACE_HASHES_BUCKET_PREFIX);
-    
+
     for (auto&& object_metadata : client->ListObjects(trace_hashes_bucket+suffix, gcs::Prefix(prefix))) {
         if (!object_metadata) {
             std::cerr << object_metadata.status().message() << std::endl;
