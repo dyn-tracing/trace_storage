@@ -82,7 +82,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 
     std::string suffix(SERVICES_BUCKETS_SUFFIX);
     std::string trace_hashes_bucket(TRACE_HASHES_BUCKET_PREFIX);
-
+    
     for (auto&& object_metadata : client->ListObjects(trace_hashes_bucket+suffix, gcs::Prefix(prefix))) {
         if (!object_metadata) {
             std::cerr << object_metadata.status().message() << std::endl;
@@ -140,7 +140,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 
         to_return.object_names.push_back(batch_name);
         int batch_name_index = to_return.object_names.size()-1;
-        for (int i=0; i < to_return.trace_ids.size(); i++) {
+        for (int i=trace_id_offset; i < to_return.trace_ids.size(); i++) {
             for (int j=0; j < to_return.iso_maps.size(); j++) {
                 to_return.trace_id_to_isomap_indices[to_return.trace_ids[i+trace_id_offset]].push_back(j);
             }
