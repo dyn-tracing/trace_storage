@@ -168,6 +168,7 @@ cc_library(
         "@boost//:date_time",
         "@com_google_protobuf//:protobuf",
         "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+        "//:common"
     ],
     visibility = ["//main:__pkg__"],
 )
@@ -178,6 +179,19 @@ cc_binary(
         "folders_index/main.cc"
     ],
     deps = [
-        "//:folders_index_lib"
+        "//:folders_index_lib",
+        "//:graph_query_lib",
+    ],
+)
+
+cc_binary(
+    name = "folders_index_query",
+    srcs = [
+        "folders_index_query.cc",
+        "folders_index_query.h",
+    ],
+    deps = [
+        "//:folders_index_lib",
+        "//:common",
     ],
 )

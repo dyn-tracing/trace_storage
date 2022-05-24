@@ -12,22 +12,12 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "common.h"
 #include "trace_attributes.h"
 #include "google/cloud/storage/client.h"
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-
-const char BUCKET_TYPE_LABEL_KEY[] = "bucket_type";
-const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
-
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket3";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket3";
-const char SERVICES_BUCKETS_SUFFIX[] = "-snicket3";
-const char INDEX_STATUS_CODE_BUCKET[] = "index-status-code-snicket3";
-const char INDEX_SPAN_KIND_BUCKET[] = "index-span-kind";
-const char PROJECT_ID[] = "dynamic-tracing";
-const char BUCKETS_LOCATION[] = "us-central1";
 
 struct batch_timestamp {
 	std::string start_time;
@@ -81,7 +71,7 @@ std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trac
 	std::string span_bucket_name, std::string object_name, std::string indexed_attribute, gcs::Client* client
 );
 std::vector<std::string> get_spans_buckets_names(gcs::Client* client);
-batch_timestamp extract_batch_timestamps(std::string batch_name);
+batch_timestamp extract_batch_timestamps_struct(std::string batch_name);
 std::vector<std::string> get_all_object_names(std::string bucket_name, gcs::Client* client);
 std::vector<std::string> sort_object_names_on_start_time(std::vector<std::string> object_names);
 std::unordered_map<std::string, std::vector<std::string>> get_attr_to_trace_ids_map(
@@ -98,10 +88,7 @@ void export_batch_to_storage(index_batch& current_index_batch, std::string index
 );
 std::vector<std::string> split_by_char(std::string input, std::string splitter);
 bool compare_object_names_by_start_time(std::string object_name1, std::string object_name2);
-std::string read_object(std::string bucket, std::string object, gcs::Client* client);
-std::vector<std::string> split_by_string(std::string input, std::string splitter);
-std::string strip_from_the_end(std::string object, char stripper);
-std::string hex_str(std::string data, int len);
+std::string read_object2(std::string bucket, std::string object, gcs::Client* client);
 void create_index_bucket_if_not_present(std::string indexed_attribute, gcs::Client* client);
 void print_index_batch(index_batch& current_index_batch);
 int dummy_tests();
