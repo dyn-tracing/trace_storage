@@ -51,7 +51,8 @@ traces_by_structure get_traces_by_structure(
             for (const auto &pair : new_trace_by_struct.object_name_to_trace_ids_of_interest) {
                 auto object_name = pair.first;
                 for (int i=0; i < pair.second.size(); i++) {
-                    response.object_name_to_trace_ids_of_interest[object_name].push_back(pair.second[i] + trace_id_offset);
+                    response.object_name_to_trace_ids_of_interest[object_name].push_back(
+                        pair.second[i] + trace_id_offset);
                 }
             }
 
@@ -127,8 +128,12 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
         nn.push_back(candidate_trace.node_names);
         to_return.trace_node_names = nn;
 
-        to_return.trace_ids = filter_trace_ids_based_on_query_timestamp(
+        auto trace_ids_to_append = filter_trace_ids_based_on_query_timestamp(
             response_trace_ids, batch_name, object_content, start_time, end_time, client);
+        int trace_id_offset = to_return.trace_ids.size();
+        to_return.trace_ids.insert(to_return.trace_ids.end(),
+                                    trace_ids_to_append.begin(),
+                                    trace_ids_to_append.end());
         if (response_trace_ids.size() < 1) {
             continue;
         }
@@ -137,15 +142,9 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
         int batch_name_index = to_return.object_names.size()-1;
         for (int i=0; i < to_return.trace_ids.size(); i++) {
             for (int j=0; j < to_return.iso_maps.size(); j++) {
-                to_return.trace_id_to_isomap_indices[to_return.trace_ids[i]].push_back(j);
+                to_return.trace_id_to_isomap_indices[to_return.trace_ids[i+trace_id_offset]].push_back(j);
             }
-            if (i == 0) {
-                std::vector<int> trace_id_ind;
-                trace_id_ind.push_back(0);
-                to_return.object_name_to_trace_ids_of_interest[batch_name_index] = trace_id_ind;
-            } else {
-                to_return.object_name_to_trace_ids_of_interest[batch_name_index].push_back(i);
-            }
+            to_return.object_name_to_trace_ids_of_interest[batch_name_index].push_back(i+trace_id_offset);
         }
     }
     return to_return;

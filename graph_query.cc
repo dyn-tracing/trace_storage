@@ -61,12 +61,12 @@ objname_to_matching_trace_ids filter_based_on_conditions(
         trace_structure &query_trace,
         struct fetched_data &fetched,
         gcs::Client* client) {
-
         objname_to_matching_trace_ids to_return;
         for (const auto &object_to_trace : intersection) {
             for (int i=0; i < object_to_trace.second.size(); i++) {
                 std::vector<std::unordered_map<int, int>> isomaps;
-                std::vector<int> isomap_indices = structural_results.trace_id_to_isomap_indices[object_to_trace.second[i]];
+                std::vector<int> isomap_indices = structural_results.trace_id_to_isomap_indices[
+                    object_to_trace.second[i]];
                 for (int k=0; k < isomap_indices.size(); k++) {
                     isomaps.push_back(structural_results.iso_maps[isomap_indices[k]]);
                 }
@@ -74,7 +74,6 @@ objname_to_matching_trace_ids filter_based_on_conditions(
                     isomaps, conditions, fetched)) {
                     to_return[object_to_trace.first].push_back(object_to_trace.second[i]);
                 }
-
             }
         }
         return to_return;
@@ -100,7 +99,7 @@ struct fetched_data fetch_data(
     std::map<int, int> iso_map_to_trace_node_names,
     std::vector<query_condition> &conditions,
     gcs::Client* client) {
-    // TODO(hasseb)
+    // TODO(haseeb)
 }
 
 bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
