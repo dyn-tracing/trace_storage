@@ -29,6 +29,7 @@ traces_by_structure get_traces_by_structure(
     for_each(response_futures.begin(), response_futures.end(),
         [&response](std::future<traces_by_structure>& fut){
             traces_by_structure new_trace_by_struct = fut.get();
+            // std::cout << "Got " << new_trace_by_struct.trace_ids.size() << std::endl;
             // now merge it into response
             int trace_id_offset = response.trace_ids.size();
             int iso_map_offset = response.iso_maps.size();
@@ -98,13 +99,14 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
         if (false == is_object_within_timespan(batch_time, start_time, end_time)) {
             continue;
         }
+        std::cout << "Processing " << object_name << std::endl;
 
         std::vector<std::string> response_trace_ids = get_trace_ids_from_trace_hashes_object(object_name, client);
         if (response_trace_ids.size() < 1) {
             continue;
         }
 
-        std::string object_content = read_object(trace_hashes_bucket+suffix, batch_name, client);
+        std::string object_content = read_object(TRACE_STRUCT_BUCKET_PREFIX+suffix, batch_name, client);
         if (object_content == "") {
             continue;
         }
@@ -193,9 +195,14 @@ std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string obje
     if (object_content == "") {
         return std::vector<std::string>();
     }
-    std::vector<std::string> trace_ids = split_by_string(object_content, newline);
-
-    return trace_ids;
+    auto trace_ids = split_by_string(object_content, newline);
+    std::vector<std::string> response;
+    for (auto curr_trace_id : trace_ids) {
+        if (curr_trace_id != "") {
+            response.push_back(curr_trace_id);
+        }
+    }
+    return response;
 }
 
 trace_structure morph_trace_object_to_trace_structure(std::string trace) {

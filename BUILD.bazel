@@ -195,3 +195,15 @@ cc_binary(
         "//:common",
     ],
 )
+
+cc_binary(
+    name = "simple_graph_query",
+    srcs = [
+        "graph_query_main.cc",
+    ],
+    deps = [
+        "//:graph_query_lib",
+        "//:get_traces_by_structure",
+        "//:common",
+    ],
+)
