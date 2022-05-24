@@ -134,7 +134,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
         to_return.trace_ids.insert(to_return.trace_ids.end(),
                                     trace_ids_to_append.begin(),
                                     trace_ids_to_append.end());
-        if (response_trace_ids.size() < 1) {
+        if (trace_ids_to_append.size() < 1) {
             continue;
         }
 
