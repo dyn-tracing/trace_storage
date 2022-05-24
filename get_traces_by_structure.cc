@@ -65,10 +65,12 @@ traces_by_structure get_traces_by_structure(
             }
 
             // then finally deal with trace node name stuff
-            response.trace_node_names.push_back(new_trace_by_struct.trace_node_names[0]);
-            int tnn_index = response.trace_node_names.size()-1;
-            for (int i=iso_map_offset; i < response.iso_maps.size(); i++) {
-                response.iso_map_to_trace_node_names[i] = tnn_index;
+            if (new_trace_by_struct.trace_node_names.size() > 0) {
+                response.trace_node_names.push_back(new_trace_by_struct.trace_node_names[0]);
+                int tnn_index = response.trace_node_names.size()-1;
+                for (int i=iso_map_offset; i < response.iso_maps.size(); i++) {
+                    response.iso_map_to_trace_node_names[i] = tnn_index;
+                }
             }
     });
     return response;
