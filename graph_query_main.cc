@@ -31,13 +31,5 @@ int main(int argc, char* argv[]) {
     // querying
     auto client = gcs::Client();
     auto total = get_traces_by_structure(query_trace, 1651700420, 1651700421, &client);
-    int count = 0;
-    for (int i=0; i < total.size(); i++) {
-        for (int j=0; j < total[i].obj_to_trace_ids.size(); j++) {
-            std::vector<std::string> trace_vector = std::get<1>(total[i].obj_to_trace_ids[j]);
-            count += trace_vector.size();
-        }
-    }
-    std::cout << "Total results: " << count << std::endl;
     return 0;
 }
