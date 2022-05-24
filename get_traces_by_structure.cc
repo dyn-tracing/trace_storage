@@ -132,10 +132,10 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 
         auto trace_ids_to_append = filter_trace_ids_based_on_query_timestamp(
             response_trace_ids, batch_name, object_content, start_time, end_time, client);
+
         int trace_id_offset = to_return.trace_ids.size();
-        to_return.trace_ids.insert(to_return.trace_ids.end(),
-                                    trace_ids_to_append.begin(),
-                                    trace_ids_to_append.end());
+        to_return.trace_ids.insert(to_return.trace_ids.end(), 
+            trace_ids_to_append.begin(), trace_ids_to_append.end());
         if (trace_ids_to_append.size() < 1) {
             continue;
         }
@@ -144,9 +144,9 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
         int batch_name_index = to_return.object_names.size()-1;
         for (int i=trace_id_offset; i < to_return.trace_ids.size(); i++) {
             for (int j=0; j < to_return.iso_maps.size(); j++) {
-                to_return.trace_id_to_isomap_indices[to_return.trace_ids[i+trace_id_offset]].push_back(j);
+                to_return.trace_id_to_isomap_indices[to_return.trace_ids[i]].push_back(j);
             }
-            to_return.object_name_to_trace_ids_of_interest[batch_name_index].push_back(i+trace_id_offset);
+            to_return.object_name_to_trace_ids_of_interest[batch_name_index].push_back(i);
         }
     }
     return to_return;
