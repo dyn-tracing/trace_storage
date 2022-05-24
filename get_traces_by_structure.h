@@ -27,7 +27,6 @@ class traces_by_structure {
         std::map<int, int> iso_map_to_trace_node_names;
         std::map<int, std::vector<int>> object_name_to_trace_ids_of_interest;
         std::map<std::string, std::vector<int>> trace_id_to_isomap_indices;
-
 };
 
 struct trace_structure {
