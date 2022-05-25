@@ -101,9 +101,25 @@ fetched_data fetch_data(
     std::vector<query_condition> &conditions,
     gcs::Client* client
 ) {
-    auto object_name_to_structural_objects = fetch_object_name_to_structural_objects(
+    auto object_name_to_structural_object_map = fetch_object_name_to_structural_object_map(
         object_name_to_trace_ids_of_interest);
     
+    for (auto& obj_to_trace_ids_ele : object_name_to_trace_ids_of_interest) {
+        // obj name is like trace_hashes_prefix/10-st-en
+        // all the trace ids in obj_to_trace_ids_ele.second has same iso_maps, so should have same 
+        // service name per (condition, iso_map). 
+
+        ///
+    }
+
+
+    for (auto& obj_to_trace_ids_ele : object_name_to_trace_ids_of_interest) {
+        auto object_name = obj_to_trace_ids_ele.first;
+        auto batch_name = split_by_string(object_name, "/")[0];
+
+        // gotta make service_name to spans object map but need batch_name.. for
+    }
+
     // TODO(haseeb)
 }
 
@@ -183,7 +199,7 @@ std::vector<int> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
     std::vector<int> satisfying_iso_map_indices;
     for (int curr_iso_map_ind = 0; curr_iso_map_ind < iso_maps.size(); curr_iso_map_ind++) {
         std::string trace = extract_trace_from_traces_object(trace_id,
-            evaluation_data.object_name_to_structural_objects[object_name]);
+            evaluation_data.object_name_to_structural_object_map[object_name]);
         std::vector<std::string> trace_lines = split_by_string(trace, newline);
 
         auto condition_service = verification_data.service_name_for_condition_with_isomap[

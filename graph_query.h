@@ -37,7 +37,7 @@ std::vector<std::string> query(
 
 struct fetched_data {
     // TODO(haseeb)
-    std::unordered_map<std::string, std::string> object_name_to_structural_objects;
+    std::unordered_map<std::string, std::string> object_name_to_structural_object_map;
     std::vector <std::vector <std::string>> service_name_for_condition_with_isomap;
 	std::unordered_map<std::string, opentelemetry::proto::trace::v1::TracesData> service_name_to_spans_object;
 };

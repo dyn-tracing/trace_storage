@@ -141,13 +141,13 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
             continue;
         }
 
-        to_return.object_names.push_back(batch_name);
-        int batch_name_index = to_return.object_names.size()-1;
+        to_return.object_names.push_back(prefix+batch_name);
+        int object_name_index = to_return.object_names.size()-1;
         for (int i=trace_id_offset; i < to_return.trace_ids.size(); i++) {
             for (int j=0; j < to_return.iso_maps.size(); j++) {
                 to_return.trace_id_to_isomap_indices[to_return.trace_ids[i]].push_back(j);
             }
-            to_return.object_name_to_trace_ids_of_interest[batch_name_index].push_back(i);
+            to_return.object_name_to_trace_ids_of_interest[object_name_index].push_back(i);
         }
     }
     return to_return;
