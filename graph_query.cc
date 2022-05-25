@@ -115,13 +115,43 @@ fetched_data fetch_data(
                 opentelemetry::proto::trace::v1::TracesData>> spans_objects_by_bn_sn;  // [batch_name][service_name]
      */
 
+    fetched_data response;
+
     auto batch_names = extract_all_batch_names(object_name_to_trace_ids_of_interest);
-    auto structural_objects_by_bn = get_structural_objects_by_bn_map(batch_names);
-
-    auto service_names = ?
-    auto spans_objects_by_bn_sn = get_spans_objects_by_bn_sn_map(batch_names);
+    response.structural_objects_by_bn = get_structural_objects_by_bn_map(batch_names);
 
 
+    for (auto& ontii_ele : object_name_to_trace_ids_of_interest) {
+        auto object_name = ontii_ele.first;
+        auto splitted_object_name = split_by_string(object_name, "/");
+        auto trace_hashes_prefix = splitted_object_name[0];
+        auto batch_name = splitted_object_name[1];
+        auto trace_ids = ontii_ele.second;
+
+        std::string any_trace_of_current_prefix = trace_ids[0];
+        auto iso_map_indices = trace_id_to_isomap_indices[any_trace_of_current_prefix];
+        
+        for (auto curr_condition : conditions) {
+            std::vector <std::string> iso_map_to_service;
+            for (auto curr_iso_map_ind : iso_map_indices) {
+                auto trace_node_names_ind = iso_map_to_trace_node_names[curr_iso_map_ind];
+                auto trace_node_index = iso_maps[curr_iso_map_ind][curr_condition.node_index];
+                auto condition_service = trace_node_names[trace_node_names_ind][trace_node_index];
+                iso_map_to_service.push_back(condition_service);
+
+                auto service_name_without_hash_id = split_by_string(condition_service, ":")[0];
+                auto trace_data = read_object_and_parse_traces_data(service_name_without_hash_id+SERVICES_BUCKETS_SUFFIX, batch_name);
+
+                // TODO:
+                // store this trace_data in spans_objects_by_bn_sn
+                // make sure that read_object_and_parse_traces_data does not get called for same object again
+                // once this is done, make sure, end to end thing (upto and include does_span_satisfy_condition is okay)
+                // then make it parallele or even wait for jessica's code so that it can be tested before going to parallel
+
+            }
+            response.service_names_by_p_ci_ii[prefix].push_back(iso_map_to_service);
+        }
+    }
 
 }
 
@@ -156,42 +186,22 @@ bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name
     return false;
 }
 
-data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
-    std::vector<query_condition> conditions, std::vector<std::unordered_map<int, int>> iso_maps,
-    std::unordered_map<int, std::string> trace_node_names,
-    std::unordered_map<int, std::string> query_node_names,
-    std::string batch_name, std::string trace, gcs::Client* client
+opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
+	std::string bucket, std::string object_name, gcs::Client* client
 ) {
-    data_for_verifying_conditions response;
-    std::vector<std::pair<std::string, std::future<opentelemetry::proto::trace::v1::TracesData>>> response_futures;
+	auto data = read_object(bucket, object_name, client);
+	opentelemetry::proto::trace::v1::TracesData trace_data;
+	if (data == "") {
+		return trace_data;
+	}
 
-    for (auto curr_condition : conditions) {
-        std::vector <std::string> iso_map_to_service;
+	bool ret = trace_data.ParseFromString(data);
+	if (false == ret) {
+		std::cerr << "Error in read_object_and_parse_traces_data:ParseFromString" << std::endl;
+		exit(1);
+	}
 
-        for (auto curr_iso_map : iso_maps) {
-            auto trace_node_index = curr_iso_map[curr_condition.node_index];
-            auto condition_service = trace_node_names[trace_node_index];
-            iso_map_to_service.push_back(condition_service);
-
-            auto service_name_without_hash_id = split_by_string(condition_service, colon)[0];
-            if (response.service_name_to_respective_object.find(
-                service_name_without_hash_id) == response.service_name_to_respective_object.end()
-            ) {
-                response_futures.push_back(std::make_pair(service_name_without_hash_id, std::async(
-                    std::launch::async, read_object_and_parse_traces_data,
-                    service_name_without_hash_id + SERVICES_BUCKETS_SUFFIX, batch_name, client)));
-            }
-        }
-
-        response.service_name_for_condition_with_isomap.push_back(iso_map_to_service);
-    }
-
-    for_each(response_futures.begin(), response_futures.end(),
-        [&response](std::pair<std::string, std::future<opentelemetry::proto::trace::v1::TracesData>>& fut) {
-            response.service_name_to_respective_object[fut.first] = fut.second.get();
-    });
-
-    return response;
+	return trace_data;
 }
 
 std::vector<int> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
