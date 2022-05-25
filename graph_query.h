@@ -34,13 +34,12 @@ std::vector<std::string> query(
     std::vector<query_condition> conditions, return_value ret, gcs::Client* client);
 
 // ****************** conditions-related ********************************
-struct data_for_verifying_conditions {
-	std::vector <std::vector <std::string>> service_name_for_condition_with_isomap;
-	std::unordered_map<std::string, opentelemetry::proto::trace::v1::TracesData> service_name_to_respective_object;
-};
 
 struct fetched_data {
     // TODO(haseeb)
+    std::unordered_map<std::string, std::string> object_name_to_structural_objects;
+    std::vector <std::vector <std::string>> service_name_for_condition_with_isomap;
+	std::unordered_map<std::string, opentelemetry::proto::trace::v1::TracesData> service_name_to_spans_object;
 };
 
 struct fetched_data fetch_data(
@@ -61,13 +60,12 @@ data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
 );
 bool is_indexed(query_condition *condition, gcs::Client* client);
 bool does_span_satisfy_condition(
-	std::string span_id, std::string service_name,
-	query_condition condition, data_for_verifying_conditions& verification_data
+    std::string span_id, std::string service_name,
+    query_condition condition, fetched_data& evaluation_data
 );
-std::vector<int> get_iso_maps_indices_for_which_trace_satifies_condition(
-	std::string trace_id, query_condition condition,
-	int num_iso_maps, std::string object_content,
-	data_for_verifying_conditions& verification_data, int condition_index_in_verification_data
+std::vector<int> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
+    std::string trace_id, std::string object_name, std::vector<query_condition>& conditions,
+    int curr_cond_ind, std::vector<std::unordered_map<int, int>>& iso_maps, fetched_data& evaluation_data
 );
 std::vector<std::string> filter_trace_ids_based_on_conditions(
 	std::vector<std::string> trace_ids,
@@ -77,9 +75,9 @@ std::vector<std::string> filter_trace_ids_based_on_conditions(
 	int num_iso_maps,
 	data_for_verifying_conditions& required_data
 );
-bool does_trace_satisfy_all_conditions(
-	std::string trace_id, std::string object_content, std::vector<query_condition> conditions,
-	int num_iso_maps, data_for_verifying_conditions& verification_data
+bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
+    std::vector<std::unordered_map<int, int>>& iso_maps, std::vector<query_condition> &conditions,
+    fetched_data& evaluation_data
 );
 
 objname_to_matching_trace_ids get_traces_by_indexed_condition(
