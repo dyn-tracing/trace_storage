@@ -35,14 +35,25 @@ std::vector<std::string> query(
 
 // ****************** conditions-related ********************************
 
+/**
+ * by_* in the names denote how to index into the data structures. 
+ * e.g. service_names_by_p_ci_ii means [prefix][condition_index][iso_map_index]
+ */
 struct fetched_data {
-    // TODO(haseeb)
-    std::unordered_map<std::string, std::string> object_name_to_structural_object_map;
-    std::vector <std::vector <std::string>> service_name_for_condition_with_isomap;
-	std::unordered_map<std::string, opentelemetry::proto::trace::v1::TracesData> service_name_to_spans_object;
+    std::unordered_map<std::string, std::string> structural_objects_by_bn;  // [batch_name]
+
+    std::unordered_map<
+        std::string,
+        std::vector<std::vector<std::string>>> service_names_by_p_ci_ii  // [prefix][condition_ind][iso_map_ind];
+
+    std::unordered_map<
+        std::string,
+        std::unordered_map<
+            std::string,
+            opentelemetry::proto::trace::v1::TracesData>> spans_objects_by_bn_sn;  // [batch_name][service_name]
 };
 
-struct fetched_data fetch_data(
+fetched_data fetch_data(
     std::vector<std::unordered_map<int, int>> &iso_maps,
     std::vector<std::unordered_map<int, std::string>> trace_node_names,
     std::unordered_map<int, std::string> query_node_names,
@@ -61,7 +72,7 @@ data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
 bool is_indexed(query_condition *condition, gcs::Client* client);
 bool does_span_satisfy_condition(
     std::string span_id, std::string service_name,
-    query_condition condition, fetched_data& evaluation_data
+    query_condition condition, std::string batch_name, fetched_data& evaluation_data
 );
 std::vector<int> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
     std::string trace_id, std::string object_name, std::vector<query_condition>& conditions,

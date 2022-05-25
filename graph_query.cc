@@ -56,28 +56,28 @@ objname_to_matching_trace_ids get_traces_by_indexed_condition(
 }
 
 objname_to_matching_trace_ids filter_based_on_conditions(
-        objname_to_matching_trace_ids &intersection,
-        traces_by_structure &structural_results,
-        std::vector<query_condition> &conditions,
-        trace_structure &query_trace,
-        struct fetched_data &fetched,
-        gcs::Client* client) {
-        objname_to_matching_trace_ids to_return;
-        for (const auto &object_to_trace : intersection) {
-            for (int i=0; i < object_to_trace.second.size(); i++) {
-                std::vector<std::unordered_map<int, int>> isomaps;
-                std::vector<int> isomap_indices = structural_results.trace_id_to_isomap_indices[
-                    object_to_trace.second[i]];
-                for (int k=0; k < isomap_indices.size(); k++) {
-                    isomaps.push_back(structural_results.iso_maps[isomap_indices[k]]);
-                }
-                if (does_trace_satisfy_conditions(object_to_trace.second[i], object_to_trace.first,
-                    isomaps, conditions, fetched)) {
-                    to_return[object_to_trace.first].push_back(object_to_trace.second[i]);
-                }
+    objname_to_matching_trace_ids &intersection,
+    traces_by_structure &structural_results,
+    std::vector<query_condition> &conditions,
+    trace_structure &query_trace,
+    struct fetched_data &fetched,
+    gcs::Client* client
+) {
+    objname_to_matching_trace_ids to_return;
+    for (const auto &object_to_trace : intersection) {
+        for (int i=0; i < object_to_trace.second.size(); i++) {
+            std::vector<std::unordered_map<int, int>> isomaps;
+            std::vector<int> isomap_indices = structural_results.trace_id_to_isomap_indices[object_to_trace.second[i]];
+            for (int k=0; k < isomap_indices.size(); k++) {
+                isomaps.push_back(structural_results.iso_maps[isomap_indices[k]]);
+            }
+            if (does_trace_satisfy_conditions(object_to_trace.second[i], object_to_trace.first,
+                isomaps, conditions, fetched)) {
+                to_return[object_to_trace.first].push_back(object_to_trace.second[i]);
             }
         }
-        return to_return;
+    }
+    return to_return;
 }
 
 objname_to_matching_trace_ids intersect_index_results(
@@ -101,26 +101,28 @@ fetched_data fetch_data(
     std::vector<query_condition> &conditions,
     gcs::Client* client
 ) {
-    auto object_name_to_structural_object_map = fetch_object_name_to_structural_object_map(
-        object_name_to_trace_ids_of_interest);
-    
-    for (auto& obj_to_trace_ids_ele : object_name_to_trace_ids_of_interest) {
-        // obj name is like trace_hashes_prefix/10-st-en
-        // all the trace ids in obj_to_trace_ids_ele.second has same iso_maps, so should have same 
-        // service name per (condition, iso_map). 
+    /**
+        std::unordered_map<std::string, std::string> structural_objects_by_bn;  // [batch_name]
 
-        ///
-    }
+        std::unordered_map<
+            std::string,
+            std::vector<std::vector<std::string>>> service_names_by_p_ci_ii  // [prefix][condition_ind][iso_map_ind];
+
+        std::unordered_map<
+            std::string,
+            std::unordered_map<
+                std::string,
+                opentelemetry::proto::trace::v1::TracesData>> spans_objects_by_bn_sn;  // [batch_name][service_name]
+     */
+
+    auto batch_names = extract_all_batch_names(object_name_to_trace_ids_of_interest);
+    auto structural_objects_by_bn = get_structural_objects_by_bn_map(batch_names);
+
+    auto service_names = ?
+    auto spans_objects_by_bn_sn = get_spans_objects_by_bn_sn_map(batch_names);
 
 
-    for (auto& obj_to_trace_ids_ele : object_name_to_trace_ids_of_interest) {
-        auto object_name = obj_to_trace_ids_ele.first;
-        auto batch_name = split_by_string(object_name, "/")[0];
 
-        // gotta make service_name to spans object map but need batch_name.. for
-    }
-
-    // TODO(haseeb)
 }
 
 bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
@@ -196,21 +198,24 @@ std::vector<int> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
     std::string trace_id, std::string object_name, std::vector<query_condition>& conditions,
     int curr_cond_ind, std::vector<std::unordered_map<int, int>>& iso_maps, fetched_data& evaluation_data
 ) {
+    auto splitted_object_name = split_by_string(object_name, "/")[0];
+    auto prefix = splitted_object_name[0];
+    auto batch_name =splitted_object_name[1];
+
     std::vector<int> satisfying_iso_map_indices;
     for (int curr_iso_map_ind = 0; curr_iso_map_ind < iso_maps.size(); curr_iso_map_ind++) {
         std::string trace = extract_trace_from_traces_object(trace_id,
-            evaluation_data.object_name_to_structural_object_map[object_name]);
+            evaluation_data.structural_objects_by_bn[batch_name]);
         std::vector<std::string> trace_lines = split_by_string(trace, newline);
 
-        auto condition_service = verification_data.service_name_for_condition_with_isomap[
-            curr_cond_ind][curr_iso_map_ind];
+        auto condition_service = evaluation_data.service_names_by_p_ci_ii[prefix][curr_cond_ind][curr_iso_map_ind];
         for (auto line : trace_lines) {
             if (line.find(condition_service) != std::string::npos) {
                 auto span_info = split_by_string(line, colon);
                 auto span_id = span_info[1];
                 auto service_name = span_info[2];
                 if (true == does_span_satisfy_condition(
-                    span_id, service_name, conditions[curr_cond_ind], evaluation_data)
+                    span_id, service_name, conditions[curr_cond_ind], batch_name, evaluation_data)
                 ) {
                     satisfying_iso_map_indices.push_back(curr_iso_map_ind);
                 }
@@ -224,10 +229,10 @@ std::vector<int> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
 
 bool does_span_satisfy_condition(
     std::string span_id, std::string service_name,
-    query_condition condition, fetched_data& evaluation_data
+    query_condition condition, std::string batch_name, fetched_data& evaluation_data
 ) {
     opentelemetry::proto::trace::v1::TracesData* trace_data = &(
-        evaluation_data.service_name_to_spans_object[service_name]);
+        evaluation_data.spans_objects_by_bn_sn[batch_name][service_name]);
 
     const opentelemetry::proto::trace::v1::Span* sp;
     for (int i=0; i < trace_data->resource_spans(0).scope_spans(0).spans_size(); i++) {
