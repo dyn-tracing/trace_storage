@@ -116,6 +116,7 @@ cc_binary(
     ],
     deps = [
         "//:graph_query_lib",
+        "//:query_bloom_index",
         "@com_github_googleapis_google_cloud_cpp//:storage",
         "@boost//:algorithm",
         "@boost//:graph",
@@ -202,8 +203,28 @@ cc_binary(
         "graph_query_main.cc",
     ],
     deps = [
+        "//:query_bloom_index",
         "//:graph_query_lib",
         "//:get_traces_by_structure",
         "//:common",
     ],
+)
+
+cc_library(
+    name = "query_bloom_index",
+    srcs = [
+        "query_bloom_index.cc",
+        "query_bloom_index.h",
+    ],
+    hdrs = ["query_bloom_index.h"],
+    deps = [
+        "//:id_index_lib",
+        "//:common",
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:regex",
+        "@boost//:algorithm",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+    ],
+    visibility = ["//main:__pkg__"],
 )
