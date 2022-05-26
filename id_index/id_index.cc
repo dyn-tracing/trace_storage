@@ -259,8 +259,8 @@ std::vector<std::string> span_ids_from_trace_id_object(gcs::Client* client, std:
             std::vector<std::string> sp = split_by_string(trace_and_spans[j], colon);
             to_return.push_back(sp[1]);
         }
-
     }
+    return to_return;
 }
 
 std::vector<std::string> get_values_in_span_object(gcs::Client* client, std::string bucket_name,

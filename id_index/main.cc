@@ -5,10 +5,8 @@ int main(int argc, char* argv[]) {
     // uses the default configuration for authentication and project id.
     auto client = gcs::Client();
     get_value_func func;
-    func.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
+    func.bytes_func = &opentelemetry::proto::trace::v1::Span::span_id;
 
-    get_value_func condition_1_union;
-    condition_1_union.int_func = &opentelemetry::proto::trace::v1::Span::start_time_unix_nano;
-    update_index(&client, "trace.id", 10, bytes_value, func);
+    update_index(&client, "span.id", 10, bytes_value, func);
     return 0;
 }

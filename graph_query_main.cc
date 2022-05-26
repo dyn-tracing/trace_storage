@@ -34,7 +34,9 @@ int main(int argc, char* argv[]) {
     std::cout << "Total traces: " << total.trace_ids.size() << std::endl;
     std::cout << "ID: " << total.trace_ids[0] << std::endl;
     */
-    std::string batch = query_bloom_index_for_value(&client, "c5367e16e960a3452529e44d035a9bec", "new_id_index");
+    std::string batch = query_bloom_index_for_value(&client, "c5367e16e960a3452529e44d035a9bec", "trace-id");
     std::cout << "batch " << batch << std::endl;
+    std::string batch2 = query_bloom_index_for_value(&client, "52bf6864f72e9adf", "span-id");
+    std::cout << "batch2 " << batch2 << std::endl;
     return 0;
 }
