@@ -16,7 +16,7 @@ typedef union {
   bool (opentelemetry::proto::trace::v1::Span::*bool_func)() const;
   uint64_t (opentelemetry::proto::trace::v1::Span::*int_func)() const;
   double (opentelemetry::proto::trace::v1::Span::*double_func)() const;
-  char* (opentelemetry::proto::trace::v1::Span::*bytes_func)() const;
+  const std::string &(opentelemetry::proto::trace::v1::Span::*bytes_func)() const;
 } get_value_func;
 
 enum property_type {
