@@ -20,7 +20,6 @@
 
 // TODO(jessica): these are already defined in common under different names
 const char trace_struct_bucket[] = "dyntraces-snicket4";
-const char index_bucket[] = "new_id_index";
 const int branching_factor = 10;
 
 // Leaf struct
@@ -51,13 +50,12 @@ std::vector<std::string> generate_prefixes(time_t earliest, time_t latest);
 std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest);
 bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string batch, time_t earliest, time_t latest);
 bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string batch);
-Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch, time_t start_time, time_t end_time);
-int bubble_up_leaf(gcs::Client* client, time_t start_time, time_t end_time, Leaf &leaf);
+Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch, time_t start_time, time_t end_time, std::string index_bucket);
+int bubble_up_leaf(gcs::Client* client, time_t start_time, time_t end_time, Leaf &leaf, std::string index_bucket);
 std::tuple<time_t, time_t> get_parent(time_t start_time, time_t end_time, time_t granularity);
-int create_index_bucket(gcs::Client* client);
-std::tuple<time_t, time_t> get_parent(time_t start_time, time_t end_time, time_t granularity);
-int bubble_up_bloom_filter(gcs::Client* client, bloom_filter bf);
-int update_index(gcs::Client* client, time_t last_updated);
+int create_index_bucket(gcs::Client* client, std::string index_bucket);
+int bubble_up_bloom_filter(gcs::Client* client, bloom_filter bf, std::string index_bucket);
+int update_index(gcs::Client* client, time_t last_updated, std::string index_bucket);
 void get_root_and_granularity(gcs::Client* client, std::tuple<time_t, time_t> &root, time_t &granularity, std::string ib);
 
 

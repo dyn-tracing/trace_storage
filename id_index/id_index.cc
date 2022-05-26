@@ -193,7 +193,7 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
     return to_return;
 }
 
-int create_index_bucket(gcs::Client* client) {
+int create_index_bucket(gcs::Client* client, std::string index_bucket) {
   google::cloud::StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->CreateBucketForProject(
           index_bucket, "dynamic-tracing",
@@ -284,7 +284,7 @@ bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string 
 }
 
 
-Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch, time_t start_time, time_t end_time) {
+Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch, time_t start_time, time_t end_time, std::string index_bucket) {
     Leaf leaf;
     leaf.start_time = start_time;
     leaf.end_time = end_time;
@@ -357,7 +357,7 @@ std::tuple<time_t, time_t> get_parent(time_t start_time, time_t end_time, time_t
 
 std::tuple<time_t, time_t>  bubble_up_leaves_helper(gcs::Client* client,
     std::vector<std::tuple<time_t, time_t>> just_modified,
-    std::vector<bloom_filter> just_modified_bfs, time_t granularity
+    std::vector<bloom_filter> just_modified_bfs, time_t granularity, std::string index_bucket
 ) {
     std::map<std::tuple<time_t, time_t>, std::vector<int>> parents;
     for (int i=0; i < just_modified.size(); i++) {
@@ -406,7 +406,7 @@ std::tuple<time_t, time_t>  bubble_up_leaves_helper(gcs::Client* client,
             new_modified.push_back(parent_bounds);
             std::vector<bloom_filter> new_bloom;
             new_bloom.push_back(parental_bloom_filter);
-            auto ret = bubble_up_leaves_helper(client, new_modified, new_bloom, granularity);
+            auto ret = bubble_up_leaves_helper(client, new_modified, new_bloom, granularity, index_bucket);
             if (std::get<1>(ret) - std::get<0>(ret) > std::get<1>(to_return) - std::get<0>(to_return)) {
                 to_return = ret;
             }
@@ -437,11 +437,11 @@ std::tuple<time_t, time_t>  bubble_up_leaves_helper(gcs::Client* client,
         new_modified.push_back(parent_bounds);
         new_modified_bfs.push_back(unioned_filter);
     }
-    return bubble_up_leaves_helper(client, new_modified, new_modified_bfs, granularity);
+    return bubble_up_leaves_helper(client, new_modified, new_modified_bfs, granularity, index_bucket);
 }
 
 int bubble_up_leaves(gcs::Client* client, time_t start_time, time_t end_time,
-    std::vector<Leaf> &leaves, time_t granularity) {
+    std::vector<Leaf> &leaves, time_t granularity, std::string index_bucket) {
     // we need to bubble up leaf so that means making a bloom filter that is the union of all of them
     std::vector<std::tuple<time_t, time_t>> newly_modified;
     std::vector<bloom_filter> newly_modified_bfs;
@@ -469,7 +469,7 @@ int bubble_up_leaves(gcs::Client* client, time_t start_time, time_t end_time,
         }
     }
     // record the new root in the bucket's metadata
-    auto new_root = bubble_up_leaves_helper(client, newly_modified, newly_modified_bfs, granularity);
+    auto new_root = bubble_up_leaves_helper(client, newly_modified, newly_modified_bfs, granularity, index_bucket);
     std::string root_str = std::to_string(std::get<0>(new_root)) + "-"
             + std::to_string(std::get<1>(new_root));
     StatusOr<gcs::BucketMetadata> updated_metadata = client->PatchBucket(
@@ -556,13 +556,13 @@ void get_root_and_granularity(gcs::Client* client, std::tuple<time_t, time_t> &r
 }
 
 
-int update_index(gcs::Client* client, time_t last_updated) {
+int update_index(gcs::Client* client, time_t last_updated, std::string index_bucket) {
     time_t now;
     time(&now);
     time_t granularity = 10;
     //  time_t to_update = now-(now%granularity); // this is the right thing
     time_t to_update = last_updated + (15*granularity);
-    create_index_bucket(client);
+    create_index_bucket(client, index_bucket);
 
     std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, to_update);
     std::vector<BatchObjectNames> batches_by_leaf = split_batches_by_leaf(
@@ -573,13 +573,13 @@ int update_index(gcs::Client* client, time_t last_updated) {
     std::vector<Leaf> leaves;
     for (time_t i=last_updated; i < to_update; i+= granularity) {
         leaves_future.push_back(std::async(std::launch::async, make_leaf,
-            client, std::ref(batches_by_leaf[j]), i, i+granularity));
+            client, std::ref(batches_by_leaf[j]), i, i+granularity, index_bucket));
         j++;
     }
 
     for (int i=0; i < leaves_future.size(); i++) {
         leaves.push_back(leaves_future[i].get());
     }
-    bubble_up_leaves(client, last_updated, to_update, leaves, granularity);
+    bubble_up_leaves(client, last_updated, to_update, leaves, granularity, index_bucket);
     return 0;
 }

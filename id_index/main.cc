@@ -5,6 +5,6 @@ int main(int argc, char* argv[]) {
     // uses the default configuration for authentication and project id.
     auto client = gcs::Client();
     time_t last_updated = 1651700400;
-    update_index(&client, last_updated);
+    update_index(&client, last_updated, "new_id_index");
     return 0;
 }
