@@ -3,6 +3,7 @@
 
 #include <string>
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
+#include "common.h"
 
 enum property_comparison {
 	Equal_to,
@@ -16,7 +17,7 @@ typedef union {
   bool (opentelemetry::proto::trace::v1::Span::*bool_func)() const;
   uint64_t (opentelemetry::proto::trace::v1::Span::*int_func)() const;
   double (opentelemetry::proto::trace::v1::Span::*double_func)() const;
-  char* (opentelemetry::proto::trace::v1::Span::*bytes_func)() const;
+  const std::string &(opentelemetry::proto::trace::v1::Span::*bytes_func)() const; // NOLINT
 } get_value_func;
 
 enum property_type {
@@ -41,6 +42,8 @@ struct query_condition {
 	property_comparison comp;
 };
 
+std::string get_value_as_string(const opentelemetry::proto::trace::v1::Span* sp,
+    get_value_func val_func, property_type prop_type);
 bool does_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition);
 
 bool does_latency_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition);

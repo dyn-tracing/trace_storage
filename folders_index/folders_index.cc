@@ -84,29 +84,6 @@ std::vector<std::string> get_all_attr_values(index_batch& current_index_batch) {
 	return response;
 }
 
-std::vector<std::string> get_spans_buckets_names(gcs::Client* client) {
-	std::vector<std::string> response;
-
-	for (auto&& bucket_metadata : client->ListBucketsForProject(PROJECT_ID)) {
-		if (!bucket_metadata) {
-			std::cerr << bucket_metadata.status().message() << std::endl;
-			exit(1);
-		}
-
-		if (true == bucket_metadata->labels().empty()) {
-			continue;
-		}
-
-		for (auto const& kv : bucket_metadata->labels()) {
-			if (kv.first == BUCKET_TYPE_LABEL_KEY && kv.second == BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS) {
-				response.push_back(bucket_metadata->name());
-			}
-		}
-	}
-
-	return response;
-}
-
 std::vector<std::string> get_all_object_names(std::string bucket_name, gcs::Client* client) {
 	std::vector<std::string> response;
 

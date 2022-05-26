@@ -228,4 +228,37 @@ std::string extract_trace_from_traces_object(std::string trace_id, std::string& 
 	return trace;
 }
 
+void replace_all(std::string& str, const std::string& from, const std::string& to) {
+    if (from.empty()) {
+        return;
+    }
 
+    size_t start_pos = 0;
+    while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
+        str.replace(start_pos, from.length(), to);
+        start_pos += to.length();  // In case 'to' contains 'from', like replacing 'x' with 'yx'
+    }
+}
+
+std::vector<std::string> get_spans_buckets_names(gcs::Client* client) {
+    std::vector<std::string> response;
+
+    for (auto&& bucket_metadata : client->ListBucketsForProject(PROJECT_ID)) {
+        if (!bucket_metadata) {
+            std::cerr << bucket_metadata.status().message() << std::endl;
+            exit(1);
+        }
+
+        if (true == bucket_metadata->labels().empty()) {
+            continue;
+        }
+
+        for (auto const& kv : bucket_metadata->labels()) {
+            if (kv.first == BUCKET_TYPE_LABEL_KEY && kv.second == BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS) {
+                response.push_back(bucket_metadata->name());
+            }
+        }
+    }
+
+    return response;
+}

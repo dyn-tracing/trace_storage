@@ -70,7 +70,6 @@ std::string serialize_trace_ids(std::vector<std::string>& trace_ids);
 std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trace_ids_map_for_microservice(
 	std::string span_bucket_name, std::string object_name, std::string indexed_attribute, gcs::Client* client
 );
-std::vector<std::string> get_spans_buckets_names(gcs::Client* client);
 batch_timestamp extract_batch_timestamps_struct(std::string batch_name);
 std::vector<std::string> get_all_object_names(std::string bucket_name, gcs::Client* client);
 std::vector<std::string> sort_object_names_on_start_time(std::vector<std::string> object_names);

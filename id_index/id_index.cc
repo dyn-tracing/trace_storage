@@ -198,24 +198,32 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
   Otherwise, returns 0.
 */
 time_t create_index_bucket(gcs::Client* client, std::string index_bucket) {
-  google::cloud::StatusOr<gcs::BucketMetadata> bucket_metadata =
+    google::cloud::StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->CreateBucketForProject(
           index_bucket, "dynamic-tracing",
           gcs::BucketMetadata()
               .set_location("us-central1")
               .set_storage_class(gcs::storage_class::Regional()));
-  if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kAborted) {
-    // means we've already created the bucket
-    std::tuple<time_t, time_t> root;
-    time_t granularity;
-    get_root_and_granularity(client, root, granularity, index_bucket);
-    return std::get<1>(root);
-  } else if (!bucket_metadata) {
+    if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kAborted) {
+      // means we've already created the bucket
+      std::tuple<time_t, time_t> root;
+      time_t granularity;
+      get_root_and_granularity(client, root, granularity, index_bucket);
+      return std::get<1>(root);
+    } else if (!bucket_metadata) {
     std::cerr << "Error creating bucket " << index_bucket
               << ", status=" << bucket_metadata.status() << "\n";
-    return -1;
-  }
-  return 0;
+      return -1;
+    }
+    // set bucket type
+    StatusOr<gcs::BucketMetadata> updated_metadata = client->PatchBucket(
+      index_bucket,
+      gcs::BucketMetadataPatchBuilder().SetLabel("bucket_type", "bloom_index"));
+
+    if (!updated_metadata) {
+      throw std::runtime_error(updated_metadata.status().message());
+    }
+    return 0;
 }
 
 std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std::string obj_name) {
@@ -229,6 +237,7 @@ std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std
         throw std::runtime_error("Error reading trace object");
     }
     std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+
     std::vector<std::string> trace_and_spans = split_by_string(contents, newline);
     for (int j=0; j < trace_and_spans.size(); j++) {
         if (trace_and_spans[j].find("Trace ID") != -1) {
@@ -241,7 +250,80 @@ std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std
     return to_return;
 }
 
-bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string batch) {
+std::vector<std::string> span_ids_from_trace_id_object(gcs::Client* client, std::string obj_name) {
+    std::vector<std::string> to_return;
+    auto batch_split = split_by_string(obj_name, hyphen);
+    std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
+    std::string suffix(BUCKETS_SUFFIX);
+    auto reader = client->ReadObject(trace_struct_bucket+suffix, obj_name);
+    if (!reader) {
+        std::cerr << "Error reading object: " << reader.status() << "\n";
+        throw std::runtime_error("Error reading trace object");
+    }
+    std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+    std::vector<std::string> trace_and_spans = split_by_string(contents, newline);
+    for (int j=0; j < trace_and_spans.size(); j++) {
+        if (trace_and_spans[j].find("Trace ID") == -1 && trace_and_spans[j].size() > 0) {
+            std::vector<std::string> sp = split_by_string(trace_and_spans[j], colon);
+            to_return.push_back(sp[1]);
+        }
+    }
+    return to_return;
+}
+
+std::vector<std::string> get_values_in_span_object(gcs::Client* client, std::string bucket_name,
+    std::string object_name, property_type prop_type, get_value_func val_func) {
+    std::vector<std::string> to_return;
+    auto reader = client->ReadObject(bucket_name, object_name);
+    if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
+        // this is fine, just means nothing was put in this microservice for this batch
+        return to_return;
+    } else if (!reader) {
+        std::cerr << "Error reading object: " << reader.status() << "\n";
+        throw std::runtime_error("Error reading trace object");
+    }
+    std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+    opentelemetry::proto::trace::v1::TracesData tracing_data;
+    bool ret = tracing_data.ParseFromString(contents);
+    if (!ret) {
+        throw std::runtime_error("could not parse span data");
+    }
+    int sp_size = tracing_data.resource_spans(0).scope_spans(0).spans_size();
+    for (int i=0; i < sp_size; i++) {
+        opentelemetry::proto::trace::v1::Span sp =
+            tracing_data.resource_spans(0).scope_spans(0).spans(i);
+        to_return.push_back(get_value_as_string(&sp, val_func, prop_type));
+    }
+    std::cout << "got " << to_return.size() << " values" << std::endl;
+    return to_return;
+}
+
+std::vector<std::string> values_from_trace_id_object(gcs::Client* client, std::string obj_name,
+    std::string property_name, property_type prop_type, get_value_func val_func) {
+    std::vector<std::string> to_return;
+    // trace ID and span ID are special cases bc you can get them with only the structural object
+    if (property_name.compare(TRACE_ID) == 0) {
+        return trace_ids_from_trace_id_object(client, obj_name);
+    } else if (property_name.compare(SPAN_ID) == 0) {
+        return span_ids_from_trace_id_object(client, obj_name);
+    }
+    // now, retrieve each value from each span
+    std::vector<std::string> span_buckets_names = get_spans_buckets_names(client);
+    std::vector<std::future<std::vector<std::string>>> future_values;
+    for (int i=0; i < span_buckets_names.size(); i++) {
+        future_values.push_back(std::async(std::launch::async, get_values_in_span_object,
+            client, span_buckets_names[i], obj_name, prop_type, val_func));
+    }
+    for (int i=0; i < future_values.size(); i++) {
+        auto new_values = future_values[i].get();
+        to_return.insert(to_return.end(), new_values.begin(), new_values.end());
+    }
+    return to_return;
+}
+
+bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string batch,
+    std::string property_name, property_type prop_type, get_value_func val_func) {
+    std::cout << "creating bloom filter entire batch" << std::endl;
     bloom_parameters parameters;
 
     // How many elements roughly do we expect to insert?
@@ -252,17 +334,21 @@ bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string b
 
     parameters.compute_optimal_parameters();
     bloom_filter filter(parameters);
-    auto trace_ids = trace_ids_from_trace_id_object(client, batch);
-    for (int i=0; i < trace_ids.size(); i++) {
-        size_t len = trace_ids[i].length();
-        const char* trace_id_c_str = trace_ids[i].c_str();
-        filter.insert(trace_id_c_str, len);
+    auto values = values_from_trace_id_object(client, batch, property_name, prop_type, val_func);
+    for (int i=0; i < values.size(); i++) {
+        size_t len = values[i].length();
+        const char* values_c_str = values[i].c_str();
+        filter.insert(values_c_str, len);
     }
 
     return filter;
 }
 
-bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string batch, time_t earliest, time_t latest) {
+bloom_filter create_bloom_filter_partial_batch(
+    gcs::Client* client, std::string batch, time_t earliest, time_t latest,
+    std::string property_name, property_type prop_type, get_value_func val_func
+) {
+    std::cout << "creating bloom filter partial batch" << std::endl;
     bloom_parameters parameters;
 
     // How many elements roughly do we expect to insert?
@@ -273,7 +359,7 @@ bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string 
 
     parameters.compute_optimal_parameters();
     bloom_filter filter(parameters);
-    auto trace_ids_unfiltered = trace_ids_from_trace_id_object(client, batch);
+    auto values_unfiltered = values_from_trace_id_object(client, batch, property_name, prop_type, val_func);
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
     std::string suffix(BUCKETS_SUFFIX);
     auto reader = client->ReadObject(trace_struct_bucket+suffix, batch);
@@ -282,18 +368,19 @@ bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string 
         throw std::runtime_error("Error reading trace object");
     }
     std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-    auto trace_ids = filter_trace_ids_based_on_query_timestamp(
-        trace_ids_unfiltered, batch, contents, earliest, latest, client);
+    auto values = filter_trace_ids_based_on_query_timestamp(
+        values_unfiltered, batch, contents, earliest, latest, client);
 
-    for (int i=0; i < trace_ids.size(); i++) {
-        filter.insert(trace_ids[i]);
+    for (int i=0; i < values.size(); i++) {
+        filter.insert(values[i]);
     }
     return filter;
 }
 
 
 Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch,
-    time_t start_time, time_t end_time, std::string index_bucket) {
+    time_t start_time, time_t end_time, std::string index_bucket,
+    std::string property_name, property_type prop_type, get_value_func val_func) {
     Leaf leaf;
     leaf.start_time = start_time;
     leaf.end_time = end_time;
@@ -304,21 +391,24 @@ Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch,
     for (int i=0; i < batch.inclusive.size(); i++) {
         leaf.batch_names.push_back(batch.inclusive[i]);
         inclusive_bloom.push_back(std::async(std::launch::async,
-            create_bloom_filter_entire_batch, client, batch.inclusive[i]));
+            create_bloom_filter_entire_batch, client, batch.inclusive[i],
+            property_name, prop_type, val_func));
     }
 
     // 2. Incorporate batches that overlap the first part of the time range (ie go shorter than it)
     for (int j=0; j < batch.early.size(); j++) {
         leaf.batch_names.push_back(batch.early[j]);
         early_bloom.push_back(std::async(std::launch::async,
-            create_bloom_filter_partial_batch, client, batch.early[j], start_time, end_time));
+            create_bloom_filter_partial_batch, client, batch.early[j], start_time, end_time,
+            property_name, prop_type, val_func));
     }
 
     // 3. Incorporate batches that overlap the later part of the time range (ie go longer than it)
     for (int k=0; k < batch.late.size(); k++) {
         leaf.batch_names.push_back(batch.late[k]);
         late_bloom.push_back(std::async(std::launch::async,
-            create_bloom_filter_partial_batch, client, batch.late[k], start_time, end_time));
+            create_bloom_filter_partial_batch, client, batch.late[k], start_time, end_time,
+            property_name, prop_type, val_func));
     }
 
     // 4. Get all the futures from async calls to be actual values
@@ -594,7 +684,10 @@ time_t get_lowest_time_val(gcs::Client* client) {
     return lowest_val;
 }
 
-int update_index(gcs::Client* client, std::string index_bucket, time_t granularity) {
+int update_index(gcs::Client* client, std::string property_name, time_t granularity,
+    property_type prop_type, get_value_func val_func) {
+    std::string index_bucket = property_name;
+    replace_all(index_bucket, ".", "-");
     time_t now;
     time(&now);
     //  time_t to_update = now-(now%granularity); // this is the right thing
@@ -614,7 +707,8 @@ int update_index(gcs::Client* client, std::string index_bucket, time_t granulari
     std::vector<Leaf> leaves;
     for (time_t i=last_updated; i < to_update; i+= granularity) {
         leaves_future.push_back(std::async(std::launch::async, make_leaf,
-            client, std::ref(batches_by_leaf[j]), i, i+granularity, index_bucket));
+            client, std::ref(batches_by_leaf[j]), i, i+granularity, index_bucket,
+            property_name, prop_type, val_func));
         j++;
     }
 

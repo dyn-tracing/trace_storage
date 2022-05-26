@@ -50,7 +50,70 @@ bool is_trace_id_in_nonterminal_node(
     return bf.contains(traceID_c_str, len);
 }
 
-std::string query_bloom_index_for_value(gcs::Client* client, std::string queried_value, std::string index_bucket) {
+objname_to_matching_trace_ids get_return_value_from_objnames(gcs::Client* client,
+    std::vector<std::string> object_names,
+    std::string index_bucket, std::string queried_value) {
+
+    objname_to_matching_trace_ids to_return;
+    if (index_bucket.compare(TRACE_ID_BUCKET) == 0) {
+        for (int i=0; i < object_names.size(); i++) {
+            auto reader = client->ReadObject(TRACE_STRUCT_BUCKET, object_names[i]);
+            if (!reader) {
+                std::cerr << "Error reading object: " << reader.status() << object_names[i] << "\n";
+                throw std::runtime_error("Error reading node object");
+            }
+            std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+            if (contents.find(queried_value) != -1) {
+                to_return[object_names[i]].push_back(queried_value);
+            }
+        }
+    } else if (index_bucket.compare(SPAN_ID_BUCKET) == 0) {
+        for (int i=0; i < object_names.size(); i++) {
+            auto reader = client->ReadObject(TRACE_STRUCT_BUCKET, object_names[i]);
+            if (!reader) {
+                std::cerr << "Error reading object: " << reader.status() << object_names[i] << "\n";
+                throw std::runtime_error("Error reading node object");
+            }
+            std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+            int index = contents.find(queried_value);
+            if (index != -1) {
+                int trace_id_index = contents.rfind("Trace ID", index);
+                std::string trace_id = contents.substr(trace_id_index + 10, TRACE_ID_LENGTH);
+                to_return[object_names[i]].push_back(trace_id);
+            }
+        }
+    } else {
+        for (int i=0; i < object_names.size(); i++) {
+            auto reader = client->ReadObject(TRACE_STRUCT_BUCKET, object_names[i]);
+            if (!reader) {
+                std::cerr << "Error reading object: " << reader.status() << object_names[i] << "\n";
+                throw std::runtime_error("Error reading node object");
+            }
+            std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+            std::vector<std::string> lines = split_by_string(contents, newline);
+            for (int j=0; j < lines.size(); j++) {
+                int trace_id_index = lines[j].find("Trace ID");
+                if (trace_id_index != -1) {
+                    std::string trace_id = contents.substr(trace_id_index+10, TRACE_ID_LENGTH);
+                    if (std::find(to_return[object_names[i]].begin(),
+                                  to_return[object_names[i]].end(),
+                                  trace_id)
+                        == to_return[object_names[i]].end()) {
+                        to_return[object_names[i]].push_back(trace_id);
+                    }
+                }
+            }
+        }
+    }
+    return to_return;
+}
+
+// Right now, I return the object name -> all trace IDs in that object, because
+// the Bloom filter index does not distinguish on a trace-by-trace level
+// trace ID queries and span ID are the exception;  those may be inferred with a single GET.
+// so it's actually more efficient for the index to return what may be a superset
+objname_to_matching_trace_ids query_bloom_index_for_value(
+    gcs::Client* client, std::string queried_value, std::string index_bucket) {
     std::tuple<time_t, time_t> root;
     time_t granularity;
     get_root_and_granularity(client, root, granularity, index_bucket);
@@ -105,26 +168,5 @@ std::string query_bloom_index_for_value(gcs::Client* client, std::string queried
         }
     }
 
-    // this is the common case:  no false positives
-    if (verified_batches.size() == 1) {
-        return verified_batches[0];
-    }
-
-    // else we need to actually look up the trace structure objects to differentiate
-    std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
-    std::string suffix(BUCKETS_SUFFIX);
-    trace_struct_bucket += suffix;
-    for (int i=0; i < verified_batches.size(); i++) {
-        auto reader = client->ReadObject(trace_struct_bucket, verified_batches[i]);
-        if (!reader) {
-            std::cerr << "Error reading object: " << reader.status() << "\n";
-            throw std::runtime_error("Error reading trace object");
-        } else {
-            std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-            if (contents.find(queried_value) != -1) {
-                return verified_batches[i];
-            }
-        }
-    }
-    return "";
+    return get_return_value_from_objnames(client, verified_batches, index_bucket, queried_value);
 }
