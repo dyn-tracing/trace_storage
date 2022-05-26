@@ -263,6 +263,32 @@ std::vector<std::string> span_ids_from_trace_id_object(gcs::Client* client, std:
     }
 }
 
+std::vector<std::string> get_values_in_span_object(gcs::Client* client, std::string bucket_name,
+    std::string object_name, property_type prop_type, get_value_func val_func) {
+    std::vector<std::string> to_return;
+    auto reader = client->ReadObject(bucket_name, object_name);
+    if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
+        // this is fine, just means nothing was put in this microservice for this batch
+        return to_return;
+    } else if (!reader) {
+        std::cerr << "Error reading object: " << reader.status() << "\n";
+        throw std::runtime_error("Error reading trace object");
+    }
+    std::string contents{std::istreambuf_iterator<char>{reader}, {}};
+    opentelemetry::proto::trace::v1::TracesData tracing_data;
+    bool ret = tracing_data.ParseFromString(contents);
+    if (!ret) {
+        throw std::runtime_error("could not parse span data");              
+    }
+    int sp_size = tracing_data.resource_spans(0).scope_spans(0).spans_size();
+    for (int i=0; i<sp_size; i++) {
+        opentelemetry::proto::trace::v1::Span sp =                          
+            tracing_data.resource_spans(0).scope_spans(0).spans(i); 
+        to_return.push_back(get_value_as_string(&sp, val_func, prop_type));
+    }
+    return to_return;
+}
+
 std::vector<std::string> values_from_trace_id_object(gcs::Client* client, std::string obj_name,
     std::string property_name, property_type prop_type, get_value_func val_func) {
     std::vector<std::string> to_return;
@@ -274,7 +300,15 @@ std::vector<std::string> values_from_trace_id_object(gcs::Client* client, std::s
     }
     // now, retrieve each value from each span
     std::vector<std::string> span_buckets_names = get_spans_buckets_names(client);
-
+    std::vector<std::future<std::vector<std::string>>> future_values;
+    for (int i=0; i < span_buckets_names.size(); i++) {
+        future_values.push_back(std::async(std::launch::async, get_values_in_span_object,
+            client, span_buckets_names[i], obj_name, prop_type, val_func));
+    }
+    for (int i=0; i < future_values.size(); i++) {
+        auto new_values = future_values[i].get();
+        to_return.insert(to_return.end(), new_values.begin(), new_values.end());
+    }
     return to_return;
 }
 

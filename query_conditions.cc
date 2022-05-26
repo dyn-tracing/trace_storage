@@ -1,5 +1,36 @@
 #include "query_conditions.h"
 
+std::string get_value_as_string(const opentelemetry::proto::trace::v1::Span* sp, get_value_func val_func, property_type prop_type) {
+    switch(prop_type) {
+        case string_value:
+            return (sp->*val_func.string_func)();
+        case bool_value: {
+            bool val = (sp->*val_func.bool_func)();
+            std::string span_val;
+            if (val) {
+                span_val = "false";
+            } else {
+                span_val = "true";
+            }
+            return span_val;
+        }
+        case int_value: {
+            int val = ((sp->*val_func.int_func)());
+            return std::to_string(val);
+        }
+        case double_value: {
+            double val = ((sp->*val_func.double_func)());
+            return std::to_string(val);
+        }
+        case bytes_value: {
+            std::string bytes_str = ((sp->*val_func.bytes_func)());
+            return hex_str(bytes_str, bytes_str.size());
+        }
+        default:
+            return "";
+    }
+}
+
 
 bool does_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition) {
     switch (condition.type) {
