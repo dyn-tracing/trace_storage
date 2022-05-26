@@ -11,7 +11,7 @@
 std::string query_bloom_index_for_value(gcs::Client* client, std::string queried_value, std::string index_bucket);
 std::vector<std::string> is_trace_id_in_leaf(
     gcs::Client* client, std::string traceID, time_t start_time, time_t end_time, std::string index_bucket);
-bool is_trace_id_in_nonterminal_node(                                           
+bool is_trace_id_in_nonterminal_node(
     gcs::Client* client, std::string traceID, time_t start_time,
     time_t end_time, std::string index_bucket
 );
