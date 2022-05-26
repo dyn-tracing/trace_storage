@@ -130,7 +130,7 @@ struct Leaf deserialize_leaf(std::istream &is) {
 std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix, time_t earliest, time_t latest) {
     std::vector<std::string> to_return;
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
-    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string suffix(BUCKETS_SUFFIX);
     for (auto&& object_metadata : client->ListObjects(trace_struct_bucket+suffix, gcs::Prefix(prefix))) {
         if (!object_metadata) {
             throw std::runtime_error(object_metadata.status().message());
@@ -222,7 +222,7 @@ std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std
     std::vector<std::string> to_return;
     auto batch_split = split_by_string(obj_name, hyphen);
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
-    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string suffix(BUCKETS_SUFFIX);
     auto reader = client->ReadObject(trace_struct_bucket+suffix, obj_name);
     if (!reader) {
         std::cerr << "Error reading object: " << reader.status() << "\n";
@@ -275,7 +275,7 @@ bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string 
     bloom_filter filter(parameters);
     auto trace_ids_unfiltered = trace_ids_from_trace_id_object(client, batch);
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
-    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string suffix(BUCKETS_SUFFIX);
     auto reader = client->ReadObject(trace_struct_bucket+suffix, batch);
     if (!reader) {
         std::cerr << "Error reading object: " << reader.status() << "\n";
@@ -567,7 +567,7 @@ void get_root_and_granularity(gcs::Client* client, std::tuple<time_t, time_t> &r
 
 time_t get_lowest_time_val(gcs::Client* client) {
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
-    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string suffix(BUCKETS_SUFFIX);
     std::string bucket_name = trace_struct_bucket+suffix;
     time_t now;
     time(&now);

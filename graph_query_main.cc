@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
     // query_trace.edges.insert(std::make_pair(1, 2));
 
     // query conditions
-    // std::vector<query_condition> conditions;
+    std::vector<query_condition> conditions;
 
     // query_condition condition1;
     // condition1.node_index = 2;
@@ -29,12 +29,17 @@ int main(int argc, char* argv[]) {
 
     // querying
     auto client = gcs::Client();
-    /*
-    auto total = get_traces_by_structure(query_trace, 1653317532, 1653317532, &client);
-    std::cout << "Total traces: " << total.trace_ids.size() << std::endl;
-    std::cout << "ID: " << total.trace_ids[0] << std::endl;
-    */
-    std::string batch = query_bloom_index_for_value(&client, "c5367e16e960a3452529e44d035a9bec", "new_id_index");
-    std::cout << "batch " << batch << std::endl;
+
+    // auto total = get_traces_by_structure(query_trace, 1653317532, 1653317532, &client);
+    // std::cout << "Total traces: " << total.trace_ids.size() << std::endl;
+    // std::cout << "ID: " << total.trace_ids[0] << std::endl;
+
+    return_value ret;
+    auto res = query(query_trace, 1653317532, 1653317532, conditions, ret, &client);
+    std::cout << "Total traces: " << res.size() << std::endl;
+    std::cout << "ID: " << res[0] << std::endl;
+
+    // std::string batch = query_bloom_index_for_value(&client, "c5367e16e960a3452529e44d035a9bec", "new_id_index");
+    // std::cout << "batch " << batch << std::endl;
     return 0;
 }

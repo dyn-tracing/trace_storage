@@ -147,8 +147,9 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     std::map<std::string, std::vector<std::string>> root_service_to_trace_ids_map = get_root_service_to_trace_ids_map(
         trace_id_to_root_service_map);
 
+    std::string buckets_suffix(BUCKETS_SUFFIX);
     for (auto const& elem : root_service_to_trace_ids_map) {
-        std::string bucket = elem.first + SERVICES_BUCKETS_SUFFIX;
+        std::string bucket = elem.first + buckets_suffix;
         std::string spans_data = read_object(bucket, batch_name, client);
 
         std::map<std::string, std::pair<int, int>>
