@@ -254,7 +254,7 @@ std::vector<std::string> span_ids_from_trace_id_object(gcs::Client* client, std:
     std::vector<std::string> to_return;
     auto batch_split = split_by_string(obj_name, hyphen);
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
-    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string suffix(BUCKETS_SUFFIX);
     auto reader = client->ReadObject(trace_struct_bucket+suffix, obj_name);
     if (!reader) {
         std::cerr << "Error reading object: " << reader.status() << "\n";
