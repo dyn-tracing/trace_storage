@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
     condition1.func = condition_1_union;
     condition1.node_property_value = "10000000";  // 1e+7 ns, 10 ms
     condition1.comp = Lesser_than;
-
+    condition1.value_name = "start_time_unix_nano";
     conditions.push_back(condition1);
 
     // querying

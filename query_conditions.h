@@ -39,6 +39,7 @@ struct query_condition {
     get_value_func func;
 	std::string node_property_value;
 	property_comparison comp;
+    std::string value_name;
 };
 
 bool does_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition);

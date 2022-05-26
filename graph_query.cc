@@ -12,7 +12,7 @@ std::vector<std::string> query(
         query_trace, start_time, end_time, client);
     std::vector<std::future<objname_to_matching_trace_ids>> index_results_futures;
     for (int i=0; i < conditions.size(); i++) {
-        if (is_indexed(&conditions[i], client)) {
+        if (is_indexed(conditions[i], client)) {
             index_results_futures.push_back(std::async(std::launch::async, get_traces_by_indexed_condition,
             start_time, end_time, &conditions[i], client));
         }
@@ -42,9 +42,13 @@ std::vector<std::string> query(
     return get_return_value(filtered, ret, client);
 }
 
-bool is_indexed(query_condition *condition, gcs::Client* client) {
-    // TODO(jessica)
-    return false;
+bool is_indexed(query_condition &condition, gcs::Client* client) {
+    std::string bucket_name = condition.value_name + std::to_string(SERVICE_BUCKETS_SUFFIX);
+    google::cloud::StatusOr<gcs::BucketMetadata> bucket_metadata =  client->GetBucketMetadata(bucket_name);
+    if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound || !bucket_metadata) {
+        return false;
+    }
+    return true;
 }
 
 objname_to_matching_trace_ids get_traces_by_indexed_condition(
@@ -83,6 +87,26 @@ objname_to_matching_trace_ids intersect_index_results(
     std::vector<objname_to_matching_trace_ids> index_results,
     traces_by_structure structural_results) {
     // TODO(jessica)
+    objname_to_matching_trace_ids to_return;
+    if (index_results.size() > 0) {
+        // find smallest
+        int smallest_index_results_size = index_results[0].size();
+        int smallest_index_results_index = 0;
+        for (int i=0; i < index_results.size(); i++) {
+            if (index_results[i].size() < smallest_index_results_size) {
+                smallest_index_results_size = index_results[i].size();
+                smallest_index_results_index = i;
+            }
+        }
+        // now go through everything and construct return value
+        for (int i=0; i < smallest_index_results_size; i++) {
+
+        }
+
+    } else {
+
+    }
+    return to_return;
 }
 
 std::vector<std::string> get_return_value(

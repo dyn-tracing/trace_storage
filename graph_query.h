@@ -59,7 +59,7 @@ data_for_verifying_conditions get_gcs_objects_required_for_verifying_conditions(
 	std::unordered_map<int, std::string> query_node_names,
 	std::string batch_name, std::string trace, gcs::Client* client
 );
-bool is_indexed(query_condition *condition, gcs::Client* client);
+bool is_indexed(query_condition &condition, gcs::Client* client);
 bool does_span_satisfy_condition(
 	std::string span_id, std::string service_name,
 	query_condition condition, data_for_verifying_conditions& verification_data
