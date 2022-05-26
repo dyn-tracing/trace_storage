@@ -278,12 +278,12 @@ std::vector<std::string> get_values_in_span_object(gcs::Client* client, std::str
     opentelemetry::proto::trace::v1::TracesData tracing_data;
     bool ret = tracing_data.ParseFromString(contents);
     if (!ret) {
-        throw std::runtime_error("could not parse span data");              
+        throw std::runtime_error("could not parse span data");
     }
     int sp_size = tracing_data.resource_spans(0).scope_spans(0).spans_size();
-    for (int i=0; i<sp_size; i++) {
-        opentelemetry::proto::trace::v1::Span sp =                          
-            tracing_data.resource_spans(0).scope_spans(0).spans(i); 
+    for (int i=0; i < sp_size; i++) {
+        opentelemetry::proto::trace::v1::Span sp =
+            tracing_data.resource_spans(0).scope_spans(0).spans(i);
         to_return.push_back(get_value_as_string(&sp, val_func, prop_type));
     }
     std::cout << "got " << to_return.size() << " values" << std::endl;

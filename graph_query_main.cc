@@ -34,13 +34,20 @@ int main(int argc, char* argv[]) {
     std::cout << "Total traces: " << total.trace_ids.size() << std::endl;
     std::cout << "ID: " << total.trace_ids[0] << std::endl;
     */
-    objname_to_matching_trace_ids batch = query_bloom_index_for_value(&client, "c5367e16e960a3452529e44d035a9bec", "trace-id");
-    for (auto const &pair: batch) {
+    objname_to_matching_trace_ids batch = query_bloom_index_for_value(
+        &client, "c5367e16e960a3452529e44d035a9bec", "trace-id");
+    for (auto const &pair : batch) {
         std::cout << "{" << pair.first << std::endl;
+        for (int i=0; i < pair.second.size(); i++) {
+            std::cout << "val: " << pair.second[i] << std::endl;
+        }
     }
     objname_to_matching_trace_ids batch2 = query_bloom_index_for_value(&client, "52bf6864f72e9adf", "parent-span-id");
-    for (auto const &pair: batch2) {
+    for (auto const &pair : batch2) {
         std::cout << "{" << pair.first << std::endl;
+        for (int i=0; i < pair.second.size(); i++) {
+            std::cout << "val: " << pair.second[i] << std::endl;
+        }
     }
     return 0;
 }

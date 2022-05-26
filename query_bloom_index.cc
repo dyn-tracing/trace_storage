@@ -95,20 +95,25 @@ objname_to_matching_trace_ids get_return_value_from_objnames(gcs::Client* client
                 int trace_id_index = lines[j].find("Trace ID");
                 if (trace_id_index != -1) {
                     std::string trace_id = contents.substr(trace_id_index+10, TRACE_ID_LENGTH);
-                    to_return[object_names[i]].push_back(trace_id);
+                    if (std::find(to_return[object_names[i]].begin(),
+                                  to_return[object_names[i]].end(),
+                                  trace_id)
+                        == to_return[object_names[i]].end()) {
+                        to_return[object_names[i]].push_back(trace_id);
+                    }
                 }
-
             }
         }
     }
     return to_return;
-
 }
-// Right now, I return the object name -> all trace IDs in that object, because 
+
+// Right now, I return the object name -> all trace IDs in that object, because
 // the Bloom filter index does not distinguish on a trace-by-trace level
 // trace ID queries and span ID are the exception;  those may be inferred with a single GET.
 // so it's actually more efficient for the index to return what may be a superset
-objname_to_matching_trace_ids query_bloom_index_for_value(gcs::Client* client, std::string queried_value, std::string index_bucket) {
+objname_to_matching_trace_ids query_bloom_index_for_value(
+    gcs::Client* client, std::string queried_value, std::string index_bucket) {
     std::tuple<time_t, time_t> root;
     time_t granularity;
     get_root_and_granularity(client, root, granularity, index_bucket);
@@ -163,5 +168,5 @@ objname_to_matching_trace_ids query_bloom_index_for_value(gcs::Client* client, s
         }
     }
 
-    return get_return_value_from_objnames(client, verified_batches, index_bucket, queried_value); 
+    return get_return_value_from_objnames(client, verified_batches, index_bucket, queried_value);
 }

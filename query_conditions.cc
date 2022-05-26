@@ -1,7 +1,8 @@
 #include "query_conditions.h"
 
-std::string get_value_as_string(const opentelemetry::proto::trace::v1::Span* sp, get_value_func val_func, property_type prop_type) {
-    switch(prop_type) {
+std::string get_value_as_string(const opentelemetry::proto::trace::v1::Span* sp,
+    get_value_func val_func, property_type prop_type) {
+    switch (prop_type) {
         case string_value:
             return (sp->*val_func.string_func)();
         case bool_value: {
