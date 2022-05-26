@@ -193,7 +193,11 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
     return to_return;
 }
 
-int create_index_bucket(gcs::Client* client, std::string index_bucket) {
+/*
+  If bucket already exists, returns time last updated.
+  Otherwise, returns 0.
+*/
+time_t create_index_bucket(gcs::Client* client, std::string index_bucket) {
   google::cloud::StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->CreateBucketForProject(
           index_bucket, "dynamic-tracing",
@@ -201,11 +205,15 @@ int create_index_bucket(gcs::Client* client, std::string index_bucket) {
               .set_location("us-central1")
               .set_storage_class(gcs::storage_class::Regional()));
   if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kAborted) {
-    // ignore this, means we've already created the bucket
+    // means we've already created the bucket
+    std::tuple<time_t, time_t> root;
+    time_t granularity;
+    get_root_and_granularity(client, root, granularity, index_bucket);
+    return std::get<1>(root);
   } else if (!bucket_metadata) {
     std::cerr << "Error creating bucket " << index_bucket
               << ", status=" << bucket_metadata.status() << "\n";
-    return 1;
+    return -1;
   }
   return 0;
 }
@@ -555,14 +563,50 @@ void get_root_and_granularity(gcs::Client* client, std::tuple<time_t, time_t> &r
     }
 }
 
-
-int update_index(gcs::Client* client, time_t last_updated, std::string index_bucket) {
+time_t get_lowest_time_val(gcs::Client* client) {
+    std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
+    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string bucket_name = trace_struct_bucket+suffix;
     time_t now;
     time(&now);
-    time_t granularity = 10;
+    time_t lowest_val = now;
+    for (int i=0; i<10; i++) {
+        for (int j=0; j<10; j++) {
+            std::string prefix = std::to_string(i) + std::to_string(j);
+            for (auto&& object_metadata : 
+                client->ListObjects(bucket_name, gcs::Prefix(prefix))) {
+                if (!object_metadata) {
+                    throw std::runtime_error(object_metadata.status().message());
+                }
+                std::string object_name = object_metadata->name();
+                auto split = split_by_string(object_name, hyphen);
+                time_t low = time_t_from_string(split[1]);
+                if (low < lowest_val) {
+                    lowest_val = low;
+                }
+                // we break because we don't want to read all values, just first one
+                break;
+            }
+        }
+
+    }
+    return lowest_val;
+}
+
+int update_index(gcs::Client* client, std::string index_bucket, time_t granularity) {
+    time_t now;
+    time(&now);
     //  time_t to_update = now-(now%granularity); // this is the right thing
-    time_t to_update = last_updated + (15*granularity);
-    create_index_bucket(client, index_bucket);
+    time_t last_updated = create_index_bucket(client, index_bucket);
+    if (last_updated == 0) {
+        last_updated = get_lowest_time_val(client);
+        std::cout << "last updated mod granularity is " << last_updated%granularity << std::endl;
+        std::cout << "last updated is " << last_updated << std::endl;
+        last_updated = last_updated - (last_updated%granularity);
+    }
+    std::cout << "last updated " << last_updated << std::endl;
+    time_t to_update = last_updated + (20*granularity);
+    std::cout << "to update " << to_update << std::endl;
 
     std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, to_update);
     std::vector<BatchObjectNames> batches_by_leaf = split_batches_by_leaf(
