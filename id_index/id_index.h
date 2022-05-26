@@ -58,6 +58,7 @@ int create_index_bucket(gcs::Client* client);
 std::tuple<time_t, time_t> get_parent(time_t start_time, time_t end_time, time_t granularity);
 int bubble_up_bloom_filter(gcs::Client* client, bloom_filter bf);
 int update_index(gcs::Client* client, time_t last_updated);
+void get_root_and_granularity(gcs::Client* client, std::tuple<time_t, time_t> &root, time_t &granularity, std::string ib);
 
 
 
