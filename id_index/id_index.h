@@ -20,7 +20,7 @@
 
 // TODO(jessica): these are already defined in common under different names
 const char trace_struct_bucket[] = "dyntraces-snicket4";
-const char index_bucket[] = "idindex-snicket4";
+const char index_bucket[] = "new_id_index";
 const int branching_factor = 10;
 
 // Leaf struct

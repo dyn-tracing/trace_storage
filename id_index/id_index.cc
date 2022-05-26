@@ -710,5 +710,6 @@ int update_index(gcs::Client* client, time_t last_updated) {
     }
     bubble_up_leaves(client, last_updated, to_update, leaves, granularity);
     std::string batch = query_index_for_traceID(client, "c5367e16e960a3452529e44d035a9bec");
+    std::cout << "batch " << batch << std::endl;
     return 0;
 }

@@ -26,9 +26,9 @@ const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
 const char PROJECT_ID[] = "dynamic-tracing";
 const char BUCKETS_LOCATION[] = "us-central1";
 
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket3";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket3";
-const char SERVICES_BUCKETS_SUFFIX[] = "-snicket3";
+const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket4";
+const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket4";
+const char SERVICES_BUCKETS_SUFFIX[] = "-snicket4";
 
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
 const int TRACE_ID_LENGTH = 32;
