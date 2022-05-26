@@ -112,7 +112,7 @@ std::string query_bloom_index_for_value(gcs::Client* client, std::string queried
 
     // else we need to actually look up the trace structure objects to differentiate
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
-    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string suffix(BUCKETS_SUFFIX);
     trace_struct_bucket += suffix;
     for (int i=0; i < verified_batches.size(); i++) {
         auto reader = client->ReadObject(trace_struct_bucket, verified_batches[i]);
