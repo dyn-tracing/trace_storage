@@ -5,7 +5,7 @@ traces_by_structure get_traces_by_structure(
     std::vector<std::future<traces_by_structure>> response_futures;
 
     std::string prefix(TRACE_HASHES_BUCKET_PREFIX);
-    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string suffix(BUCKETS_SUFFIX);
 
     for (auto&& prefix : client->ListObjectsAndPrefixes(prefix+suffix, gcs::Delimiter("/"))) {
         if (!prefix) {
@@ -82,7 +82,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 ) {
     traces_by_structure to_return;
 
-    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string suffix(BUCKETS_SUFFIX);
     std::string trace_hashes_bucket(TRACE_HASHES_BUCKET_PREFIX);
 
     for (auto&& object_metadata : client->ListObjects(trace_hashes_bucket+suffix, gcs::Prefix(prefix))) {
@@ -189,7 +189,7 @@ std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
 
 std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client) {
     std::string trace_hashes_bucket(TRACE_HASHES_BUCKET_PREFIX);
-    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string suffix(BUCKETS_SUFFIX);
     std::string object_content = read_object(trace_hashes_bucket+suffix, object_name, client);
     if (object_content == "") {
         return std::vector<std::string>();
