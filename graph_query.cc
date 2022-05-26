@@ -61,8 +61,9 @@ objname_to_matching_trace_ids filter_based_on_conditions(
     objname_to_matching_trace_ids to_return;
     for (const auto &object_to_trace : intersection) {
         for (int i=0; i < object_to_trace.second.size(); i++) {
-            if (does_trace_satisfy_conditions(object_to_trace.second[i], object_to_trace.first, conditions, fetched, structural_results)) {
-                to_return[object_to_trace.first].push_back(object_to_trace.second[i]);
+            if (does_trace_satisfy_conditions(
+                object_to_trace.second[i], object_to_trace.first, conditions, fetched, structural_results)) {
+                    to_return[object_to_trace.first].push_back(object_to_trace.second[i]);
             }
         }
     }
@@ -131,7 +132,7 @@ fetched_data fetch_data(
     return response;
 }
 
-bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name, 
+bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
     std::vector<query_condition> &conditions, fetched_data& evaluation_data,
     traces_by_structure &structural_results
 ) {
@@ -153,7 +154,7 @@ bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name
         iso_map_to_num_of_satisfied_conditions[i] = 0;
     }
 
-    for(int i = 0; i < satisfying_iso_map_indices_for_all_conditions.size(); i++) {
+    for (int i = 0; i < satisfying_iso_map_indices_for_all_conditions.size(); i++) {
         auto satisfying_iso_map_indices = satisfying_iso_map_indices_for_all_conditions[i];
         for (auto& iso_map_ind : satisfying_iso_map_indices) {
             iso_map_to_num_of_satisfied_conditions[iso_map_ind] += 1;
