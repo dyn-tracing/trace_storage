@@ -130,7 +130,7 @@ struct Leaf deserialize_leaf(std::istream &is) {
 std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix, time_t earliest, time_t latest) {
     std::vector<std::string> to_return;
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
-    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string suffix(BUCKETS_SUFFIX);
     for (auto&& object_metadata : client->ListObjects(trace_struct_bucket+suffix, gcs::Prefix(prefix))) {
         if (!object_metadata) {
             throw std::runtime_error(object_metadata.status().message());
@@ -214,7 +214,7 @@ std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std
     std::vector<std::string> to_return;
     auto batch_split = split_by_string(obj_name, hyphen);
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
-    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string suffix(BUCKETS_SUFFIX);
     auto reader = client->ReadObject(trace_struct_bucket+suffix, obj_name);
     if (!reader) {
         std::cerr << "Error reading object: " << reader.status() << "\n";
@@ -267,7 +267,7 @@ bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string 
     bloom_filter filter(parameters);
     auto trace_ids_unfiltered = trace_ids_from_trace_id_object(client, batch);
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
-    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string suffix(BUCKETS_SUFFIX);
     auto reader = client->ReadObject(trace_struct_bucket+suffix, batch);
     if (!reader) {
         std::cerr << "Error reading object: " << reader.status() << "\n";
@@ -667,7 +667,7 @@ std::string query_index_for_traceID(gcs::Client* client, std::string traceID) {
 
     // else we need to actually look up the trace structure objects to differentiate
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
-    std::string suffix(SERVICES_BUCKETS_SUFFIX);
+    std::string suffix(BUCKETS_SUFFIX);
     trace_struct_bucket += suffix;
     for (int i=0; i < verified_batches.size(); i++) {
         auto reader = client->ReadObject(trace_struct_bucket, verified_batches[i]);

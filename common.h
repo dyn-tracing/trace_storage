@@ -28,7 +28,7 @@ const char BUCKETS_LOCATION[] = "us-central1";
 
 const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket3";
 const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket3";
-const char SERVICES_BUCKETS_SUFFIX[] = "-snicket3";
+const char BUCKETS_SUFFIX[] = "-snicket3";
 
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
 const int TRACE_ID_LENGTH = 32;
