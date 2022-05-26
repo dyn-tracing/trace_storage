@@ -198,24 +198,32 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
   Otherwise, returns 0.
 */
 time_t create_index_bucket(gcs::Client* client, std::string index_bucket) {
-  google::cloud::StatusOr<gcs::BucketMetadata> bucket_metadata =
+    google::cloud::StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->CreateBucketForProject(
           index_bucket, "dynamic-tracing",
           gcs::BucketMetadata()
               .set_location("us-central1")
               .set_storage_class(gcs::storage_class::Regional()));
-  if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kAborted) {
-    // means we've already created the bucket
-    std::tuple<time_t, time_t> root;
-    time_t granularity;
-    get_root_and_granularity(client, root, granularity, index_bucket);
-    return std::get<1>(root);
-  } else if (!bucket_metadata) {
+    if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kAborted) {
+      // means we've already created the bucket
+      std::tuple<time_t, time_t> root;
+      time_t granularity;
+      get_root_and_granularity(client, root, granularity, index_bucket);
+      return std::get<1>(root);
+    } else if (!bucket_metadata) {
     std::cerr << "Error creating bucket " << index_bucket
               << ", status=" << bucket_metadata.status() << "\n";
-    return -1;
-  }
-  return 0;
+      return -1;
+    }
+    // set bucket type
+    StatusOr<gcs::BucketMetadata> updated_metadata = client->PatchBucket(
+      index_bucket,
+      gcs::BucketMetadataPatchBuilder().SetLabel("bucket_type", "bloom_index"));
+
+    if (!updated_metadata) {
+      throw std::runtime_error(updated_metadata.status().message());
+    }
+    return 0;
 }
 
 std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std::string obj_name) {
