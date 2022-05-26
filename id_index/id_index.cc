@@ -292,7 +292,8 @@ bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string 
 }
 
 
-Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch, time_t start_time, time_t end_time, std::string index_bucket) {
+Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch,
+    time_t start_time, time_t end_time, std::string index_bucket) {
     Leaf leaf;
     leaf.start_time = start_time;
     leaf.end_time = end_time;
@@ -542,7 +543,8 @@ std::vector<struct BatchObjectNames> split_batches_by_leaf(
     return to_return;
 }
 
-void get_root_and_granularity(gcs::Client* client, std::tuple<time_t, time_t> &root, time_t &granularity, std::string ib) {
+void get_root_and_granularity(gcs::Client* client, std::tuple<time_t, time_t> &root,
+    time_t &granularity, std::string ib) {
     // get root and granularity from labels
     StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->GetBucketMetadata(ib);
@@ -570,10 +572,10 @@ time_t get_lowest_time_val(gcs::Client* client) {
     time_t now;
     time(&now);
     time_t lowest_val = now;
-    for (int i=0; i<10; i++) {
-        for (int j=0; j<10; j++) {
+    for (int i=0; i < 10; i++) {
+        for (int j=0; j < 10; j++) {
             std::string prefix = std::to_string(i) + std::to_string(j);
-            for (auto&& object_metadata : 
+            for (auto&& object_metadata :
                 client->ListObjects(bucket_name, gcs::Prefix(prefix))) {
                 if (!object_metadata) {
                     throw std::runtime_error(object_metadata.status().message());
@@ -588,7 +590,6 @@ time_t get_lowest_time_val(gcs::Client* client) {
                 break;
             }
         }
-
     }
     return lowest_val;
 }
@@ -600,13 +601,9 @@ int update_index(gcs::Client* client, std::string index_bucket, time_t granulari
     time_t last_updated = create_index_bucket(client, index_bucket);
     if (last_updated == 0) {
         last_updated = get_lowest_time_val(client);
-        std::cout << "last updated mod granularity is " << last_updated%granularity << std::endl;
-        std::cout << "last updated is " << last_updated << std::endl;
         last_updated = last_updated - (last_updated%granularity);
     }
-    std::cout << "last updated " << last_updated << std::endl;
     time_t to_update = last_updated + (20*granularity);
-    std::cout << "to update " << to_update << std::endl;
 
     std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, to_update);
     std::vector<BatchObjectNames> batches_by_leaf = split_batches_by_leaf(
