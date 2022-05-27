@@ -31,6 +31,8 @@
 #include "query_bloom_index.h"
 #include "common.h"
 
+
+typedef std::map<int, std::map<int, std::string>> iso_to_span_id;
 std::vector<std::string> query(
     trace_structure query_trace, int start_time, int end_time,
     std::vector<query_condition> conditions, return_value ret, gcs::Client* client);
@@ -67,7 +69,7 @@ std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_s
 );
 objname_to_matching_trace_ids get_traces_by_indexed_condition(
     int start_time, int end_time, query_condition *condition, index_type ind_type, gcs::Client* client);
-objname_to_matching_trace_ids filter_based_on_conditions(
+std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> filter_based_on_conditions(
     objname_to_matching_trace_ids &intersection,
     traces_by_structure &structural_results,
     std::vector<query_condition> &conditions,
@@ -81,7 +83,8 @@ std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(std::str
 
 // ***************** query-related ******************************************
 std::vector<std::string> get_return_value(
-    objname_to_matching_trace_ids filtered, return_value ret, gcs::Client* client);
+    std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
+    return_value ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client);
 objname_to_matching_trace_ids intersect_index_results(
     std::vector<objname_to_matching_trace_ids> index_results,
     traces_by_structure &structural_results);

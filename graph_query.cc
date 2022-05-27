@@ -21,11 +21,15 @@ std::vector<std::string> query(
         }
     }
 
+    std::cout << "launched all futures for indices" << std::endl << std::flush;
+
     std::vector<objname_to_matching_trace_ids> index_results;
     for (int i=0; i < index_results_futures.size(); i++) {
         index_results.push_back(index_results_futures[i].get());
     }
     auto struct_results = struct_filter_obj.get();
+
+    std::cout << "retrieved all futures for indices" << std::endl << std::flush;
 
     objname_to_matching_trace_ids intersection = intersect_index_results(index_results, struct_results);
 
@@ -35,10 +39,10 @@ std::vector<std::string> query(
         conditions,
         client);
 
-    objname_to_matching_trace_ids filtered = filter_based_on_conditions(
+    auto filtered = filter_based_on_conditions(
         intersection, struct_results, conditions, fetched, ret);
 
-    return get_return_value(filtered, ret, client);
+    return get_return_value(filtered, ret, fetched, query_trace, client);
 }
 
 index_type is_indexed(query_condition *condition, gcs::Client* client) {
@@ -50,6 +54,7 @@ index_type is_indexed(query_condition *condition, gcs::Client* client) {
         return none;
     }
     if (!bucket_metadata) {
+        std::cout << "in error within is_indexed" << std::endl << std::flush;
         throw std::runtime_error(bucket_metadata.status().message());
     }
     for (auto const& kv : bucket_metadata->labels()) {
@@ -80,25 +85,27 @@ objname_to_matching_trace_ids get_traces_by_indexed_condition(
     }
 }
 
-objname_to_matching_trace_ids filter_based_on_conditions(
+std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> filter_based_on_conditions(
     objname_to_matching_trace_ids &intersection,
     traces_by_structure &structural_results,
     std::vector<query_condition> &conditions,
     struct fetched_data &fetched,
     return_value ret
 ) {
-    objname_to_matching_trace_ids to_return;
+    objname_to_matching_trace_ids to_return_traces;
+    std::map<std::string, iso_to_span_id> trace_id_to_span_id_mappings;
     for (const auto &object_to_trace : intersection) {
         for (int i=0; i < object_to_trace.second.size(); i++) {
-            auto res_ii_to_ni_to_si = does_trace_satisfy_conditions(
+            iso_to_span_id res_ii_to_ni_to_si = does_trace_satisfy_conditions(
                 object_to_trace.second[i], object_to_trace.first, conditions, fetched, structural_results, ret);
             //  res_ii_to_ni_to_si to be used by Jessica
-            if (res_ii_to_ni_to_si.size()) {
-                to_return[object_to_trace.first].push_back(object_to_trace.second[i]);
+            if (res_ii_to_ni_to_si.size() > 0) {
+                to_return_traces[object_to_trace.first].push_back(object_to_trace.second[i]);
+                trace_id_to_span_id_mappings[object_to_trace.second[i]] = res_ii_to_ni_to_si;
             }
         }
     }
-    return to_return;
+    return std::make_tuple(to_return_traces, trace_id_to_span_id_mappings);
 }
 
 objname_to_matching_trace_ids intersect_index_results(
@@ -145,9 +152,49 @@ objname_to_matching_trace_ids intersect_index_results(
     return to_return;
 }
 
+std::string get_return_value_from_traces_data(
+    opentelemetry::proto::trace::v1::TracesData &trace_data,
+    std::string &span_to_find,
+    return_value &ret
+) {
+     int sp_size = trace_data.resource_spans(0).scope_spans(0).spans_size();
+     for (int i=0; i < sp_size; i++) {
+        const opentelemetry::proto::trace::v1::Span sp =
+            trace_data.resource_spans(0).scope_spans(0).spans(i);
+        if (hex_str(sp.opentelemetry::proto::trace::v1::Span::span_id(), SPAN_ID_LENGTH).compare(span_to_find) == 0) {
+            return get_value_as_string(&sp, ret.func, ret.type);
+        }
+    }
+}
 std::vector<std::string> get_return_value(
-    objname_to_matching_trace_ids filtered, return_value ret, gcs::Client* client) {
-    // TODO(jessica)
+    std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
+    return_value ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client) {
+    std::vector<std::string> to_return;
+    for (auto const &obj_to_trace_ids : std::get<0>(filtered)) {
+        std::string object = obj_to_trace_ids.first;
+        for (int i=0; i < obj_to_trace_ids.second.size(); i++) {
+            std::string trace_id = obj_to_trace_ids.second[i];
+            // for each trace id, there may be multiple isomaps
+            for (auto & ii_ni_sp : std::get<1>(filtered)[trace_id]) {
+                std::string span_id_to_find = ii_ni_sp.second[ret.node_index];
+                std::string service_name = query_trace.node_names[ret.node_index];
+
+                if (data.spans_objects_by_bn_sn[object].find(service_name) !=
+                    data.spans_objects_by_bn_sn[object].end()) {
+                     opentelemetry::proto::trace::v1::TracesData trace_data =
+                        data.spans_objects_by_bn_sn[object][service_name];
+                     to_return.push_back(get_return_value_from_traces_data(trace_data, span_id_to_find, ret));
+                } else {
+                    // we need to retrieve the data, and then we can iterate through and get return val
+                    std::string contents = read_object(service_name+BUCKETS_SUFFIX, object, client);
+                    opentelemetry::proto::trace::v1::TracesData trace_data;
+                    trace_data.ParseFromString(contents);
+                    to_return.push_back(get_return_value_from_traces_data(trace_data, span_id_to_find, ret));
+                }
+            }
+        }
+    }
+    return to_return;
 }
 
 /**
