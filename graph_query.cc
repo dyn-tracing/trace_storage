@@ -174,8 +174,10 @@ std::vector<std::string> get_return_value(
                 std::string span_id_to_find = ii_ni_sp.second[ret.node_index];
                 std::string service_name = query_trace.node_names[ret.node_index];
 
-                if (data.spans_objects_by_bn_sn[object].find(service_name) != data.spans_objects_by_bn_sn[object].end()) {
-                     opentelemetry::proto::trace::v1::TracesData trace_data = data.spans_objects_by_bn_sn[object][service_name];
+                if (data.spans_objects_by_bn_sn[object].find(service_name) !=
+                    data.spans_objects_by_bn_sn[object].end()) {
+                     opentelemetry::proto::trace::v1::TracesData trace_data =
+                        data.spans_objects_by_bn_sn[object][service_name];
                      to_return.push_back(get_return_value_from_traces_data(trace_data, span_id_to_find, ret));
                 } else {
                     // we need to retrieve the data, and then we can iterate through and get return val
@@ -184,7 +186,6 @@ std::vector<std::string> get_return_value(
                     trace_data.ParseFromString(contents);
                     to_return.push_back(get_return_value_from_traces_data(trace_data, span_id_to_find, ret));
                 }
-
             }
         }
     }
