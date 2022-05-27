@@ -47,6 +47,9 @@ struct fetched_data {
             opentelemetry::proto::trace::v1::TracesData>> spans_objects_by_bn_sn;  // [batch_name][service_name]
 };
 
+std::string get_service_name_for_node_index(
+    traces_by_structure& structural_results, int iso_map_index, int node_index
+);
 fetched_data fetch_data(
     traces_by_structure& structs_result,
     std::map<std::string, std::vector<std::string>>& object_name_to_trace_ids_of_interest,
@@ -58,9 +61,9 @@ bool does_span_satisfy_condition(
     std::string span_id, std::string service_name,
     query_condition condition, std::string batch_name, fetched_data& evaluation_data
 );
-std::vector<int> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
+std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
     std::string trace_id, std::string batch_name, std::vector<query_condition>& conditions,
-    int curr_cond_ind, fetched_data& evaluation_data, traces_by_structure& structural_results
+    int curr_cond_ind, fetched_data& evaluation_data, traces_by_structure& structural_results, return_value ret
 );
 objname_to_matching_trace_ids get_traces_by_indexed_condition(
     int start_time, int end_time, query_condition *condition, index_type ind_type, gcs::Client* client);
@@ -68,11 +71,12 @@ objname_to_matching_trace_ids filter_based_on_conditions(
     objname_to_matching_trace_ids &intersection,
     traces_by_structure &structural_results,
     std::vector<query_condition> &conditions,
-    struct fetched_data &fetched
+    struct fetched_data &fetched,
+    return_value ret
 );
-bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
+std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
     std::vector<query_condition> &conditions, fetched_data& evaluation_data,
-    traces_by_structure &structural_results
+    traces_by_structure &structural_results, return_value ret
 );
 
 // ***************** query-related ******************************************
