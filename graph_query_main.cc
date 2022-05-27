@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
     ret.type = bytes_value;
     get_value_func ret_union;
     ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::parent_span_id;
-    
+
     ret.func = ret_union;
     auto res = query(query_trace, 1653317532, 1653317532, conditions, ret, &client);
     std::cout << "Total traces: " << res.size() << std::endl;
