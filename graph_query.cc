@@ -155,9 +155,18 @@ objname_to_matching_trace_ids intersect_index_results(
 
 std::vector<std::string> get_return_value_from_traces_data(
     opentelemetry::proto::trace::v1::TracesData &data,
-    return_value ret) {
-    
-
+    return_value ret, std::string trace_id) {
+    std::vector<std::string> to_return;
+    // problem:  how to distinguish which one this is?
+    int sp_size = data.resource_spans(0).scope_spans(0).spans_size();
+    for (int i=0; i < sp_size; i++) {
+        const opentelemetry::proto::trace::v1::Span sp =
+            data.resource_spans(0).scope_spans(0).spans(i);
+        if (hex_str(sp.opentelemetry::proto::trace::v1::Span::trace_id(), TRACE_ID_LENGTH).compare(trace_id) == 0) {
+            to_return.push_back(get_value_as_string(&sp, ret.func, ret.type));
+        }
+    }
+    return to_return;
 }
 
 std::vector<std::string> get_return_value(
@@ -190,7 +199,7 @@ std::vector<std::string> get_return_value(
                     data.spans_objects_by_bn_sn[object_name].end()) {
                     // here we have the data, no need to go fetch it
                     std::vector<std::string> new_rets = get_return_value_from_traces_data(
-                        data.spans_objects_by_bn_sn[object_name][service_name], ret);
+                        data.spans_objects_by_bn_sn[object_name][service_name], ret, trace_id);
                     to_return.insert(to_return.end(),
                                      new_rets.begin(),
                                      new_rets.end());
@@ -201,7 +210,7 @@ std::vector<std::string> get_return_value(
                     opentelemetry::proto::trace::v1::TracesData trace_data;
                     trace_data.ParseFromString(contents);
                     std::vector<std::string> new_rets = get_return_value_from_traces_data(
-                        trace_data, ret);
+                        trace_data, ret, trace_id);
                     to_return.insert(to_return.end(),
                                      new_rets.begin(),
                                      new_rets.end());
