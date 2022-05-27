@@ -51,14 +51,34 @@ cc_library(
 )
 
 cc_library(
+    name = "bloom_filter",
+    srcs = [
+        "id_index/bloom_filter.hpp"
+    ],
+    hdrs = ["id_index/bloom_filter.hpp"]
+)
+
+cc_library(
+    name = "conditions_lib",
+    srcs = [
+        "query_conditions.cc",
+        "query_conditions.h",
+    ],
+    hdrs = ["query_conditions.h"],
+    deps = [
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+        "//:common",
+    ]
+)
+
+cc_library(
     name = "graph_query_lib",
     srcs = [
         "graph_query.cc",
         "graph_query.h",
-        "query_conditions.cc",
-        "query_conditions.h",
     ],
-    hdrs = ["graph_query.h", "query_conditions.h"],
+    hdrs = ["graph_query.h"],
     deps = [
         "@com_github_googleapis_google_cloud_cpp//:storage",
         "@boost//:algorithm",
@@ -68,6 +88,9 @@ cc_library(
         "@com_github_opentelemetry_proto//:trace_service_proto_cc",
         "//:get_traces_by_structure",
         "//:common",
+        "//:folders_index_query_lib",
+        "//:query_bloom_index",
+        "//:conditions_lib"
     ],
     visibility = ["//main:__pkg__"],
 )
@@ -95,12 +118,12 @@ cc_library(
     name = "id_index_lib",
     srcs = [
         "id_index/id_index.cc",
-        "id_index/bloom_filter.hpp",
     ],
-    hdrs = ["id_index/id_index.h", "id_index/bloom_filter.hpp"],
+    hdrs = ["id_index/id_index.h"],
     deps = [
-        "//:graph_query_lib",
+        "//:bloom_filter",
         "//:common",
+        "//:conditions_lib",
         "@com_github_googleapis_google_cloud_cpp//:storage",
         "@boost//:regex",
         "@boost//:algorithm",
@@ -116,8 +139,10 @@ cc_binary(
         "graph_query_main.cc",
     ],
     deps = [
+        "//:bloom_filter",
         "//:graph_query_lib",
         "//:query_bloom_index",
+        "//:folders_index_query_lib",
         "@com_github_googleapis_google_cloud_cpp//:storage",
         "@boost//:algorithm",
         "@boost//:graph",
@@ -136,6 +161,7 @@ cc_binary(
     deps = [
         "//:id_index_lib",
         "//:graph_query_lib",
+        "//:folders_index_lib",
         "@com_github_googleapis_google_cloud_cpp//:storage",
         "@boost//:regex",
         "@boost//:algorithm",
@@ -187,6 +213,21 @@ cc_binary(
     ],
 )
 
+cc_library(
+    name = "folders_index_query_lib",
+    srcs = [
+        "folders_index_query.cc",
+        "folders_index_query.h",
+    ],
+    hdrs = [
+        "folders_index_query.h"
+    ],
+    deps = [
+        "//:folders_index_lib",
+        "//:common",
+    ],
+)
+
 cc_binary(
     name = "folders_index_query",
     srcs = [
@@ -208,6 +249,7 @@ cc_binary(
         "//:query_bloom_index",
         "//:graph_query_lib",
         "//:get_traces_by_structure",
+        "//:folders_index_query_lib",
         "//:common",
     ],
 )

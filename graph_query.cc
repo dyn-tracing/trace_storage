@@ -14,9 +14,10 @@ std::vector<std::string> query(
 
     std::vector<std::future<objname_to_matching_trace_ids>> index_results_futures;
     for (int i=0; i < conditions.size(); i++) {
-        if (is_indexed(&conditions[i], client)) {
+        index_type i_type = is_indexed(&conditions[i], client);
+        if (i_type != none) {
             index_results_futures.push_back(std::async(std::launch::async, get_traces_by_indexed_condition,
-            start_time, end_time, &conditions[i], client));
+            start_time, end_time, &conditions[i], i_type, client));
         }
     }
 
@@ -40,16 +41,47 @@ std::vector<std::string> query(
     return get_return_value(filtered, ret, client);
 }
 
-bool is_indexed(query_condition *condition, gcs::Client* client) {
-    // TODO(jessica)
-    return false;
+index_type is_indexed(query_condition *condition, gcs::Client* client) {
+    std::string bucket_name = condition->property_name;
+    replace_all(bucket_name, ".", "-");
+    StatusOr<gcs::BucketMetadata> bucket_metadata =
+      client->GetBucketMetadata(bucket_name);
+    if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound) {
+        return none;
+    }
+    if (!bucket_metadata) {
+        throw std::runtime_error(bucket_metadata.status().message());
+    }
+    for (auto const& kv : bucket_metadata->labels()) {
+        if (kv.first == "bucket_type") {
+            if (kv.second == "bloom_index") {
+                return bloom;
+            } else if (kv.first == "folder_index") {
+                return folder;
+            }
+        }
+    }
+    return not_found;
 }
 
 objname_to_matching_trace_ids get_traces_by_indexed_condition(
-    int start_time, int end_time, query_condition *condition, gcs::Client* client) {
-    // TODO(jessica)
-    objname_to_matching_trace_ids to_return;
-    return to_return;
+    int start_time, int end_time, query_condition *condition, index_type ind_type, gcs::Client* client) {
+    switch (ind_type) {
+        case bloom: {
+            assert(condition->comp == Equal_to);
+            std::string bucket_name = condition->property_name;
+            replace_all(bucket_name, ".", "-");
+            return query_bloom_index_for_value(client, condition->node_property_value, bucket_name);
+        }
+        case folder: {
+            // TODO(haseeb) change interface of this function such that it can
+            // deal with string representations of property names rather than
+            // just what you have constants for - see query_condition.h for details
+            // in addition for typing reasons, the return value for this should be a regular map, not an unordered one
+            // return get_obj_name_to_trace_ids_map_from_folders_index(
+            // condition->property_name, condition->node_property_value, client);
+        }
+    }
 }
 
 objname_to_matching_trace_ids filter_based_on_conditions(
@@ -72,8 +104,46 @@ objname_to_matching_trace_ids filter_based_on_conditions(
 
 objname_to_matching_trace_ids intersect_index_results(
     std::vector<objname_to_matching_trace_ids> index_results,
-    traces_by_structure structural_results) {
-    // TODO(jessica)
+    traces_by_structure &structural_results) {
+    // Easiest solution is just keep a count
+    // Eventually we should parallelize this, but I'm not optimizing it
+    // until we measure the rest of the code
+    // Premature optimization is of the devil and all that.
+    std::map<std::tuple<std::string, std::string>, int> count;
+    for (int i=0; i < index_results.size(); i++) {
+        for (auto const &obj_to_id : index_results[i]) {
+            std::string object = obj_to_id.first;
+            for (int j=0; j < obj_to_id.second.size(); j++) {
+                count[std::make_tuple(object, obj_to_id.second[j])] += 1;
+            }
+        }
+    }
+
+    std::map<int, std::string> ind_to_trace_id;
+    std::map<int, std::string> ind_to_obj;
+    for (int i=0; i < structural_results.trace_ids.size(); i++) {
+        ind_to_trace_id[i] = structural_results.trace_ids[i];
+    }
+    for (int i=0; i < structural_results.object_names.size(); i++) {
+        ind_to_obj[i] = structural_results.object_names[i];
+    }
+    for (auto const &obj_to_id : structural_results.object_name_to_trace_ids_of_interest) {
+        std::string obj = ind_to_obj[obj_to_id.first];
+        for (int j=0; j < obj_to_id.second.size(); j++) {
+            count[std::make_tuple(obj, ind_to_trace_id[obj_to_id.second[j]])] += 1;
+        }
+    }
+
+    int goal_num = index_results.size() + 1;
+    objname_to_matching_trace_ids to_return;
+    for (auto const &pair : count) {
+        if (pair.second == goal_num) {
+            auto object = std::get<0>(pair.first);
+            auto trace_id = std::get<1>(pair.first);
+            to_return[object].push_back(trace_id);
+        }
+    }
+    return to_return;
 }
 
 std::vector<std::string> get_return_value(
@@ -233,6 +303,3 @@ bool does_span_satisfy_condition(
     return false;
 }
 
-int dummy_tests() {
-    return 0;
-}

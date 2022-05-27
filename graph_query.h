@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 #include <future>
+#include <tuple>
 #include "query_conditions.h"
 #include "google/cloud/storage/client.h"
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
@@ -26,6 +27,8 @@
 #include <boost/graph/vf2_sub_graph_iso.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include "get_traces_by_structure.h"
+#include "folders_index_query.h"
+#include "query_bloom_index.h"
 #include "common.h"
 
 std::vector<std::string> query(
@@ -50,7 +53,7 @@ fetched_data fetch_data(
     std::vector<query_condition> &conditions,
     gcs::Client* client
 );
-bool is_indexed(query_condition *condition, gcs::Client* client);
+index_type is_indexed(query_condition *condition, gcs::Client* client);
 bool does_span_satisfy_condition(
     std::string span_id, std::string service_name,
     query_condition condition, std::string batch_name, fetched_data& evaluation_data
@@ -60,7 +63,7 @@ std::vector<int> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
     int curr_cond_ind, fetched_data& evaluation_data, traces_by_structure& structural_results
 );
 objname_to_matching_trace_ids get_traces_by_indexed_condition(
-    int start_time, int end_time, query_condition *condition, gcs::Client* client);
+    int start_time, int end_time, query_condition *condition, index_type ind_type, gcs::Client* client);
 objname_to_matching_trace_ids filter_based_on_conditions(
     objname_to_matching_trace_ids &intersection,
     traces_by_structure &structural_results,
@@ -77,7 +80,7 @@ std::vector<std::string> get_return_value(
     objname_to_matching_trace_ids filtered, return_value ret, gcs::Client* client);
 objname_to_matching_trace_ids intersect_index_results(
     std::vector<objname_to_matching_trace_ids> index_results,
-    traces_by_structure structural_results);
+    traces_by_structure &structural_results);
 
 int dummy_tests();
 

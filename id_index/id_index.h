@@ -16,7 +16,6 @@
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
 #include "bloom_filter.hpp"
 #include <boost/algorithm/string/regex.hpp>
-#include "graph_query.h"
 #include "query_conditions.h"
 
 // TODO(jessica): these are already defined in common under different names
