@@ -26,6 +26,8 @@
 #include <boost/graph/vf2_sub_graph_iso.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include "get_traces_by_structure.h"
+#include "folders_index_query.h"
+#include "query_bloom_index.h"
 #include "common.h"
 
 std::vector<std::string> query(

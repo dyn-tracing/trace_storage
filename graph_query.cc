@@ -69,9 +69,22 @@ index_type is_indexed(query_condition *condition, gcs::Client* client) {
 
 objname_to_matching_trace_ids get_traces_by_indexed_condition(
     int start_time, int end_time, query_condition *condition, index_type ind_type, gcs::Client* client) {
-    // TODO(jessica)
-    objname_to_matching_trace_ids to_return;
-    return to_return;
+    switch (ind_type) {
+        case bloom: {
+            assert(condition->comp == Equal_to);
+            std::string bucket_name = condition->property_name;
+            replace_all(bucket_name, ".", "-");
+            return query_bloom_index_for_value(client, condition->node_property_value, bucket_name);
+        }
+        case folder: {
+            // TODO(haseeb) change interface of this function such that it can
+            // deal with string representations of property names rather than
+            // just what you have constants for - see query_condition.h for details
+            // in addition for typing reasons, the return value for this should be a regular map, not an unordered one
+            // return get_obj_name_to_trace_ids_map_from_folders_index(condition->property_name, condition->node_property_value, client);
+        }
+
+    }
 }
 
 objname_to_matching_trace_ids filter_based_on_conditions(
@@ -100,6 +113,7 @@ objname_to_matching_trace_ids intersect_index_results(
 
 std::vector<std::string> get_return_value(
     objname_to_matching_trace_ids filtered, return_value ret, gcs::Client* client) {
+    std::vector<bloom_filter> bfs_for_indices;
     // TODO(jessica)
 }
 
@@ -255,6 +269,3 @@ bool does_span_satisfy_condition(
     return false;
 }
 
-int dummy_tests() {
-    return 0;
-}
