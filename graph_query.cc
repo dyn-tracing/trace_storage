@@ -35,10 +35,10 @@ std::vector<std::string> query(
         conditions,
         client);
 
-    objname_to_matching_trace_ids filtered = filter_based_on_conditions(
-        intersection, struct_results, conditions, fetched);
+    std::tuple<objname_to_matching_trace_ids, std::map<std::string, std::vector<int>>> filtered =
+        filter_based_on_conditions(intersection, struct_results, conditions, fetched);
 
-    return get_return_value(filtered, ret, client);
+    return get_return_value(filtered, struct_results, ret, fetched, client);
 }
 
 index_type is_indexed(query_condition *condition, gcs::Client* client) {
@@ -84,22 +84,29 @@ objname_to_matching_trace_ids get_traces_by_indexed_condition(
     }
 }
 
-objname_to_matching_trace_ids filter_based_on_conditions(
+/* Returns a tuple.  First item in tuple is the object names to trace IDs that
+ * satisfy the conditions.  Second item is a mapping from trace ID to the
+ * isomaps that allowed it to satisfy the conditions.
+ */
+std::tuple<objname_to_matching_trace_ids, std::map<std::string, std::vector<int>>> filter_based_on_conditions(
     objname_to_matching_trace_ids &intersection,
     traces_by_structure &structural_results,
     std::vector<query_condition> &conditions,
     struct fetched_data &fetched
 ) {
-    objname_to_matching_trace_ids to_return;
+    objname_to_matching_trace_ids to_return_object_to_id;
+    std::map<std::string, std::vector<int>> trace_id_to_valid_iso;
     for (const auto &object_to_trace : intersection) {
         for (int i=0; i < object_to_trace.second.size(); i++) {
-            if (does_trace_satisfy_conditions(
-                object_to_trace.second[i], object_to_trace.first, conditions, fetched, structural_results)) {
-                    to_return[object_to_trace.first].push_back(object_to_trace.second[i]);
+            auto isomap_indices = does_trace_satisfy_conditions(
+                object_to_trace.second[i], object_to_trace.first, conditions, fetched, structural_results);
+            if (isomap_indices.size() > 0) {
+                to_return_object_to_id[object_to_trace.first].push_back(object_to_trace.second[i]);
+                trace_id_to_valid_iso[object_to_trace.second[i]] = isomap_indices;
             }
         }
     }
-    return to_return;
+    return std::make_tuple(to_return_object_to_id, trace_id_to_valid_iso);
 }
 
 objname_to_matching_trace_ids intersect_index_results(
@@ -147,7 +154,8 @@ objname_to_matching_trace_ids intersect_index_results(
 }
 
 std::vector<std::string> get_return_value(
-    objname_to_matching_trace_ids filtered, return_value ret, gcs::Client* client) {
+    std::tuple<objname_to_matching_trace_ids, std::map<std::string, std::vector<int>>> &filtered,
+    traces_by_structure& structs_result, return_value ret, fetched_data &data, gcs::Client* client) {
     // TODO(jessica)
 }
 
@@ -202,10 +210,15 @@ fetched_data fetch_data(
     return response;
 }
 
-bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
+/* Returns a vector indices of which isomaps in
+ * structural_results.trace_id_to_isomap_indices[trace_id]
+ * resulted in all the conditions being met.
+ */
+std::vector<int> does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
     std::vector<query_condition> &conditions, fetched_data& evaluation_data,
     traces_by_structure &structural_results
 ) {
+    std::vector<int> to_return;
     std::vector<std::vector<int>> satisfying_iso_map_indices_for_all_conditions;
     for (int curr_cond_ind = 0; curr_cond_ind < conditions.size(); curr_cond_ind++) {
         satisfying_iso_map_indices_for_all_conditions.push_back(
@@ -233,10 +246,10 @@ bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name
 
     for (auto i : relevant_iso_maps_indices) {
         if (iso_map_to_num_of_satisfied_conditions[i] >= conditions.size()) {
-            return true;
+            to_return.push_back(i);
         }
     }
-    return false;
+    return to_return;
 }
 
 std::vector<int> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
