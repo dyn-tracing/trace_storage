@@ -431,7 +431,7 @@ void create_index_bucket_if_not_present(std::string indexed_attribute, gcs::Clie
 	}
 
 	auto updated_metadata = client->PatchBucket(bucket_name,
-		gcs::BucketMetadataPatchBuilder().SetLabel("bucket_type", "index"));
+		gcs::BucketMetadataPatchBuilder().SetLabel("bucket_type", "folder_index"));
 
     if (!updated_metadata) {
       std::cerr << updated_metadata.status().message() << std::endl;
