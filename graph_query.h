@@ -74,7 +74,7 @@ objname_to_matching_trace_ids filter_based_on_conditions(
     struct fetched_data &fetched,
     return_value ret
 );
-bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
+std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
     std::vector<query_condition> &conditions, fetched_data& evaluation_data,
     traces_by_structure &structural_results, return_value ret
 );

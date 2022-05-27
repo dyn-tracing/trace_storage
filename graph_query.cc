@@ -90,9 +90,11 @@ objname_to_matching_trace_ids filter_based_on_conditions(
     objname_to_matching_trace_ids to_return;
     for (const auto &object_to_trace : intersection) {
         for (int i=0; i < object_to_trace.second.size(); i++) {
-            if (does_trace_satisfy_conditions(
-                object_to_trace.second[i], object_to_trace.first, conditions, fetched, structural_results, ret)) {
-                    to_return[object_to_trace.first].push_back(object_to_trace.second[i]);
+            auto res_ii_to_ni_to_si = does_trace_satisfy_conditions(
+                object_to_trace.second[i], object_to_trace.first, conditions, fetched, structural_results, ret);
+            //  res_ii_to_ni_to_si to be used by Jessica
+            if (res_ii_to_ni_to_si.size()) {
+                to_return[object_to_trace.first].push_back(object_to_trace.second[i]);
             }
         }
     }
@@ -199,7 +201,7 @@ fetched_data fetch_data(
     return response;
 }
 
-bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
+std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
     std::vector<query_condition> &conditions, fetched_data& evaluation_data,
     traces_by_structure &structural_results, return_value ret
 ) {
@@ -237,7 +239,7 @@ bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name
         }
     }
 
-    return response.size() ? true : false;
+    return response;
 }
 
 std::string get_service_name_for_node_index(
