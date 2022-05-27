@@ -79,7 +79,7 @@ std::vector<std::string> get_return_value(
     objname_to_matching_trace_ids filtered, return_value ret, gcs::Client* client);
 objname_to_matching_trace_ids intersect_index_results(
     std::vector<objname_to_matching_trace_ids> index_results,
-    traces_by_structure structural_results);
+    traces_by_structure &structural_results);
 
 int dummy_tests();
 

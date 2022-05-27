@@ -83,7 +83,6 @@ objname_to_matching_trace_ids get_traces_by_indexed_condition(
             // in addition for typing reasons, the return value for this should be a regular map, not an unordered one
             // return get_obj_name_to_trace_ids_map_from_folders_index(condition->property_name, condition->node_property_value, client);
         }
-
     }
 }
 
@@ -107,13 +106,51 @@ objname_to_matching_trace_ids filter_based_on_conditions(
 
 objname_to_matching_trace_ids intersect_index_results(
     std::vector<objname_to_matching_trace_ids> index_results,
-    traces_by_structure structural_results) {
-    // TODO(jessica)
+    traces_by_structure &structural_results) {
+    // Easiest solution is just keep a count
+    // Eventually we should parallelize this, but I'm not optimizing it
+    // until we measure the rest of the code
+    // Premature optimization is of the devil and all that.
+    std::map<std::tuple<std::string, std::string>, int> count;
+    for (int i=0; i < index_results.size(); i++) {
+        for (auto const &obj_to_id : index_results[i]) {
+            std::string object = obj_to_id.first;
+            for (int j=0; j < obj_to_id.second.size(); j++) {
+                count[std::make_tuple(object, obj_to_id.second[j])] += 1;
+            }
+        }
+    }
+    
+    std::map<int, std::string> ind_to_trace_id;
+    std::map<int, std::string> ind_to_obj;
+    for (int i=0; i < structural_results.trace_ids.size(); i++) {
+        ind_to_trace_id[i] = structural_results.trace_ids[i];
+    }
+    for (int i=0; i < structural_results.object_names.size(); i++) {
+        ind_to_obj[i] = structural_results.object_names[i];
+    }
+    for (auto const &obj_to_id : structural_results.object_name_to_trace_ids_of_interest) {
+        std::string obj = ind_to_obj[obj_to_id.first];
+        for (int j=0; j < obj_to_id.second.size(); j++) {
+            count[std::make_tuple(obj, ind_to_trace_id[obj_to_id.second[j]])] += 1;
+        }
+
+    }
+
+    int goal_num = index_results.size() + 1;
+    objname_to_matching_trace_ids to_return;
+    for (auto const &pair : count) {
+        if (pair.second == goal_num) {
+            auto object = std::get<0>(pair.first);
+            auto trace_id = std::get<1>(pair.first);
+            to_return[object].push_back(trace_id);
+        }
+    }
+    return to_return;
 }
 
 std::vector<std::string> get_return_value(
     objname_to_matching_trace_ids filtered, return_value ret, gcs::Client* client) {
-    std::vector<bloom_filter> bfs_for_indices;
     // TODO(jessica)
 }
 
