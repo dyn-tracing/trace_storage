@@ -14,9 +14,10 @@ std::vector<std::string> query(
 
     std::vector<std::future<objname_to_matching_trace_ids>> index_results_futures;
     for (int i=0; i < conditions.size(); i++) {
-        if (is_indexed(&conditions[i], client)) {
+        index_type i_type = is_indexed(&conditions[i], client);
+        if (i_type != none) {
             index_results_futures.push_back(std::async(std::launch::async, get_traces_by_indexed_condition,
-            start_time, end_time, &conditions[i], client));
+            start_time, end_time, &conditions[i], i_type, client));
         }
     }
 
@@ -40,13 +41,34 @@ std::vector<std::string> query(
     return get_return_value(filtered, ret, client);
 }
 
-bool is_indexed(query_condition *condition, gcs::Client* client) {
-    // TODO(jessica)
-    return false;
+/* Return value of 0 means folder, 1 means bloom, 2 means no index, and 3 means
+ * error label not found.
+ */
+index_type is_indexed(query_condition *condition, gcs::Client* client) {
+    std::string bucket_name = condition->property_name;
+    replace_all(bucket_name, ".", "-");
+    StatusOr<gcs::BucketMetadata> bucket_metadata =                             
+      client->GetBucketMetadata(bucket_name);
+    if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound) {
+        return none;
+    }
+    if (!bucket_metadata) {                                                     
+        throw std::runtime_error(bucket_metadata.status().message());           
+    }
+    for (auto const& kv : bucket_metadata->labels()) {
+        if (kv.first == "bucket_type") {
+            if (kv.second == "bloom_index") {
+                return bloom;
+            } else if (kv.first == "folder_index") {
+                return folder;
+            }
+        }
+    }
+    return not_found;
 }
 
 objname_to_matching_trace_ids get_traces_by_indexed_condition(
-    int start_time, int end_time, query_condition *condition, gcs::Client* client) {
+    int start_time, int end_time, query_condition *condition, index_type ind_type, gcs::Client* client) {
     // TODO(jessica)
     objname_to_matching_trace_ids to_return;
     return to_return;

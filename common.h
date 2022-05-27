@@ -41,6 +41,13 @@ const char colon[] = ":";
 namespace gcs = ::google::cloud::storage;
 typedef std::map<std::string, std::vector<std::string>> objname_to_matching_trace_ids;
 
+enum index_type {
+    bloom,
+    folder,
+    none,
+    not_found,
+};
+
 
 
 /// **************** pure string processing ********************************

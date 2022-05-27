@@ -50,7 +50,7 @@ fetched_data fetch_data(
     std::vector<query_condition> &conditions,
     gcs::Client* client
 );
-bool is_indexed(query_condition *condition, gcs::Client* client);
+index_type is_indexed(query_condition *condition, gcs::Client* client);
 bool does_span_satisfy_condition(
     std::string span_id, std::string service_name,
     query_condition condition, std::string batch_name, fetched_data& evaluation_data
@@ -60,7 +60,7 @@ std::vector<int> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
     int curr_cond_ind, fetched_data& evaluation_data, traces_by_structure& structural_results
 );
 objname_to_matching_trace_ids get_traces_by_indexed_condition(
-    int start_time, int end_time, query_condition *condition, gcs::Client* client);
+    int start_time, int end_time, query_condition *condition, index_type ind_type, gcs::Client* client);
 objname_to_matching_trace_ids filter_based_on_conditions(
     objname_to_matching_trace_ids &intersection,
     traces_by_structure &structural_results,
