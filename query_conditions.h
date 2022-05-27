@@ -3,12 +3,23 @@
 
 #include <string>
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
+#include "common.h"
 
 enum property_comparison {
 	Equal_to,
 	Lesser_than,
 	Greater_than
 };
+
+
+// https://stackoverflow.com/questions/16770690/function-pointer-to-different-functions-with-different-arguments-in-c
+typedef union {
+  std::string (opentelemetry::proto::trace::v1::Span::*string_func)() const;
+  bool (opentelemetry::proto::trace::v1::Span::*bool_func)() const;
+  uint64_t (opentelemetry::proto::trace::v1::Span::*int_func)() const;
+  double (opentelemetry::proto::trace::v1::Span::*double_func)() const;
+  const std::string &(opentelemetry::proto::trace::v1::Span::*bytes_func)() const; // NOLINT
+} get_value_func;
 
 enum property_type {
     string_value,
@@ -18,14 +29,11 @@ enum property_type {
     bytes_value
 };
 
-// https://stackoverflow.com/questions/16770690/function-pointer-to-different-functions-with-different-arguments-in-c
-typedef union {
-  std::string (opentelemetry::proto::trace::v1::Span::*string_func)() const;
-  bool (opentelemetry::proto::trace::v1::Span::*bool_func)() const;
-  uint64_t (opentelemetry::proto::trace::v1::Span::*int_func)() const;
-  double (opentelemetry::proto::trace::v1::Span::*double_func)() const;
-  char* (opentelemetry::proto::trace::v1::Span::*bytes_func)() const;
-} get_value_func;
+struct return_value {
+    int node_index;
+    property_type type;
+    get_value_func func;
+};
 
 struct query_condition {
 	int node_index;
@@ -33,14 +41,11 @@ struct query_condition {
     get_value_func func;
 	std::string node_property_value;
 	property_comparison comp;
+    std::string property_name;
 };
 
-struct return_value {
-    int node_index;
-    property_type type;
-    get_value_func func;
-}
-
+std::string get_value_as_string(const opentelemetry::proto::trace::v1::Span* sp,
+    get_value_func val_func, property_type prop_type);
 bool does_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition);
 
 bool does_latency_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition);

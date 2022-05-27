@@ -16,16 +16,14 @@
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
 #include "bloom_filter.hpp"
 #include <boost/algorithm/string/regex.hpp>
-#include "graph_query.h"
+#include "query_conditions.h"
 
-// Constants
-namespace gcs = ::google::cloud::storage;
+// TODO(jessica): these are already defined in common under different names
 const char trace_struct_bucket[] = "dyntraces-snicket4";
-const char index_bucket[] = "idindex-snicket4";
-const char bucket_suffix[] = "snicket4";
-const char hyphen[] = "-";
-const char newline[] = "\n";
-const char colon[] = ":";
+const char SPAN_ID[] = "span.id";
+const char SPAN_ID_BUCKET[] = "span-id";
+const char TRACE_ID[] = "trace.id";
+const char TRACE_ID_BUCKET[] = "trace-id";
 const int branching_factor = 10;
 
 // Leaf struct
@@ -52,19 +50,22 @@ std::vector<struct BatchObjectNames> split_batches_by_leaf(
     std::vector<std::string> object_names, time_t last_updated, time_t to_update, time_t granularity);
 
 // Core code
-std::vector<std::string> split_string_by_char(const std::string& str, std::string& ch);
 std::vector<std::string> generate_prefixes(time_t earliest, time_t latest);
 std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest);
-bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string batch, time_t earliest, time_t latest);
-bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string batch);
-Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch, time_t start_time, time_t end_time);
-int bubble_up_leaf(gcs::Client* client, time_t start_time, time_t end_time, Leaf &leaf);
+bloom_filter create_bloom_filter_partial_batch(gcs::Client* client, std::string batch, time_t earliest, time_t latest,
+    std::string property_name, property_type prop_type, get_value_func val_func);
+bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string batch,
+    std::string property_name, property_type prop_type, get_value_func val_func);
+Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch, time_t start_time,
+    time_t end_time, std::string index_bucket,
+    std::string property_name, property_type prop_type, get_value_func val_func);
+int bubble_up_leaf(gcs::Client* client, time_t start_time, time_t end_time, Leaf &leaf, std::string index_bucket);
 std::tuple<time_t, time_t> get_parent(time_t start_time, time_t end_time, time_t granularity);
-int create_index_bucket(gcs::Client* client);
-std::tuple<time_t, time_t> get_parent(time_t start_time, time_t end_time, time_t granularity);
-int bubble_up_bloom_filter(gcs::Client* client, bloom_filter bf);
-int update_index(gcs::Client* client, time_t last_updated);
-
-
+time_t create_index_bucket(gcs::Client* client, std::string index_bucket);
+int bubble_up_bloom_filter(gcs::Client* client, bloom_filter bf, std::string index_bucket);
+int update_index(gcs::Client* client, std::string property_name, time_t granularity,
+    property_type prop_type, get_value_func val_func);
+void get_root_and_granularity(gcs::Client* client, std::tuple<time_t, time_t> &root,
+    time_t &granularity, std::string ib);
 
 #endif  // MICROSERVICES_ENV_TRACE_STORAGE_ID_INDEX_ID_INDEX_H_ // NOLINT
