@@ -238,7 +238,6 @@ bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name
     }
 
     return response.size() ? true : false;
-    
 }
 
 std::string get_service_name_for_node_index(
