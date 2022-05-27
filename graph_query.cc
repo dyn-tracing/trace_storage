@@ -21,11 +21,15 @@ std::vector<std::string> query(
         }
     }
 
+    std::cout << "launched all futures for indices" << std::endl << std::flush;
+
     std::vector<objname_to_matching_trace_ids> index_results;
     for (int i=0; i < index_results_futures.size(); i++) {
         index_results.push_back(index_results_futures[i].get());
     }
     auto struct_results = struct_filter_obj.get();
+
+    std::cout << "retrieved all futures for indices" << std::endl << std::flush;
 
     objname_to_matching_trace_ids intersection = intersect_index_results(index_results, struct_results);
 
@@ -50,6 +54,7 @@ index_type is_indexed(query_condition *condition, gcs::Client* client) {
         return none;
     }
     if (!bucket_metadata) {
+        std::cout << "in error within is_indexed" << std::endl << std::flush;
         throw std::runtime_error(bucket_metadata.status().message());
     }
     for (auto const& kv : bucket_metadata->labels()) {
