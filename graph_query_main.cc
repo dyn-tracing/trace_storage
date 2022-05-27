@@ -24,6 +24,7 @@ int main(int argc, char* argv[]) {
     condition1.func = condition_1_union;
     condition1.node_property_value = "10000000";  // 1e+7 ns, 10 ms
     condition1.comp = Lesser_than;
+    condition1.property_name = "starttime";
 
     conditions.push_back(condition1);
 
