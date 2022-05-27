@@ -41,19 +41,16 @@ std::vector<std::string> query(
     return get_return_value(filtered, ret, client);
 }
 
-/* Return value of 0 means folder, 1 means bloom, 2 means no index, and 3 means
- * error label not found.
- */
 index_type is_indexed(query_condition *condition, gcs::Client* client) {
     std::string bucket_name = condition->property_name;
     replace_all(bucket_name, ".", "-");
-    StatusOr<gcs::BucketMetadata> bucket_metadata =                             
+    StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->GetBucketMetadata(bucket_name);
     if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound) {
         return none;
     }
-    if (!bucket_metadata) {                                                     
-        throw std::runtime_error(bucket_metadata.status().message());           
+    if (!bucket_metadata) {
+        throw std::runtime_error(bucket_metadata.status().message());
     }
     for (auto const& kv : bucket_metadata->labels()) {
         if (kv.first == "bucket_type") {
@@ -81,7 +78,8 @@ objname_to_matching_trace_ids get_traces_by_indexed_condition(
             // deal with string representations of property names rather than
             // just what you have constants for - see query_condition.h for details
             // in addition for typing reasons, the return value for this should be a regular map, not an unordered one
-            // return get_obj_name_to_trace_ids_map_from_folders_index(condition->property_name, condition->node_property_value, client);
+            // return get_obj_name_to_trace_ids_map_from_folders_index(
+            // condition->property_name, condition->node_property_value, client);
         }
     }
 }
@@ -120,7 +118,7 @@ objname_to_matching_trace_ids intersect_index_results(
             }
         }
     }
-    
+
     std::map<int, std::string> ind_to_trace_id;
     std::map<int, std::string> ind_to_obj;
     for (int i=0; i < structural_results.trace_ids.size(); i++) {
@@ -134,7 +132,6 @@ objname_to_matching_trace_ids intersect_index_results(
         for (int j=0; j < obj_to_id.second.size(); j++) {
             count[std::make_tuple(obj, ind_to_trace_id[obj_to_id.second[j]])] += 1;
         }
-
     }
 
     int goal_num = index_results.size() + 1;
