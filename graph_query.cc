@@ -36,7 +36,7 @@ std::vector<std::string> query(
         client);
 
     objname_to_matching_trace_ids filtered = filter_based_on_conditions(
-        intersection, struct_results, conditions, fetched);
+        intersection, struct_results, conditions, fetched, ret);
 
     return get_return_value(filtered, ret, client);
 }
@@ -84,13 +84,14 @@ objname_to_matching_trace_ids filter_based_on_conditions(
     objname_to_matching_trace_ids &intersection,
     traces_by_structure &structural_results,
     std::vector<query_condition> &conditions,
-    struct fetched_data &fetched
+    struct fetched_data &fetched,
+    return_value ret
 ) {
     objname_to_matching_trace_ids to_return;
     for (const auto &object_to_trace : intersection) {
         for (int i=0; i < object_to_trace.second.size(); i++) {
             if (does_trace_satisfy_conditions(
-                object_to_trace.second[i], object_to_trace.first, conditions, fetched, structural_results)) {
+                object_to_trace.second[i], object_to_trace.first, conditions, fetched, structural_results, ret)) {
                     to_return[object_to_trace.first].push_back(object_to_trace.second[i]);
             }
         }
@@ -200,76 +201,101 @@ fetched_data fetch_data(
 
 bool does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
     std::vector<query_condition> &conditions, fetched_data& evaluation_data,
-    traces_by_structure &structural_results
+    traces_by_structure &structural_results, return_value ret
 ) {
-    std::vector<std::vector<int>> satisfying_iso_map_indices_for_all_conditions;
+    // isomap_index_to_node_index_to_span_id -> ii_to_ni_to_si
+    std::vector<std::map<int, std::map<int, std::string>>> ii_to_ni_to_si_data_for_all_conditions;
     for (int curr_cond_ind = 0; curr_cond_ind < conditions.size(); curr_cond_ind++) {
-        satisfying_iso_map_indices_for_all_conditions.push_back(
+        ii_to_ni_to_si_data_for_all_conditions.push_back(
             get_iso_maps_indices_for_which_trace_satifies_curr_condition(
-                trace_id, object_name, conditions, curr_cond_ind, evaluation_data, structural_results));
+                trace_id, object_name, conditions, curr_cond_ind, evaluation_data, structural_results, ret));
     }
 
-    /**
-     * @brief All the biz below is for checking whether there exists a single isomap
-     * which lead to true evaluation of all conditions. 
-     * TODO: separate it out in a function. 
-     */
-    auto relevant_iso_maps_indices = structural_results.trace_id_to_isomap_indices[trace_id];
-    std::unordered_map<int, int> iso_map_to_num_of_satisfied_conditions;
-    for (auto i : relevant_iso_maps_indices) {
-        iso_map_to_num_of_satisfied_conditions[i] = 0;
-    }
+    std::map<int, std::map<int, std::string>> aggregate_result;
+    std::map<int, int> iso_map_to_satisfied_conditions_map;
+    for (auto vec_ele : ii_to_ni_to_si_data_for_all_conditions) {
+        for (auto ele : vec_ele) {
+            auto iso_map_index = ele.first;
+            auto ni_to_si_map = ele.second;
 
-    for (int i = 0; i < satisfying_iso_map_indices_for_all_conditions.size(); i++) {
-        auto satisfying_iso_map_indices = satisfying_iso_map_indices_for_all_conditions[i];
-        for (auto& iso_map_ind : satisfying_iso_map_indices) {
-            iso_map_to_num_of_satisfied_conditions[iso_map_ind] += 1;
-        }
-    }
+            for (auto ni_to_si_ele : ni_to_si_map) {
+                aggregate_result[iso_map_index][ni_to_si_ele.first] = ni_to_si_ele.second;
+            }
 
-    for (auto i : relevant_iso_maps_indices) {
-        if (iso_map_to_num_of_satisfied_conditions[i] >= conditions.size()) {
-            return true;
-        }
-    }
-    return false;
-}
-
-std::vector<int> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
-    std::string trace_id, std::string batch_name, std::vector<query_condition>& conditions,
-    int curr_cond_ind, fetched_data& evaluation_data, traces_by_structure& structural_results
-) {
-    std::vector<int> satisfying_iso_map_indices;
-
-    auto relevant_iso_maps_indices = structural_results.trace_id_to_isomap_indices[trace_id];
-    for (auto curr_iso_map_ind : relevant_iso_maps_indices) {
-        std::string trace = extract_trace_from_traces_object(trace_id,
-            evaluation_data.structural_objects_by_bn[batch_name]);
-        std::vector<std::string> trace_lines = split_by_string(trace, newline);
-
-        /**
-         * @brief Get condition_service name here, somehow
-         * 
-         */
-        auto trace_node_names_ind = structural_results.iso_map_to_trace_node_names[curr_iso_map_ind];
-        auto trace_node_index = structural_results.iso_maps[curr_iso_map_ind][conditions[curr_cond_ind].node_index];
-        auto condition_service = structural_results.trace_node_names[trace_node_names_ind][trace_node_index];
-
-        for (auto line : trace_lines) {
-            if (line.find(condition_service) != std::string::npos) {
-                auto span_info = split_by_string(line, colon);
-                auto span_id = span_info[1];
-                auto service_name = span_info[2];  // this service_name is without span level hash
-                if (true == does_span_satisfy_condition(
-                    span_id, service_name, conditions[curr_cond_ind], batch_name, evaluation_data)
-                ) {
-                    satisfying_iso_map_indices.push_back(curr_iso_map_ind);
-                }
+            if (iso_map_to_satisfied_conditions_map.find(iso_map_index) == iso_map_to_satisfied_conditions_map.end()) {
+                iso_map_to_satisfied_conditions_map[iso_map_index] = 1;
+            } else {
+                iso_map_to_satisfied_conditions_map[iso_map_index] += 1;
             }
         }
     }
 
-    return satisfying_iso_map_indices;
+    std::map<int, std::map<int, std::string>> response;
+    for (auto ele : aggregate_result) {
+        if (iso_map_to_satisfied_conditions_map[ele.first] >= conditions.size()) {
+            response[ele.first].insert(ele.second.begin(), ele.second.end());
+        }
+    }
+
+    return response.size() ? true : false;
+    
+}
+
+std::string get_service_name_for_node_index(
+    traces_by_structure& structural_results, int iso_map_index, int node_index
+) {
+    auto trace_node_names_ind = structural_results.iso_map_to_trace_node_names[iso_map_index];
+    auto trace_node_index = structural_results.iso_maps[iso_map_index][node_index];
+    auto service_name = structural_results.trace_node_names[trace_node_names_ind][trace_node_index];
+    return service_name;
+}
+
+std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
+    std::string trace_id, std::string batch_name, std::vector<query_condition>& conditions,
+    int curr_cond_ind, fetched_data& evaluation_data, traces_by_structure& structural_results, return_value ret
+) {
+    std::map<int, std::map<int, std::string>> response;
+
+    auto curr_condition = conditions[curr_cond_ind];
+    auto relevant_iso_maps_indices = structural_results.trace_id_to_isomap_indices[trace_id];
+
+    for (auto curr_iso_map_ind : relevant_iso_maps_indices) {
+        std::map<int, std::string> node_ind_to_span_id_map;
+        bool does_trace_satisfy_condition = false;
+
+        auto condition_service = get_service_name_for_node_index(
+            structural_results, curr_iso_map_ind, curr_condition.node_index);
+
+        auto return_service = get_service_name_for_node_index(
+            structural_results, curr_iso_map_ind, ret.node_index);
+
+        std::string trace = extract_trace_from_traces_object(trace_id,
+            evaluation_data.structural_objects_by_bn[batch_name]);
+        std::vector<std::string> trace_lines = split_by_string(trace, newline);
+
+        for (auto line : trace_lines) {
+            if (line.find(return_service) != std::string::npos) {
+                auto span_info = split_by_string(line, colon);
+                auto span_id = span_info[1];
+                node_ind_to_span_id_map[ret.node_index] = span_id;
+            }
+
+            if (line.find(condition_service) != std::string::npos) {
+                auto span_info = split_by_string(line, colon);
+                auto span_id = span_info[1];
+                auto service_name = span_info[2];
+                node_ind_to_span_id_map[curr_condition.node_index] = span_id;
+                does_trace_satisfy_condition = does_span_satisfy_condition(
+                    span_id, service_name, curr_condition, batch_name, evaluation_data);
+            }
+        }
+
+        if (true == does_trace_satisfy_condition) {
+            response[curr_iso_map_ind] = node_ind_to_span_id_map;
+        }
+    }
+
+    return response;
 }
 
 bool does_span_satisfy_condition(
