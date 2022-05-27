@@ -153,10 +153,64 @@ objname_to_matching_trace_ids intersect_index_results(
     return to_return;
 }
 
+std::vector<std::string> get_return_value_from_traces_data(
+    opentelemetry::proto::trace::v1::TracesData &data,
+    return_value ret) {
+    
+
+}
+
 std::vector<std::string> get_return_value(
     std::tuple<objname_to_matching_trace_ids, std::map<std::string, std::vector<int>>> &filtered,
     traces_by_structure& structs_result, return_value ret, fetched_data &data, gcs::Client* client) {
-    // TODO(jessica)
+    // just to make code more readable, make a couple of pointer variables
+    objname_to_matching_trace_ids* obj_to_ids = &std::get<0>(filtered);
+    std::map<std::string, std::vector<int>> id_to_iso = std::get<1>(filtered);
+    auto iso_maps = &structs_result.iso_maps;
+    auto iso_map_ind_to_trace_node_names = &structs_result.iso_map_to_trace_node_names;
+
+    std::vector<std::string> to_return;
+
+    for (auto const & oti : *obj_to_ids) {
+        auto object_name = oti.first;
+        for (int i=0; i < oti.second.size(); i++) {
+            std::string trace_id = oti.second[i];
+            // which service are we looking for?
+            // to figure this out, we must go from ids to isomaps
+            int isomap_sizes = id_to_iso[trace_id].size();
+            for (int iso_ind = 0; iso_ind < id_to_iso[trace_id].size(); iso_ind++) {
+                // for this isomap, which service is in ret?
+                // TODO(haseeb) double check this is how we are supposed to use isomaps
+                // I'm very unsure of these three lines
+                auto isomap_ind = id_to_iso[trace_id][iso_ind];
+                int trace_node_names_ind = structs_result.iso_map_to_trace_node_names[isomap_ind];
+                std::string service_name = structs_result.trace_node_names[trace_node_names_ind][ret.node_index];
+
+                if (data.spans_objects_by_bn_sn[object_name].find(service_name) !=
+                    data.spans_objects_by_bn_sn[object_name].end()) {
+                    // here we have the data, no need to go fetch it
+                    std::vector<std::string> new_rets = get_return_value_from_traces_data(
+                        data.spans_objects_by_bn_sn[object_name][service_name], ret);
+                    to_return.insert(to_return.end(),
+                                     new_rets.begin(),
+                                     new_rets.end());
+                } else {
+                    // we don't have the necessary data, but we know exactly where it is
+                    // go fetch it
+                    std::string contents = read_object(service_name+BUCKETS_SUFFIX, object_name, client);
+                    opentelemetry::proto::trace::v1::TracesData trace_data;
+                    trace_data.ParseFromString(contents);
+                    std::vector<std::string> new_rets = get_return_value_from_traces_data(
+                        trace_data, ret);
+                    to_return.insert(to_return.end(),
+                                     new_rets.begin(),
+                                     new_rets.end());
+                }
+
+            }
+        }
+    }
+    return to_return;
 }
 
 /**

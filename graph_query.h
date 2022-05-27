@@ -79,6 +79,9 @@ std::vector<int> does_trace_satisfy_conditions(std::string trace_id, std::string
 std::vector<std::string> get_return_value(
     std::tuple<objname_to_matching_trace_ids, std::map<std::string, std::vector<int>>> &filtered,
     traces_by_structure& structs_result, return_value ret, fetched_data &data, gcs::Client* client);
+std::vector<std::string> get_return_value_from_traces_data(                     
+    opentelemetry::proto::trace::v1::TracesData &data,                          
+    return_value ret);
 objname_to_matching_trace_ids intersect_index_results(
     std::vector<objname_to_matching_trace_ids> index_results,
     traces_by_structure &structural_results);
