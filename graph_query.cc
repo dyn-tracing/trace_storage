@@ -41,6 +41,10 @@ std::vector<std::string> query(
     return get_return_value(filtered, struct_results, ret, fetched, client);
 }
 
+/*
+ * Returns whether a property is indexed, and returns the type of index
+ * based on bucket metadata.
+ */
 index_type is_indexed(query_condition *condition, gcs::Client* client) {
     std::string bucket_name = condition->property_name;
     replace_all(bucket_name, ".", "-");
