@@ -5,7 +5,14 @@ std::vector<std::string> split_by_string(std::string& str, const char* ch) {
     std::string ch_str(ch);
     std::string reg = "(" + ch_str + ")+";
     split_regex(tokens, str, boost::regex(reg));
-    return tokens;
+
+    std::vector<std::string> response;
+    for (int i = 0; i < tokens.size(); i++) {
+        if (tokens[i].size() > 0) {
+            response.push_back(tokens[i]);
+        }
+    }
+    return response;
 }
 
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(

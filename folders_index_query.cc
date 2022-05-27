@@ -1,12 +1,20 @@
 #include "folders_index_query.h"
 
-int main() {
-	auto client = gcs::Client();
-	auto res = get_obj_name_to_trace_ids_map_from_folders_index(ATTR_HTTP_STATUS_CODE, "500", &client);
-	return 0;
-}
+// int main() {
+// 	auto client = gcs::Client();
+// 	auto res = get_obj_name_to_trace_ids_map_from_folders_index("http.status_code", "500", &client);
+// 	std::cout << res.size() << std::endl;
+// 	for (auto [key, val] : res) {
+// 		std::cout << key << ": " << std::flush;
+// 		for (auto ele : val) {
+// 			std::cout << ele << ", " << std::flush;
+// 		}
+// 		std::cout << std::endl;
+// 	}
+// 	return 0;
+// }
 
-std::unordered_map<std::string, std::vector<std::string>> get_obj_name_to_trace_ids_map_from_folders_index(
+std::map<std::string, std::vector<std::string>> get_obj_name_to_trace_ids_map_from_folders_index(
 	std::string attr_key, std::string attr_val, gcs::Client* client
 ) {
 	std::vector<std::future<std::unordered_map<std::string, std::vector<std::string>>>> response_futures;
@@ -25,7 +33,7 @@ std::unordered_map<std::string, std::vector<std::string>> get_obj_name_to_trace_
 			object_metadata->name(), bucket_name, client));
 	}
 
-	std::unordered_map<std::string, std::vector<std::string>> response;
+	std::map<std::string, std::vector<std::string>> response;
 	for_each(response_futures.begin(), response_futures.end(),
 		[&response](std::future<std::unordered_map<std::string, std::vector<std::string>>>& fut) {
 			std::unordered_map<std::string, std::vector<std::string>> obj_name_to_trace_ids_map = fut.get();

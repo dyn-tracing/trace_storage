@@ -74,12 +74,8 @@ objname_to_matching_trace_ids get_traces_by_indexed_condition(
             return query_bloom_index_for_value(client, condition->node_property_value, bucket_name);
         }
         case folder: {
-            // TODO(haseeb) change interface of this function such that it can
-            // deal with string representations of property names rather than
-            // just what you have constants for - see query_condition.h for details
-            // in addition for typing reasons, the return value for this should be a regular map, not an unordered one
-            // return get_obj_name_to_trace_ids_map_from_folders_index(
-            // condition->property_name, condition->node_property_value, client);
+            return get_obj_name_to_trace_ids_map_from_folders_index(
+            condition->property_name, condition->node_property_value, client);
         }
     }
 }
