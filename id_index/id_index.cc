@@ -294,7 +294,6 @@ std::vector<std::string> get_values_in_span_object(gcs::Client* client, std::str
             tracing_data.resource_spans(0).scope_spans(0).spans(i);
         to_return.push_back(get_value_as_string(&sp, val_func, prop_type));
     }
-    std::cout << "got " << to_return.size() << " values" << std::endl;
     return to_return;
 }
 
@@ -323,7 +322,6 @@ std::vector<std::string> values_from_trace_id_object(gcs::Client* client, std::s
 
 bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string batch,
     std::string property_name, property_type prop_type, get_value_func val_func) {
-    std::cout << "creating bloom filter entire batch" << std::endl;
     bloom_parameters parameters;
 
     // How many elements roughly do we expect to insert?

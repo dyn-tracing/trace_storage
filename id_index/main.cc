@@ -7,6 +7,6 @@ int main(int argc, char* argv[]) {
     get_value_func func;
     func.bytes_func = &opentelemetry::proto::trace::v1::Span::parent_span_id;
 
-    update_index(&client, "parent.span.id", 10, bytes_value, func);
+    update_index(&client, "trace.id", 10, bytes_value, func);
     return 0;
 }
