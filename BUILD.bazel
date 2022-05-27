@@ -231,11 +231,10 @@ cc_library(
 cc_binary(
     name = "folders_index_query",
     srcs = [
-        "folders_index_query.cc",
-        "folders_index_query.h",
+        "folders_index_query_main.cc",
     ],
     deps = [
-        "//:folders_index_lib",
+        "//:folders_index_query_lib",
         "//:common",
     ],
 )
