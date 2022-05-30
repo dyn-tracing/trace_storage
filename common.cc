@@ -267,3 +267,24 @@ std::vector<std::string> get_spans_buckets_names(gcs::Client* client) {
 
     return response;
 }
+
+// https://stackoverflow.com/questions/14539867/how-to-display-a-progress-indicator-in-pure-c-c-cout-printf
+void print_progress(float progress, std::string label, bool verbose) {
+    if (!verbose) {
+        return;
+    }
+    int barWidth = 70;
+    std::cout << " [";
+    int pos = barWidth * progress;
+    for (int i = 0; i < barWidth; ++i) {
+        if (i < pos) {
+            std::cout << "=";
+        } else if (i == pos) {
+            std::cout << ">";
+        } else {
+            std::cout << " ";
+        }
+    }
+    std::cout << "] " << int(progress * 100.0) << "% " << label << "\r";
+    std::cout.flush();
+}

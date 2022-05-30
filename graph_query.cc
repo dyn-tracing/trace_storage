@@ -3,7 +3,17 @@
 
 std::vector<std::string> query(
     trace_structure query_trace, int start_time, int end_time,
-    std::vector<query_condition> conditions, return_value ret, gcs::Client* client) {
+    std::vector<query_condition> conditions, return_value ret, bool verbose, gcs::Client* client) {
+    // clean input a little bit
+    std::vector<std::string> empty;
+    if (end_time < start_time) {
+        std::cerr << "end time is less than start time;  aborting query";
+        return empty;
+    }
+    if (query_trace.num_nodes != query_trace.node_names.size()) {
+        std::cerr << "num nodes does not match number of node names given;  aborting query";
+        return empty;
+    }
 
     // first, get all matches to indexed query conditions
     // note that structural is always indexed
@@ -20,18 +30,19 @@ std::vector<std::string> query(
             start_time, end_time, &conditions[i], i_type, client));
         }
     }
+    print_progress(0, "Retrieving indices", verbose);
 
-    std::cout << "launched all futures for indices" << std::endl << std::flush;
-
+    size_t irf_size = index_results_futures.size();
     std::vector<objname_to_matching_trace_ids> index_results;
-    for (int i=0; i < index_results_futures.size(); i++) {
+    for (int i=0; i < irf_size; i++) {
         index_results.push_back(index_results_futures[i].get());
+        print_progress((i+1.0)/(irf_size+1.0), "Retrieving indices", verbose);
     }
     auto struct_results = struct_filter_obj.get();
+    print_progress(1, "Retrieving indices", verbose);
+    std::cout << std::endl;
 
-    std::cout << "retrieved all futures for indices" << std::endl << std::flush;
-
-    objname_to_matching_trace_ids intersection = intersect_index_results(index_results, struct_results);
+    objname_to_matching_trace_ids intersection = intersect_index_results(index_results, struct_results, verbose);
 
     fetched_data fetched = fetch_data(
         struct_results,
@@ -39,10 +50,16 @@ std::vector<std::string> query(
         conditions,
         client);
 
+    std::cout << "fetched data" << std::endl;
+
     auto filtered = filter_based_on_conditions(
         intersection, struct_results, conditions, fetched, ret);
 
-    return get_return_value(filtered, ret, fetched, query_trace, client);
+    std::cout << "filtered based on conditions" << std::endl;
+
+    auto returned = get_return_value(filtered, ret, fetched, query_trace, client);
+    std::cout << "len returned is " << returned.size() << std::endl;
+    return returned;
 }
 
 index_type is_indexed(query_condition *condition, gcs::Client* client) {
@@ -110,13 +127,15 @@ std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>
 
 objname_to_matching_trace_ids intersect_index_results(
     std::vector<objname_to_matching_trace_ids> index_results,
-    traces_by_structure &structural_results) {
+    traces_by_structure &structural_results, bool verbose) {
     // Easiest solution is just keep a count
     // Eventually we should parallelize this, but I'm not optimizing it
     // until we measure the rest of the code
     // Premature optimization is of the devil and all that.
+    print_progress(0, "Intersecting results", verbose);
     std::map<std::tuple<std::string, std::string>, int> count;
     for (int i=0; i < index_results.size(); i++) {
+        print_progress(i/index_results.size(), "Intersecting results", verbose);
         for (auto const &obj_to_id : index_results[i]) {
             std::string object = obj_to_id.first;
             for (int j=0; j < obj_to_id.second.size(); j++) {
@@ -149,6 +168,8 @@ objname_to_matching_trace_ids intersect_index_results(
             to_return[object].push_back(trace_id);
         }
     }
+    print_progress(1, "Intersecting results", verbose);
+    std::cout << std::endl;
     return to_return;
 }
 
@@ -161,15 +182,19 @@ std::string get_return_value_from_traces_data(
      for (int i=0; i < sp_size; i++) {
         const opentelemetry::proto::trace::v1::Span sp =
             trace_data.resource_spans(0).scope_spans(0).spans(i);
-        if (hex_str(sp.opentelemetry::proto::trace::v1::Span::span_id(), SPAN_ID_LENGTH).compare(span_to_find) == 0) {
+        auto span_id = sp.opentelemetry::proto::trace::v1::Span::span_id();
+        if (hex_str(span_id, span_id.size()).compare(span_to_find) == 0) {
             return get_value_as_string(&sp, ret.func, ret.type);
         }
     }
+    std::cerr << "didn't find the span I was looking for " << std::endl << std::flush;
+    return "";
 }
 std::vector<std::string> get_return_value(
     std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
     return_value ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client) {
     std::vector<std::string> to_return;
+
     for (auto const &obj_to_trace_ids : std::get<0>(filtered)) {
         std::string object = obj_to_trace_ids.first;
         for (int i=0; i < obj_to_trace_ids.second.size(); i++) {
