@@ -111,29 +111,30 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
             continue;
         }
 
-        std::string trace = extract_any_trace(response_trace_ids, object_content);
-        if (trace == "") {
-            continue;
-        }
-
-        trace_structure candidate_trace = morph_trace_object_to_trace_structure(trace);
-        if (candidate_trace.num_nodes < 1) {
-            continue;
-        }
-
         if (to_return.iso_maps.size() < 1) {
+            std::string trace = extract_any_trace(response_trace_ids, object_content);
+            if (trace == "") {
+                continue;
+            }
+
+            trace_structure candidate_trace = morph_trace_object_to_trace_structure(trace);
+            if (candidate_trace.num_nodes < 1) {
+                continue;
+            }
+
             to_return.iso_maps = get_isomorphism_mappings(candidate_trace, query_trace);
+
+            std::vector<std::unordered_map<int, std::string>> nn;
+            nn.push_back(candidate_trace.node_names);
+            to_return.trace_node_names = nn;
+
+            if (root_service_name == "") {
+                root_service_name = get_root_service_name(trace);
+            }
+
             if (to_return.iso_maps.size() < 1) {
                 return to_return;
             }
-        }
-
-        std::vector<std::unordered_map<int, std::string>> nn;
-        nn.push_back(candidate_trace.node_names);
-        to_return.trace_node_names = nn;
-
-        if (root_service_name == "") {
-            root_service_name = get_root_service_name(trace);
         }
 
         auto trace_ids_to_append = filter_trace_ids_based_on_query_timestamp(
