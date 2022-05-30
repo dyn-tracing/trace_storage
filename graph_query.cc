@@ -4,6 +4,16 @@
 std::vector<std::string> query(
     trace_structure query_trace, int start_time, int end_time,
     std::vector<query_condition> conditions, return_value ret, gcs::Client* client) {
+    // clean input a little bit
+    std::vector<std::string> empty;
+    if (end_time < start_time) {
+        std::cerr << "end time is less than start time;  aborting query";
+        return empty;
+    }
+    if (query_trace.num_nodes != query_trace.node_names.size()) {
+        std::cerr << "num nodes does not match number of node names given;  aborting query";
+        return empty;
+    }
 
     // first, get all matches to indexed query conditions
     // note that structural is always indexed

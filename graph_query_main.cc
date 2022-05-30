@@ -7,8 +7,6 @@ int main(int argc, char* argv[]) {
     trace_structure query_trace;
     query_trace.num_nodes = 1;
     query_trace.node_names.insert(std::make_pair(0, "currencyservice"));
-    query_trace.node_names.insert(std::make_pair(1, "adservice"));
-    query_trace.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
 
     query_trace.edges.insert(std::make_pair(0, 1));
     query_trace.edges.insert(std::make_pair(1, 2));
@@ -42,7 +40,7 @@ int main(int argc, char* argv[]) {
     ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::parent_span_id;
 
     ret.func = ret_union;
-    auto res = query(query_trace, 1653317532, 1653317532, conditions, ret, &client);
+    auto res = query(query_trace, 1653919700, 1653919900, conditions, ret, &client);
     std::cout << "Total traces: " << res.size() << std::endl;
     std::cout << "Example output: " << res[0] << std::endl;
 
