@@ -76,6 +76,14 @@ std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>
     struct fetched_data &fetched,
     return_value ret
 );
+std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> filter_based_on_conditions_batched(
+    objname_to_matching_trace_ids &intersection,
+    std::string object_name_to_process,
+    traces_by_structure &structural_results,
+    std::vector<query_condition> &conditions,
+    struct fetched_data &fetched,
+    return_value ret
+);
 std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
     std::vector<query_condition> &conditions, fetched_data& evaluation_data,
     traces_by_structure &structural_results, return_value ret
