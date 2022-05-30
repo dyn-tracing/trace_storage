@@ -115,7 +115,6 @@ std::string get_root_service_name(std::string trace);
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     std::vector<std::string> trace_ids,
     std::string batch_name,
-    std::string object_content,
     int start_time,
     int end_time,
     std::string root_service_name,
