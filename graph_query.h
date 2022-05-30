@@ -19,6 +19,7 @@
 #include <vector>
 #include <future>
 #include <tuple>
+#include <unordered_set>
 #include "query_conditions.h"
 #include "google/cloud/storage/client.h"
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
