@@ -8,9 +8,7 @@ std::vector<std::string> split_by_string(std::string& str, const char* ch) {
 
     std::vector<std::string> response;
     for (int i = 0; i < tokens.size(); i++) {
-        if (tokens[i].size() > 0) {
-            response.push_back(tokens[i]);
-        }
+        response.push_back(strip_from_the_end(tokens[i], '\n'));
     }
     return response;
 }
