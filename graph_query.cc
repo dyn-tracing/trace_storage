@@ -56,7 +56,7 @@ std::vector<std::string> query(
         intersection, struct_results, conditions, fetched, ret);
 
     std::cout << "filtered based on conditions" << std::endl;
-    
+
     boost::posix_time::ptime start, stop;
     start = boost::posix_time::microsec_clock::local_time();
     auto returned = get_return_value(filtered, ret, fetched, query_trace, client);
