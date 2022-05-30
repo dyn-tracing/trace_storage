@@ -56,6 +56,7 @@ std::vector<std::string> query(
         intersection, struct_results, conditions, fetched, ret);
 
     std::cout << "filtered based on conditions" << std::endl;
+
     boost::posix_time::ptime start, stop;
     start = boost::posix_time::microsec_clock::local_time();
     auto returned = get_return_value(filtered, ret, fetched, query_trace, client);
@@ -114,17 +115,51 @@ std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>
     struct fetched_data &fetched,
     return_value &ret
 ) {
+    std::vector<
+        std::future<
+            std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>>> response_futures;
+
+    for (const auto &object_to_trace : intersection) {
+        response_futures.push_back(std::async(std::launch::async,
+            filter_based_on_conditions_batched, std::ref(intersection), object_to_trace.first,
+            std::ref(structural_results), std::ref(conditions), std::ref(fetched), ret));
+    }
+
+    objname_to_matching_trace_ids res_otmti;
+    std::map<std::string, iso_to_span_id> itsi_map;
+
+    for_each(response_futures.begin(), response_futures.end(),
+		[&res_otmti, &itsi_map](
+            std::future<std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>>& fut) {
+			    std::tuple<
+                    objname_to_matching_trace_ids,
+                    std::map<std::string, iso_to_span_id>> response_tuple = fut.get();
+
+                res_otmti.insert(std::get<0>(response_tuple).begin(), std::get<0>(response_tuple).end());
+                itsi_map.insert(std::get<1>(response_tuple).begin(), std::get<1>(response_tuple).end());
+	});
+
+    return {res_otmti, itsi_map};
+}
+
+std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> filter_based_on_conditions_batched(
+    objname_to_matching_trace_ids &intersection,
+    std::string object_name_to_process,
+    traces_by_structure &structural_results,
+    std::vector<query_condition> &conditions,
+    struct fetched_data &fetched,
+    return_value ret
+) {
     objname_to_matching_trace_ids to_return_traces;
     std::map<std::string, iso_to_span_id> trace_id_to_span_id_mappings;
-    for (const auto &object_to_trace : intersection) {
-        for (int i=0; i < object_to_trace.second.size(); i++) {
-            iso_to_span_id res_ii_to_ni_to_si = does_trace_satisfy_conditions(
-                object_to_trace.second[i], object_to_trace.first, conditions, fetched, structural_results, ret);
-            //  res_ii_to_ni_to_si to be used by Jessica
-            if (res_ii_to_ni_to_si.size() > 0) {
-                to_return_traces[object_to_trace.first].push_back(object_to_trace.second[i]);
-                trace_id_to_span_id_mappings[object_to_trace.second[i]] = res_ii_to_ni_to_si;
-            }
+
+    auto* trace_ids = &(intersection[object_name_to_process]);
+    for (int i=0; i < trace_ids->size(); i++) {
+        iso_to_span_id res_ii_to_ni_to_si = does_trace_satisfy_conditions(
+            (*trace_ids)[i], object_name_to_process, conditions, fetched, structural_results, ret);
+        if (res_ii_to_ni_to_si.size() > 0) {
+            to_return_traces[object_name_to_process].push_back((*trace_ids)[i]);
+            trace_id_to_span_id_mappings[(*trace_ids)[i]] = res_ii_to_ni_to_si;
         }
     }
     return std::make_tuple(to_return_traces, trace_id_to_span_id_mappings);
