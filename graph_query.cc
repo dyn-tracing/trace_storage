@@ -179,11 +179,13 @@ std::string get_return_value_from_traces_data(
     return_value &ret
 ) {
      int sp_size = trace_data.resource_spans(0).scope_spans(0).spans_size();
-     std::cout << "going through " << sp_size << " spans" << std::endl << std::flush;
+     std::cout << "going through " << sp_size << " spans looking for "<< span_to_find << std::endl << std::flush;
      for (int i=0; i < sp_size; i++) {
         const opentelemetry::proto::trace::v1::Span sp =
             trace_data.resource_spans(0).scope_spans(0).spans(i);
-        if (hex_str(sp.opentelemetry::proto::trace::v1::Span::span_id(), SPAN_ID_LENGTH).compare(span_to_find) == 0) {
+        auto span_id = sp.opentelemetry::proto::trace::v1::Span::span_id();
+        std::cout << "span id is instead " << hex_str(sp.opentelemetry::proto::trace::v1::Span::span_id(), span_id.size()) << std::endl << std::flush;
+        if (hex_str(span_id, span_id.size()).compare(span_to_find) == 0) {
             return get_value_as_string(&sp, ret.func, ret.type);
         }
     }
@@ -208,10 +210,8 @@ std::vector<std::string> get_return_value(
 
                 if (data.spans_objects_by_bn_sn[object].find(service_name) !=
                     data.spans_objects_by_bn_sn[object].end()) {
-                     std::cout << "we already have this data; just gotta look it up " << std::endl << std::flush;
                      opentelemetry::proto::trace::v1::TracesData trace_data =
                         data.spans_objects_by_bn_sn[object][service_name];
-                     std::cout << "trace data has been retrieved " << std::endl << std::flush;
                      to_return.push_back(get_return_value_from_traces_data(trace_data, span_id_to_find, ret));
                 } else {
                     // we need to retrieve the data, and then we can iterate through and get return val
