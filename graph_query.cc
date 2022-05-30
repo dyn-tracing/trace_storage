@@ -215,8 +215,8 @@ objname_to_matching_trace_ids intersect_index_results(
 
 std::string get_return_value_from_traces_data(
     opentelemetry::proto::trace::v1::TracesData *trace_data,
-    std::string &span_to_find,
-    return_value &ret
+    const std::string span_to_find,
+    return_value ret
 ) {
      int sp_size = trace_data->resource_spans(0).scope_spans(0).spans_size();
      for (int i=0; i < sp_size; i++) {
@@ -230,35 +230,61 @@ std::string get_return_value_from_traces_data(
     std::cerr << "didn't find the span " << span_to_find << " I was looking for " << std::endl << std::flush;
     return "";
 }
+
+std::string retrieve_object_and_get_return_value_from_traces_data(
+    std::string bucket_name,
+    std::string object_name, const std::string span_to_find,
+    return_value ret, gcs::Client* client
+) {
+    std::string contents = read_object(bucket_name, object_name, client);
+    opentelemetry::proto::trace::v1::TracesData trace_data;
+    trace_data.ParseFromString(contents);
+    return get_return_value_from_traces_data(&trace_data, span_to_find, ret);
+}
+
 std::vector<std::string> get_return_value(
     std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
     return_value &ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client) {
-    std::vector<std::string> to_return;
+
+    std::vector<std::future<std::string>> return_values_fut;
+    std::unordered_set<std::string> span_ids;
 
     for (auto const &obj_to_trace_ids : std::get<0>(filtered)) {
         std::string object = obj_to_trace_ids.first;
         for (int i=0; i < obj_to_trace_ids.second.size(); i++) {
             std::string trace_id = obj_to_trace_ids.second[i];
+
             // for each trace id, there may be multiple isomaps
             for (auto & ii_ni_sp : std::get<1>(filtered)[trace_id]) {
                 std::string span_id_to_find = ii_ni_sp.second[ret.node_index];
+                if (span_ids.find(span_id_to_find) != span_ids.end()) {
+                    continue;
+                } else {
+                    span_ids.insert(span_id_to_find);
+                }
                 std::string service_name = query_trace.node_names[ret.node_index];
 
                 if (data.spans_objects_by_bn_sn[object].find(service_name) !=
                     data.spans_objects_by_bn_sn[object].end()) {
-                     opentelemetry::proto::trace::v1::TracesData* trace_data =
+                    opentelemetry::proto::trace::v1::TracesData* trace_data =
                         &data.spans_objects_by_bn_sn[object][service_name];
-                     to_return.push_back(get_return_value_from_traces_data(trace_data, span_id_to_find, ret));
+                    return_values_fut.push_back(std::async(std::launch::async, get_return_value_from_traces_data,
+                        trace_data, span_id_to_find, ret
+                    ));
                 } else {
-                    // we need to retrieve the data, and then we can iterate through and get return val
-                    std::string contents = read_object(service_name+BUCKETS_SUFFIX, object, client);
-                    opentelemetry::proto::trace::v1::TracesData trace_data;
-                    trace_data.ParseFromString(contents);
-                    to_return.push_back(get_return_value_from_traces_data(&trace_data, span_id_to_find, ret));
+                    return_values_fut.push_back(std::async(std::launch::async, retrieve_object_and_get_return_value_from_traces_data,
+                        service_name+BUCKETS_SUFFIX, object, span_id_to_find, ret, client
+                    ));
                 }
             }
         }
     }
+    std::vector<std::string> to_return;
+    to_return.reserve(return_values_fut.size());
+    for (int i=0; i < return_values_fut.size(); i++) {
+        to_return.push_back(return_values_fut[i].get());
+    }
+
     return to_return;
 }
 
