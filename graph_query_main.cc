@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
     ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::parent_span_id;
 
     ret.func = ret_union;
-    auto res = query(query_trace, 1653919700, 1653919710, conditions, ret, &client);
+    auto res = query(query_trace, 1653919700, 1653919705, conditions, ret, true, &client);
     std::cout << "Total output: " << res.size() << std::endl;
 
     // std::string batch = query_bloom_index_for_value(&client, "c5367e16e960a3452529e44d035a9bec", "new_id_index");

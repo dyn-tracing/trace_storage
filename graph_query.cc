@@ -3,7 +3,7 @@
 
 std::vector<std::string> query(
     trace_structure query_trace, int start_time, int end_time,
-    std::vector<query_condition> conditions, return_value ret, gcs::Client* client) {
+    std::vector<query_condition> conditions, return_value ret, bool verbose, gcs::Client* client) {
     // clean input a little bit
     std::vector<std::string> empty;
     if (end_time < start_time) {
@@ -30,19 +30,19 @@ std::vector<std::string> query(
             start_time, end_time, &conditions[i], i_type, client));
         }
     }
-    print_progress(0, "Retrieving indices");
+    print_progress(0, "Retrieving indices", verbose);
 
     size_t irf_size = index_results_futures.size();
     std::vector<objname_to_matching_trace_ids> index_results;
     for (int i=0; i < irf_size; i++) {
         index_results.push_back(index_results_futures[i].get());
-        print_progress((i+1.0)/(irf_size+1.0), "Retrieving indices");
+        print_progress((i+1.0)/(irf_size+1.0), "Retrieving indices", verbose);
     }
     auto struct_results = struct_filter_obj.get();
-    print_progress(1, "Retrieving indices");
+    print_progress(1, "Retrieving indices", verbose);
     std::cout << std::endl;
 
-    objname_to_matching_trace_ids intersection = intersect_index_results(index_results, struct_results);
+    objname_to_matching_trace_ids intersection = intersect_index_results(index_results, struct_results, verbose);
 
     fetched_data fetched = fetch_data(
         struct_results,
@@ -127,15 +127,15 @@ std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>
 
 objname_to_matching_trace_ids intersect_index_results(
     std::vector<objname_to_matching_trace_ids> index_results,
-    traces_by_structure &structural_results) {
+    traces_by_structure &structural_results, bool verbose) {
     // Easiest solution is just keep a count
     // Eventually we should parallelize this, but I'm not optimizing it
     // until we measure the rest of the code
     // Premature optimization is of the devil and all that.
-    print_progress(0, "Intersecting results");
+    print_progress(0, "Intersecting results", verbose);
     std::map<std::tuple<std::string, std::string>, int> count;
     for (int i=0; i < index_results.size(); i++) {
-        print_progress(i/index_results.size(), "Intersecting results");
+        print_progress(i/index_results.size(), "Intersecting results", verbose);
         for (auto const &obj_to_id : index_results[i]) {
             std::string object = obj_to_id.first;
             for (int j=0; j < obj_to_id.second.size(); j++) {
@@ -168,7 +168,7 @@ objname_to_matching_trace_ids intersect_index_results(
             to_return[object].push_back(trace_id);
         }
     }
-    print_progress(1, "Intersecting results");
+    print_progress(1, "Intersecting results", verbose);
     std::cout << std::endl;
     return to_return;
 }
@@ -179,17 +179,15 @@ std::string get_return_value_from_traces_data(
     return_value &ret
 ) {
      int sp_size = trace_data.resource_spans(0).scope_spans(0).spans_size();
-     std::cout << "going through " << sp_size << " spans looking for "<< span_to_find << std::endl << std::flush;
      for (int i=0; i < sp_size; i++) {
         const opentelemetry::proto::trace::v1::Span sp =
             trace_data.resource_spans(0).scope_spans(0).spans(i);
         auto span_id = sp.opentelemetry::proto::trace::v1::Span::span_id();
-        std::cout << "span id is instead " << hex_str(sp.opentelemetry::proto::trace::v1::Span::span_id(), span_id.size()) << std::endl << std::flush;
         if (hex_str(span_id, span_id.size()).compare(span_to_find) == 0) {
             return get_value_as_string(&sp, ret.func, ret.type);
         }
     }
-    std::cout << "didn't find the span I was looking for " << std::endl << std::flush;
+    std::cerr << "didn't find the span I was looking for " << std::endl << std::flush;
     return "";
 }
 std::vector<std::string> get_return_value(
@@ -199,8 +197,6 @@ std::vector<std::string> get_return_value(
 
     for (auto const &obj_to_trace_ids : std::get<0>(filtered)) {
         std::string object = obj_to_trace_ids.first;
-        std::cout << "object is " << object << std::endl;
-        std::cout << "object has " << obj_to_trace_ids.second.size() << " trace ids" << std::endl << std::flush;
         for (int i=0; i < obj_to_trace_ids.second.size(); i++) {
             std::string trace_id = obj_to_trace_ids.second[i];
             // for each trace id, there may be multiple isomaps

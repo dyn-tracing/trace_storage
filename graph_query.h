@@ -35,7 +35,7 @@
 typedef std::map<int, std::map<int, std::string>> iso_to_span_id;
 std::vector<std::string> query(
     trace_structure query_trace, int start_time, int end_time,
-    std::vector<query_condition> conditions, return_value ret, gcs::Client* client);
+    std::vector<query_condition> conditions, return_value ret, bool verbose, gcs::Client* client);
 // ****************** conditions-related ********************************
 
 
@@ -87,7 +87,7 @@ std::vector<std::string> get_return_value(
     return_value ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client);
 objname_to_matching_trace_ids intersect_index_results(
     std::vector<objname_to_matching_trace_ids> index_results,
-    traces_by_structure &structural_results);
+    traces_by_structure &structural_results, bool verbose);
 
 int dummy_tests();
 

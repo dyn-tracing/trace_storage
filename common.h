@@ -55,7 +55,7 @@ std::vector<std::string> split_by_string(std::string& str,  const char* ch);
 std::string hex_str(std::string data, int len);
 std::string strip_from_the_end(std::string object, char stripper);
 void replace_all(std::string& str, const std::string& from, const std::string& to);
-void print_progress(float progress, std::string label);
+void print_progress(float progress, std::string label, bool verbose);
 
 /// *********** string processing according to system conventions **********
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
