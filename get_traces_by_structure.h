@@ -111,21 +111,21 @@ struct vf2_callback_custom {
         IsomorphismMaps& isomorphism_maps_;
 };
 
-std::string get_root_service_name(std::string trace);
+std::string get_root_service_name(std::string &trace);
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
-    std::vector<std::string> trace_ids,
-    std::string batch_name,
+    std::vector<std::string> &trace_ids,
+    std::string &batch_name,
     int start_time,
     int end_time,
-    std::string root_service_name,
+    std::string &root_service_name,
     gcs::Client* client);
 std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
-    trace_structure candidate_trace, trace_structure query_trace);
+    trace_structure &candidate_trace, trace_structure &query_trace);
 traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
     std::string prefix, trace_structure query_trace, int start_time, int end_time,
     gcs::Client* client);
-trace_structure morph_trace_object_to_trace_structure(std::string trace);
-graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph);
-std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client);
+trace_structure morph_trace_object_to_trace_structure(std::string &trace);
+graph_type morph_trace_structure_to_boost_graph_type(trace_structure &input_graph);
+std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string &object_name, gcs::Client* client);
 void print_trace_structure(trace_structure trace);
 #endif  // BY_STRUCT_H_ // NOLINT

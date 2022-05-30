@@ -60,12 +60,12 @@ fetched_data fetch_data(
 );
 index_type is_indexed(query_condition *condition, gcs::Client* client);
 bool does_span_satisfy_condition(
-    std::string span_id, std::string service_name,
-    query_condition condition, std::string batch_name, fetched_data& evaluation_data
+    std::string &span_id, std::string &service_name,
+    query_condition &condition, const std::string &batch_name, fetched_data& evaluation_data
 );
 std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
-    std::string trace_id, std::string batch_name, std::vector<query_condition>& conditions,
-    int curr_cond_ind, fetched_data& evaluation_data, traces_by_structure& structural_results, return_value ret
+    const std::string &trace_id, const std::string &batch_name, std::vector<query_condition>& conditions,
+    int curr_cond_ind, fetched_data& evaluation_data, traces_by_structure& structural_results, return_value &ret
 );
 objname_to_matching_trace_ids get_traces_by_indexed_condition(
     int start_time, int end_time, query_condition *condition, index_type ind_type, gcs::Client* client);
@@ -74,19 +74,20 @@ std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>
     traces_by_structure &structural_results,
     std::vector<query_condition> &conditions,
     struct fetched_data &fetched,
-    return_value ret
+    return_value &ret
 );
-std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
+std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(
+    const std::string& trace_id, const std::string& object_name,
     std::vector<query_condition> &conditions, fetched_data& evaluation_data,
-    traces_by_structure &structural_results, return_value ret
+    traces_by_structure &structural_results, return_value& ret
 );
 
 // ***************** query-related ******************************************
 std::vector<std::string> get_return_value(
     std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
-    return_value ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client);
+    return_value &ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client);
 objname_to_matching_trace_ids intersect_index_results(
-    std::vector<objname_to_matching_trace_ids> index_results,
+    std::vector<objname_to_matching_trace_ids> &index_results,
     traces_by_structure &structural_results, bool verbose);
 
 int dummy_tests();
