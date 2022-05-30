@@ -98,7 +98,6 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
         if (false == is_object_within_timespan(batch_time, start_time, end_time)) {
             continue;
         }
-        std::cout << "Processing " << object_name << std::endl;
 
         std::vector<std::string> response_trace_ids = get_trace_ids_from_trace_hashes_object(object_name, client);
         if (response_trace_ids.size() < 1) {

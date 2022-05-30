@@ -8,9 +8,7 @@ std::vector<std::string> split_by_string(std::string& str, const char* ch) {
 
     std::vector<std::string> response;
     for (int i = 0; i < tokens.size(); i++) {
-        if (tokens[i].size() > 0) {
-            response.push_back(tokens[i]);
-        }
+        response.push_back(strip_from_the_end(tokens[i], '\n'));
     }
     return response;
 }
@@ -220,7 +218,7 @@ std::string extract_any_trace(std::vector<std::string>& trace_ids, std::string& 
 std::string extract_trace_from_traces_object(std::string trace_id, std::string& object_content) {
 	int start_ind = object_content.find("Trace ID: " + trace_id + ":");
 	if (start_ind == std::string::npos) {
-		std::cerr << "trace_id (" << trace_id << ") not found in the object_content" << std::endl;
+		// std::cerr << "trace_id (" << trace_id << ") not found in the object_content" << std::endl;
 		return "";
 	}
 
