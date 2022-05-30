@@ -56,8 +56,14 @@ std::vector<std::string> query(
         intersection, struct_results, conditions, fetched, ret);
 
     std::cout << "filtered based on conditions" << std::endl;
-    return std::vector<std::string>{"b"};
+    
+    boost::posix_time::ptime start, stop;
+    start = boost::posix_time::microsec_clock::local_time();
     auto returned = get_return_value(filtered, ret, fetched, query_trace, client);
+    stop = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration dur = stop - start;
+    int64_t milliseconds = dur.total_milliseconds();
+    std::cout << "Time taken: " << milliseconds << std::endl;
     std::cout << "len returned is " << returned.size() << std::endl;
     return returned;
 }
@@ -208,17 +214,17 @@ objname_to_matching_trace_ids intersect_index_results(
 }
 
 std::string get_return_value_from_traces_data(
-    opentelemetry::proto::trace::v1::TracesData &trace_data,
+    opentelemetry::proto::trace::v1::TracesData *trace_data,
     std::string &span_to_find,
     return_value &ret
 ) {
-     int sp_size = trace_data.resource_spans(0).scope_spans(0).spans_size();
+     int sp_size = trace_data->resource_spans(0).scope_spans(0).spans_size();
      for (int i=0; i < sp_size; i++) {
-        const opentelemetry::proto::trace::v1::Span sp =
-            trace_data.resource_spans(0).scope_spans(0).spans(i);
-        auto span_id = sp.opentelemetry::proto::trace::v1::Span::span_id();
+        const opentelemetry::proto::trace::v1::Span *sp =
+            &trace_data->resource_spans(0).scope_spans(0).spans(i);
+        auto span_id = sp->opentelemetry::proto::trace::v1::Span::span_id();
         if (hex_str(span_id, span_id.size()).compare(span_to_find) == 0) {
-            return get_value_as_string(&sp, ret.func, ret.type);
+            return get_value_as_string(sp, ret.func, ret.type);
         }
     }
     std::cerr << "didn't find the span I was looking for " << std::endl << std::flush;
@@ -240,15 +246,15 @@ std::vector<std::string> get_return_value(
 
                 if (data.spans_objects_by_bn_sn[object].find(service_name) !=
                     data.spans_objects_by_bn_sn[object].end()) {
-                     opentelemetry::proto::trace::v1::TracesData trace_data =
-                        data.spans_objects_by_bn_sn[object][service_name];
+                     opentelemetry::proto::trace::v1::TracesData* trace_data =
+                        &data.spans_objects_by_bn_sn[object][service_name];
                      to_return.push_back(get_return_value_from_traces_data(trace_data, span_id_to_find, ret));
                 } else {
                     // we need to retrieve the data, and then we can iterate through and get return val
                     std::string contents = read_object(service_name+BUCKETS_SUFFIX, object, client);
                     opentelemetry::proto::trace::v1::TracesData trace_data;
                     trace_data.ParseFromString(contents);
-                    to_return.push_back(get_return_value_from_traces_data(trace_data, span_id_to_find, ret));
+                    to_return.push_back(get_return_value_from_traces_data(&trace_data, span_id_to_find, ret));
                 }
             }
         }

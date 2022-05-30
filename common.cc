@@ -2,15 +2,18 @@
 
 std::vector<std::string> split_by_string(std::string& str, const char* ch) {
     std::vector<std::string> tokens;
-    std::string ch_str(ch);
-    std::string reg = "(" + ch_str + ")+";
-    split_regex(tokens, str, boost::regex(reg));
+    // https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
 
-    std::vector<std::string> response;
-    for (int i = 0; i < tokens.size(); i++) {
-        response.push_back(strip_from_the_end(tokens[i], '\n'));
+    auto start = 0;
+    auto end = str.find(ch);
+    while (end != std::string::npos) {
+        tokens.push_back(strip_from_the_end(str.substr(start, end-start), '\n'));
+        start = end + strlen(ch);
+        end = str.find(ch, start);
     }
-    return response;
+    tokens.push_back(strip_from_the_end(str.substr(start, end), '\n'));
+
+    return tokens;
 }
 
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
@@ -25,13 +28,12 @@ std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
     }
 
     for (int i=0; i < trace_data.resource_spans(0).scope_spans(0).spans_size(); i++) {
-        opentelemetry::proto::trace::v1::Span sp = trace_data.resource_spans(0).scope_spans(0).spans(i);
-
-        std::string trace_id = hex_str(sp.trace_id(), sp.trace_id().length());
+        const opentelemetry::proto::trace::v1::Span* sp = &trace_data.resource_spans(0).scope_spans(0).spans(i);
+        std::string trace_id = hex_str(sp->trace_id(), sp->trace_id().length());
 
         // getting timestamps and converting from nanosecond precision to seconds precision
-        int start_time = std::stoi(std::to_string(sp.start_time_unix_nano()).substr(0, 10));
-        int end_time = std::stoi(std::to_string(sp.end_time_unix_nano()).substr(0, 10));
+        int start_time = std::stoi(std::to_string(sp->start_time_unix_nano()).substr(0, 10));
+        int end_time = std::stoi(std::to_string(sp->end_time_unix_nano()).substr(0, 10));
 
         response.insert(std::make_pair(trace_id, std::make_pair(start_time, end_time)));
     }
@@ -39,7 +41,7 @@ std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
     return response;
 }
 
-std::string hex_str(std::string data, int len) {
+std::string hex_str(const std::string &data, int len) {
     constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
     std::string s(len * 2, ' ');
