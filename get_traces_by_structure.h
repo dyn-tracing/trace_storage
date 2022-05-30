@@ -111,6 +111,14 @@ struct vf2_callback_custom {
         IsomorphismMaps& isomorphism_maps_;
 };
 
+std::string get_root_service_name(std::string trace);
+std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
+    std::vector<std::string> trace_ids,
+    std::string batch_name,
+    int start_time,
+    int end_time,
+    std::string root_service_name,
+    gcs::Client* client);
 std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
     trace_structure candidate_trace, trace_structure query_trace);
 traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
