@@ -158,7 +158,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
     return to_return;
 }
 
-std::string get_root_service_name(std::string trace) {
+std::string get_root_service_name(std::string &trace) {
     std::vector<std::string> trace_lines = split_by_string(trace, newline);
     for (auto line : trace_lines) {
         if (line.substr(0, 1) == ":") {
@@ -171,11 +171,11 @@ std::string get_root_service_name(std::string trace) {
 }
 
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
-    std::vector<std::string> trace_ids,
-    std::string batch_name,
+    std::vector<std::string> &trace_ids,
+    std::string &batch_name,
     int start_time,
     int end_time,
-    std::string root_service_name,
+    std::string &root_service_name,
     gcs::Client* client) {
     std::vector<std::string> response;
 
@@ -206,7 +206,7 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
  * @return std::vector<std::unordered_map<int, int>>
  */
 std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
-    trace_structure candidate_trace, trace_structure query_trace) {
+    trace_structure &candidate_trace, trace_structure &query_trace) {
     graph_type candidate_graph = morph_trace_structure_to_boost_graph_type(candidate_trace);
     graph_type query_graph = morph_trace_structure_to_boost_graph_type(query_trace);
 
@@ -229,7 +229,7 @@ std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
     return isomorphism_maps;
 }
 
-std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string object_name, gcs::Client* client) {
+std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string &object_name, gcs::Client* client) {
     std::string trace_hashes_bucket(TRACE_HASHES_BUCKET_PREFIX);
     std::string suffix(BUCKETS_SUFFIX);
     std::string object_content = read_object(trace_hashes_bucket+suffix, object_name, client);
@@ -246,7 +246,7 @@ std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string obje
     return response;
 }
 
-trace_structure morph_trace_object_to_trace_structure(std::string trace) {
+trace_structure morph_trace_object_to_trace_structure(std::string &trace) {
     trace_structure response;
 
     std::vector<std::string> trace_lines = split_by_string(trace, newline);
@@ -292,7 +292,7 @@ trace_structure morph_trace_object_to_trace_structure(std::string trace) {
     return response;
 }
 
-graph_type morph_trace_structure_to_boost_graph_type(trace_structure input_graph) {
+graph_type morph_trace_structure_to_boost_graph_type(trace_structure &input_graph) {
     graph_type output_graph;
 
     for (int i = 0; i < input_graph.num_nodes; i++) {

@@ -53,6 +53,22 @@ std::string hex_str(const std::string &data, int len) {
     return s;
 }
 
+bool is_same_hex_str(const std::string &data, int len, std::string &compare) {
+    assert(compare.size() == len*2);
+    constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
+    for (int i = 0; i < len; ++i) {
+        if (compare[2 * i] != hexmap[(data[i] & 0xF0) >> 4]) {
+            return false;
+        }
+
+        if (compare[2 * i + 1]  != hexmap[data[i] & 0x0F]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 
 
 opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
@@ -175,6 +191,7 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
 
     return response;
 }
+
 std::map<std::string, std::string> get_trace_id_to_root_service_map(std::string object_content) {
     std::map<std::string, std::string> response;
     std::vector<std::string> all_traces = split_by_string(object_content, "Trace ID: ");

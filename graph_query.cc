@@ -113,7 +113,7 @@ std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>
     traces_by_structure &structural_results,
     std::vector<query_condition> &conditions,
     struct fetched_data &fetched,
-    return_value ret
+    return_value &ret
 ) {
     std::vector<
         std::future<
@@ -166,7 +166,7 @@ std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>
 }
 
 objname_to_matching_trace_ids intersect_index_results(
-    std::vector<objname_to_matching_trace_ids> index_results,
+    std::vector<objname_to_matching_trace_ids> &index_results,
     traces_by_structure &structural_results, bool verbose) {
     // Easiest solution is just keep a count
     // Eventually we should parallelize this, but I'm not optimizing it
@@ -223,16 +223,16 @@ std::string get_return_value_from_traces_data(
         const opentelemetry::proto::trace::v1::Span *sp =
             &trace_data->resource_spans(0).scope_spans(0).spans(i);
         auto span_id = sp->opentelemetry::proto::trace::v1::Span::span_id();
-        if (hex_str(span_id, span_id.size()).compare(span_to_find) == 0) {
+        if (is_same_hex_str(span_id, span_id.size(), span_to_find)) {
             return get_value_as_string(sp, ret.func, ret.type);
         }
     }
-    std::cerr << "didn't find the span I was looking for " << std::endl << std::flush;
+    std::cerr << "didn't find the span " << span_to_find << " I was looking for " << std::endl << std::flush;
     return "";
 }
 std::vector<std::string> get_return_value(
     std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
-    return_value ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client) {
+    return_value &ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client) {
     std::vector<std::string> to_return;
 
     for (auto const &obj_to_trace_ids : std::get<0>(filtered)) {
@@ -313,9 +313,10 @@ fetched_data fetch_data(
     return response;
 }
 
-std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(std::string trace_id, std::string object_name,
+std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(
+    const std::string &trace_id, const std::string &object_name,
     std::vector<query_condition> &conditions, fetched_data& evaluation_data,
-    traces_by_structure &structural_results, return_value ret
+    traces_by_structure &structural_results, return_value& ret
 ) {
     // isomap_index_to_node_index_to_span_id -> ii_to_ni_to_si
     std::vector<std::map<int, std::map<int, std::string>>> ii_to_ni_to_si_data_for_all_conditions;
@@ -364,8 +365,9 @@ std::string get_service_name_for_node_index(
 }
 
 std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
-    std::string trace_id, std::string batch_name, std::vector<query_condition>& conditions,
-    int curr_cond_ind, fetched_data& evaluation_data, traces_by_structure& structural_results, return_value ret
+    const std::string &trace_id, const std::string &batch_name,
+    std::vector<query_condition>& conditions,
+    int curr_cond_ind, fetched_data& evaluation_data, traces_by_structure& structural_results, return_value& ret
 ) {
     std::map<int, std::map<int, std::string>> response;
 
@@ -412,8 +414,8 @@ std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_s
 }
 
 bool does_span_satisfy_condition(
-    std::string span_id, std::string service_name,
-    query_condition condition, std::string batch_name, fetched_data& evaluation_data
+    std::string &span_id, std::string &service_name,
+    query_condition &condition, const std::string &batch_name, fetched_data& evaluation_data
 ) {
     if (evaluation_data.spans_objects_by_bn_sn.find(batch_name) == evaluation_data.spans_objects_by_bn_sn.end()
     || evaluation_data.spans_objects_by_bn_sn[batch_name].find(
@@ -429,8 +431,7 @@ bool does_span_satisfy_condition(
     for (int i=0; i < trace_data->resource_spans(0).scope_spans(0).spans_size(); i++) {
         sp = &(trace_data->resource_spans(0).scope_spans(0).spans(i));
 
-        std::string current_span_id = hex_str(sp->span_id(), sp->span_id().length());
-        if (current_span_id == span_id) {
+        if (is_same_hex_str(sp->span_id(), sp->span_id().length(), span_id)) {
             return does_condition_hold(sp, condition);
         }
     }
