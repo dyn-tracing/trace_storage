@@ -185,11 +185,11 @@ std::string get_return_value_from_traces_data(
 ) {
      int sp_size = trace_data->resource_spans(0).scope_spans(0).spans_size();
      for (int i=0; i < sp_size; i++) {
-        const opentelemetry::proto::trace::v1::Span sp =
-            trace_data->resource_spans(0).scope_spans(0).spans(i);
-        auto span_id = sp.opentelemetry::proto::trace::v1::Span::span_id();
+        const opentelemetry::proto::trace::v1::Span *sp =
+            &trace_data->resource_spans(0).scope_spans(0).spans(i);
+        auto span_id = sp->opentelemetry::proto::trace::v1::Span::span_id();
         if (hex_str(span_id, span_id.size()).compare(span_to_find) == 0) {
-            return get_value_as_string(&sp, ret.func, ret.type);
+            return get_value_as_string(sp, ret.func, ret.type);
         }
     }
     std::cerr << "didn't find the span I was looking for " << std::endl << std::flush;
