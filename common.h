@@ -53,6 +53,7 @@ enum index_type {
 /// **************** pure string processing ********************************
 std::vector<std::string> split_by_string(std::string& str,  const char* ch);
 std::string hex_str(const std::string &data, int len);
+bool is_same_hex_str(const std::string &data, int len, std::string &compare);
 std::string strip_from_the_end(std::string object, char stripper);
 void replace_all(std::string& str, const std::string& from, const std::string& to);
 void print_progress(float progress, std::string label, bool verbose);

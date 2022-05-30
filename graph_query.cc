@@ -188,11 +188,11 @@ std::string get_return_value_from_traces_data(
         const opentelemetry::proto::trace::v1::Span *sp =
             &trace_data->resource_spans(0).scope_spans(0).spans(i);
         auto span_id = sp->opentelemetry::proto::trace::v1::Span::span_id();
-        if (hex_str(span_id, span_id.size()).compare(span_to_find) == 0) {
+        if (is_same_hex_str(span_id, span_id.size(), span_to_find)) {
             return get_value_as_string(sp, ret.func, ret.type);
         }
     }
-    std::cerr << "didn't find the span I was looking for " << std::endl << std::flush;
+    std::cerr << "didn't find the span " << span_to_find << " I was looking for " << std::endl << std::flush;
     return "";
 }
 std::vector<std::string> get_return_value(
@@ -394,8 +394,7 @@ bool does_span_satisfy_condition(
     for (int i=0; i < trace_data->resource_spans(0).scope_spans(0).spans_size(); i++) {
         sp = &(trace_data->resource_spans(0).scope_spans(0).spans(i));
 
-        std::string current_span_id = hex_str(sp->span_id(), sp->span_id().length());
-        if (current_span_id == span_id) {
+        if (is_same_hex_str(sp->span_id(), sp->span_id().length(), span_id)) {
             return does_condition_hold(sp, condition);
         }
     }
