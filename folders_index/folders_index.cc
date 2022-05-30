@@ -15,6 +15,11 @@ int update_index(gcs::Client* client, time_t last_updated, std::string indexed_a
 			trace_struct_object_names, i, thread_pool_size);
 	}
 
+	auto bucket_name = get_bucket_name_for_attr(indexed_attribute);
+	batch_timestamp timestamp = extract_batch_timestamps_struct(
+		trace_struct_object_names[trace_struct_object_names.size()-1]);
+	update_last_updated_label_if_needed(bucket_name, timestamp.end_time, client);
+
 	return 0;
 }
 
@@ -424,6 +429,16 @@ void create_index_bucket_if_not_present(std::string indexed_attribute, gcs::Clie
 		std::cerr << "Error creating bucket " << bucket_name << ", status=" << bucket_metadata.status() << "\n";
 		exit(1);
 	}
+
+	auto updated_metadata = client->PatchBucket(bucket_name,
+		gcs::BucketMetadataPatchBuilder().SetLabel("bucket_type", "folder_index"));
+
+    if (!updated_metadata) {
+      std::cerr << updated_metadata.status().message() << std::endl;
+	  exit(1);
+    }
+
+	return;
 }
 
 std::string read_bucket_label(std::string bucket_name, std::string label_key, gcs::Client* client) {
