@@ -269,12 +269,12 @@ std::vector<std::string> get_return_value(
                     opentelemetry::proto::trace::v1::TracesData* trace_data =
                         &data.spans_objects_by_bn_sn[object][service_name];
                     return_values_fut.push_back(std::async(std::launch::async, get_return_value_from_traces_data,
-                        trace_data, span_id_to_find, ret
-                    ));
+                        trace_data, span_id_to_find, ret));
                 } else {
-                    return_values_fut.push_back(std::async(std::launch::async, retrieve_object_and_get_return_value_from_traces_data,
-                        service_name+BUCKETS_SUFFIX, object, span_id_to_find, ret, client
-                    ));
+                    return_values_fut.push_back(std::async(std::launch::async,
+                        retrieve_object_and_get_return_value_from_traces_data,
+                        service_name+BUCKETS_SUFFIX, object, span_id_to_find, ret,
+                        client));
                 }
             }
         }
