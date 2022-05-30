@@ -2,15 +2,18 @@
 
 std::vector<std::string> split_by_string(std::string& str, const char* ch) {
     std::vector<std::string> tokens;
-    std::string ch_str(ch);
-    std::string reg = "(" + ch_str + ")+";
-    split_regex(tokens, str, boost::regex(reg));
+    // https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
 
-    std::vector<std::string> response;
-    for (int i = 0; i < tokens.size(); i++) {
-        response.push_back(strip_from_the_end(tokens[i], '\n'));
+    auto start = 0;
+    auto end = str.find(ch);
+    while (end != std::string::npos) {
+        tokens.push_back(strip_from_the_end(str.substr(start, end-start), '\n'));
+        start = end + strlen(ch);
+        end = str.find(ch, start);
     }
-    return response;
+    tokens.push_back(strip_from_the_end(str.substr(start, end), '\n'));
+
+    return tokens;
 }
 
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(

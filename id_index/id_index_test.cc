@@ -86,3 +86,12 @@ TEST(Arithmetic, TestGetParentArithmetic) {
     std::tuple<time_t, time_t> answer3 = std::make_tuple(0, 1000);
     EXPECT_EQ(ret3, answer3);
 }
+
+TEST(SplitStr, TestSplitByString) {
+    std::string s = "abcd:efg:hi\n";
+    std::vector<std::string> tokens = split_by_string(s, colon);
+    EXPECT_EQ(3, tokens.size());
+    EXPECT_EQ(0, tokens[0].compare("abcd"));
+    EXPECT_EQ(0, tokens[1].compare("efg"));
+    EXPECT_EQ(0, tokens[2].compare("hi"));
+}
