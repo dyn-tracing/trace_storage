@@ -192,7 +192,7 @@ std::string get_return_value_from_traces_data(
             return get_value_as_string(sp, ret.func, ret.type);
         }
     }
-    //std::cerr << "didn't find the span " << span_to_find << " I was looking for " << std::endl << std::flush;
+    std::cerr << "didn't find the span " << span_to_find << " I was looking for " << std::endl << std::flush;
     return "";
 }
 std::vector<std::string> get_return_value(
