@@ -58,17 +58,15 @@ bool is_same_hex_str(const std::string &data, int len, std::string &compare) {
     constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
     for (int i = 0; i < len; ++i) {
-    
         if (compare[2 * i] != hexmap[(data[i] & 0xF0) >> 4]) {
             return false;
         }
-        
+
         if (compare[2 * i + 1]  != hexmap[data[i] & 0x0F]) {
             return false;
         }
     }
     return true;
-
 }
 
 
