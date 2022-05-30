@@ -85,6 +85,8 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
     std::string suffix(BUCKETS_SUFFIX);
     std::string trace_hashes_bucket(TRACE_HASHES_BUCKET_PREFIX);
 
+    std::string root_service_name = "";
+
     for (auto&& object_metadata : client->ListObjects(trace_hashes_bucket+suffix, gcs::Prefix(prefix))) {
         if (!object_metadata) {
             std::cerr << object_metadata.status().message() << std::endl;
@@ -130,8 +132,12 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
         nn.push_back(candidate_trace.node_names);
         to_return.trace_node_names = nn;
 
+        if (root_service_name == "") {
+            root_service_name = get_root_service_name(trace);
+        }
+
         auto trace_ids_to_append = filter_trace_ids_based_on_query_timestamp(
-            response_trace_ids, batch_name, object_content, start_time, end_time, client);
+            response_trace_ids, batch_name, start_time, end_time, root_service_name, client);
 
         int trace_id_offset = to_return.trace_ids.size();
         to_return.trace_ids.insert(to_return.trace_ids.end(),
@@ -152,6 +158,43 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
     return to_return;
 }
 
+std::string get_root_service_name(std::string trace) {
+    std::vector<std::string> trace_lines = split_by_string(trace, newline);
+    for (auto line : trace_lines) {
+        if (line.substr(0, 1) == ":") {
+            std::vector<std::string> root_span_info = split_by_string(line, colon);
+            std::string root_service = root_span_info[2];
+            return root_service;
+        }
+    }
+    return "";
+}
+
+std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
+    std::vector<std::string> trace_ids,
+    std::string batch_name,
+    int start_time,
+    int end_time,
+    std::string root_service_name,
+    gcs::Client* client) {
+    std::vector<std::string> response;
+
+    std::string buckets_suffix(BUCKETS_SUFFIX);
+    std::string bucket = root_service_name + buckets_suffix;
+    std::string spans_data = read_object(bucket, batch_name, client);
+
+    std::map<std::string, std::pair<int, int>>
+    trace_id_to_timestamp_map = get_timestamp_map_for_trace_ids(spans_data, trace_ids);
+
+    for (auto& trace_id : trace_ids) {
+        std::pair<int, int> trace_timestamp = trace_id_to_timestamp_map[trace_id];
+        if (is_object_within_timespan(trace_timestamp, start_time, end_time)) {
+            response.push_back(trace_id);
+        }
+    }
+
+    return response;
+}
 
 /**
  * @brief Get the isomorphism mappings object
