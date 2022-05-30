@@ -30,16 +30,17 @@ std::vector<std::string> query(
             start_time, end_time, &conditions[i], i_type, client));
         }
     }
+    print_progress(0, "Retrieving indices");
 
-    std::cout << "launched all futures for indices" << std::endl << std::flush;
-
+    size_t irf_size = index_results_futures.size();
     std::vector<objname_to_matching_trace_ids> index_results;
-    for (int i=0; i < index_results_futures.size(); i++) {
+    for (int i=0; i < irf_size; i++) {
         index_results.push_back(index_results_futures[i].get());
+        print_progress((i+1.0)/(irf_size+1.0), "Retrieving indices");
     }
     auto struct_results = struct_filter_obj.get();
-
-    std::cout << "retrieved all futures for indices" << std::endl << std::flush;
+    print_progress(1, "Retrieving indices");
+    std::cout << std::endl;
 
     objname_to_matching_trace_ids intersection = intersect_index_results(index_results, struct_results);
 
@@ -49,10 +50,16 @@ std::vector<std::string> query(
         conditions,
         client);
 
+    std::cout << "fetched data" << std::endl;
+
     auto filtered = filter_based_on_conditions(
         intersection, struct_results, conditions, fetched, ret);
 
-    return get_return_value(filtered, ret, fetched, query_trace, client);
+    std::cout << "filtered based on conditions" << std::endl;
+
+    auto returned = get_return_value(filtered, ret, fetched, query_trace, client);
+    std::cout << "len returned is " << returned.size() << std::endl;
+    return returned;
 }
 
 index_type is_indexed(query_condition *condition, gcs::Client* client) {
@@ -125,8 +132,10 @@ objname_to_matching_trace_ids intersect_index_results(
     // Eventually we should parallelize this, but I'm not optimizing it
     // until we measure the rest of the code
     // Premature optimization is of the devil and all that.
+    print_progress(0, "Intersecting results");
     std::map<std::tuple<std::string, std::string>, int> count;
     for (int i=0; i < index_results.size(); i++) {
+        print_progress(i/index_results.size(), "Intersecting results");
         for (auto const &obj_to_id : index_results[i]) {
             std::string object = obj_to_id.first;
             for (int j=0; j < obj_to_id.second.size(); j++) {
@@ -159,6 +168,8 @@ objname_to_matching_trace_ids intersect_index_results(
             to_return[object].push_back(trace_id);
         }
     }
+    print_progress(1, "Intersecting results");
+    std::cout << std::endl;
     return to_return;
 }
 
@@ -168,6 +179,7 @@ std::string get_return_value_from_traces_data(
     return_value &ret
 ) {
      int sp_size = trace_data.resource_spans(0).scope_spans(0).spans_size();
+     std::cout << "going through " << sp_size << " spans" << std::endl << std::flush;
      for (int i=0; i < sp_size; i++) {
         const opentelemetry::proto::trace::v1::Span sp =
             trace_data.resource_spans(0).scope_spans(0).spans(i);
@@ -175,13 +187,18 @@ std::string get_return_value_from_traces_data(
             return get_value_as_string(&sp, ret.func, ret.type);
         }
     }
+    std::cout << "didn't find the span I was looking for " << std::endl << std::flush;
+    return "";
 }
 std::vector<std::string> get_return_value(
     std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
     return_value ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client) {
     std::vector<std::string> to_return;
+
     for (auto const &obj_to_trace_ids : std::get<0>(filtered)) {
         std::string object = obj_to_trace_ids.first;
+        std::cout << "object is " << object << std::endl;
+        std::cout << "object has " << obj_to_trace_ids.second.size() << " trace ids" << std::endl << std::flush;
         for (int i=0; i < obj_to_trace_ids.second.size(); i++) {
             std::string trace_id = obj_to_trace_ids.second[i];
             // for each trace id, there may be multiple isomaps
@@ -191,8 +208,10 @@ std::vector<std::string> get_return_value(
 
                 if (data.spans_objects_by_bn_sn[object].find(service_name) !=
                     data.spans_objects_by_bn_sn[object].end()) {
+                     std::cout << "we already have this data; just gotta look it up " << std::endl << std::flush;
                      opentelemetry::proto::trace::v1::TracesData trace_data =
                         data.spans_objects_by_bn_sn[object][service_name];
+                     std::cout << "trace data has been retrieved " << std::endl << std::flush;
                      to_return.push_back(get_return_value_from_traces_data(trace_data, span_id_to_find, ret));
                 } else {
                     // we need to retrieve the data, and then we can iterate through and get return val

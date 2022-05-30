@@ -5,8 +5,10 @@
 int main(int argc, char* argv[]) {
     // query trace structure
     trace_structure query_trace;
-    query_trace.num_nodes = 1;
-    query_trace.node_names.insert(std::make_pair(0, "currencyservice"));
+    query_trace.num_nodes = 3;
+    query_trace.node_names.insert(std::make_pair(0, "frontend"));
+    query_trace.node_names.insert(std::make_pair(1, "adservice"));
+    query_trace.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
 
     query_trace.edges.insert(std::make_pair(0, 1));
     query_trace.edges.insert(std::make_pair(1, 2));
@@ -40,9 +42,8 @@ int main(int argc, char* argv[]) {
     ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::parent_span_id;
 
     ret.func = ret_union;
-    auto res = query(query_trace, 1653919700, 1653919900, conditions, ret, &client);
-    std::cout << "Total traces: " << res.size() << std::endl;
-    std::cout << "Example output: " << res[0] << std::endl;
+    auto res = query(query_trace, 1653919700, 1653919710, conditions, ret, &client);
+    std::cout << "Total output: " << res.size() << std::endl;
 
     // std::string batch = query_bloom_index_for_value(&client, "c5367e16e960a3452529e44d035a9bec", "new_id_index");
     // std::cout << "batch " << batch << std::endl;
