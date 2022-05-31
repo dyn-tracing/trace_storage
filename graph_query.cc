@@ -61,13 +61,14 @@ std::vector<std::string> query(
     start = boost::posix_time::microsec_clock::local_time();
 
     ret_req_data spans_objects_by_bn_sn = fetch_return_data(filtered, ret, fetched, query_trace, client);
-    std::cout << "fetched ret data" << std::endl;
     auto returned = get_return_value(filtered, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
+
     stop = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration dur = stop - start;
     int64_t milliseconds = dur.total_milliseconds();
-    std::cout << "Time taken: " << milliseconds << std::endl;
+    std::cout << "Time taken by get_return_value: " << milliseconds << std::endl;
     std::cout << "len returned is " << returned.size() << std::endl;
+
     return returned;
 }
 
