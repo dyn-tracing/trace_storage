@@ -82,9 +82,9 @@ ret_req_data fetch_return_data(
         std::string object = obj_to_trace_ids.first;
         std::string service_name = query_trace.node_names[ret.node_index];
         if (
-            (data.spans_objects_by_bn_sn[object].find(service_name) == 
+            (data.spans_objects_by_bn_sn[object].find(service_name) ==
                 data.spans_objects_by_bn_sn[object].end())
-            && 
+            &&
             (response[object].find(service_name) ==
                 response[object].end())
         ) {
