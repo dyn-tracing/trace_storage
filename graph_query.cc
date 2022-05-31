@@ -59,13 +59,39 @@ std::vector<std::string> query(
 
     boost::posix_time::ptime start, stop;
     start = boost::posix_time::microsec_clock::local_time();
-    auto returned = get_return_value(filtered, ret, fetched, query_trace, client);
+
+    ret_req_data spans_objects_by_bn_sn = fetch_return_data(filtered, ret, fetched, query_trace, client);
+    std::cout << "fetched ret data" << std::endl;
+    auto returned = get_return_value(filtered, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
     stop = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration dur = stop - start;
     int64_t milliseconds = dur.total_milliseconds();
     std::cout << "Time taken: " << milliseconds << std::endl;
     std::cout << "len returned is " << returned.size() << std::endl;
     return returned;
+}
+
+ret_req_data fetch_return_data(
+    std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
+    return_value &ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client
+) {
+    ret_req_data response;
+
+    for (auto const &obj_to_trace_ids : std::get<0>(filtered)) {
+        std::string object = obj_to_trace_ids.first;
+        std::string service_name = query_trace.node_names[ret.node_index];
+        if (
+            (data.spans_objects_by_bn_sn[object].find(service_name) == 
+                data.spans_objects_by_bn_sn[object].end())
+            && 
+            (response[object].find(service_name) ==
+                response[object].end())
+        ) {
+            response[object][service_name] = read_object_and_parse_traces_data(
+                service_name+BUCKETS_SUFFIX, object, client);
+        }
+    }
+    return response;
 }
 
 index_type is_indexed(query_condition *condition, gcs::Client* client) {
@@ -244,8 +270,9 @@ std::string retrieve_object_and_get_return_value_from_traces_data(
 
 std::vector<std::string> get_return_value(
     std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
-    return_value &ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client) {
-
+    return_value &ret, fetched_data &data, trace_structure &query_trace,
+    ret_req_data &spans_objects_by_bn_sn, gcs::Client* client
+) {
     std::vector<std::future<std::string>> return_values_fut;
     std::unordered_set<std::string> span_ids;
 
@@ -270,11 +297,15 @@ std::vector<std::string> get_return_value(
                         &data.spans_objects_by_bn_sn[object][service_name];
                     return_values_fut.push_back(std::async(std::launch::async, get_return_value_from_traces_data,
                         trace_data, span_id_to_find, ret));
+                } else if (spans_objects_by_bn_sn[object].find(service_name) !=
+                    spans_objects_by_bn_sn[object].end()) {
+                    opentelemetry::proto::trace::v1::TracesData* trace_data =
+                        &spans_objects_by_bn_sn[object][service_name];
+                    return_values_fut.push_back(std::async(std::launch::async, get_return_value_from_traces_data,
+                        trace_data, span_id_to_find, ret));
                 } else {
-                    return_values_fut.push_back(std::async(std::launch::async,
-                        retrieve_object_and_get_return_value_from_traces_data,
-                        service_name+BUCKETS_SUFFIX, object, span_id_to_find, ret,
-                        client));
+                    std::cout << "wttd " << service_name << " " << object << std::endl;
+                    exit(1);
                 }
             }
         }
