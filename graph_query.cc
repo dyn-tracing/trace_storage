@@ -51,7 +51,6 @@ std::vector<std::string> query(
         client);
 
     std::cout << "fetched data" << std::endl;
-
     auto filtered = filter_based_on_conditions(
         intersection, struct_results, conditions, fetched, ret);
 
@@ -299,6 +298,13 @@ fetched_data fetch_data(
 ) {
     fetched_data response;
 
+    std::unordered_map<
+        std::string,
+        std::unordered_map<
+            std::string,
+            std::future<
+                opentelemetry::proto::trace::v1::TracesData>>> response_futures;
+
     std::string trace_structure_bucket_prefix(TRACE_STRUCT_BUCKET_PREFIX);
     std::string buckets_suffix(BUCKETS_SUFFIX);
 
@@ -329,10 +335,24 @@ fetched_data fetch_data(
                  * more than once.
                  */
                 auto service_name_without_hash_id = split_by_string(condition_service, ":")[0];
-                auto trace_data = read_object_and_parse_traces_data(
-                    service_name_without_hash_id+BUCKETS_SUFFIX, batch_name, client);
-                response.spans_objects_by_bn_sn[batch_name][service_name_without_hash_id] = trace_data;
+                if (response_futures[batch_name].find(service_name_without_hash_id) ==
+                    response_futures[batch_name].end()
+                ) {
+                    response_futures[batch_name][service_name_without_hash_id] = std::async(
+                        std::launch::async,
+                        read_object_and_parse_traces_data,
+                        service_name_without_hash_id+BUCKETS_SUFFIX, batch_name, client);
+
+                }
             }
+        }
+    }
+
+    for (auto& first_kv : response_futures) {
+        auto bn = first_kv.first;
+        for (auto& second_kv : first_kv.second) {
+            auto sn = second_kv.first;
+            response.spans_objects_by_bn_sn[bn][sn] = second_kv.second.get();
         }
     }
 
