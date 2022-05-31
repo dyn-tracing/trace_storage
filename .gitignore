@@ -1,2 +1,4 @@
 bazel-*
 dynamic-tracing-9e49ad4e08d7.json
+/CMakeLists.txt
+/cmake-build-debug/
