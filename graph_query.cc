@@ -374,7 +374,6 @@ fetched_data fetch_data(
                         std::launch::async,
                         read_object_and_parse_traces_data,
                         service_name_without_hash_id+BUCKETS_SUFFIX, batch_name, client);
-
                 }
             }
         }
