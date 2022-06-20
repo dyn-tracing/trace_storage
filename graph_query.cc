@@ -22,10 +22,15 @@ std::vector<std::string> query(
         get_traces_by_structure,
         query_trace, start_time, end_time, client);
 
+    time_t earliest_last_updated = -1;
     std::vector<std::future<objname_to_matching_trace_ids>> index_results_futures;
     for (int i=0; i < conditions.size(); i++) {
-        index_type i_type = is_indexed(&conditions[i], client);
+        auto indexed = is_indexed(&conditions[i], client);
+        index_type i_type = std::get<0>(indexed);
         if (i_type != none) {
+            if (earliest_last_updated == -1 || std::get<1>(indexed) < earliest_last_updated) {
+                earliest_last_updated = std::get<1>(indexed);
+            }
             index_results_futures.push_back(std::async(std::launch::async, get_traces_by_indexed_condition,
             start_time, end_time, &conditions[i], i_type, client));
         }
@@ -42,7 +47,8 @@ std::vector<std::string> query(
     print_progress(1, "Retrieving indices", verbose);
     std::cout << std::endl;
 
-    objname_to_matching_trace_ids intersection = intersect_index_results(index_results, struct_results, verbose);
+    objname_to_matching_trace_ids intersection = intersect_index_results(
+        index_results, struct_results, earliest_last_updated, verbose);
 
     fetched_data fetched = fetch_data(
         struct_results,
@@ -94,28 +100,45 @@ ret_req_data fetch_return_data(
     return response;
 }
 
-index_type is_indexed(query_condition *condition, gcs::Client* client) {
+// Returns index type and last updated
+std::tuple<index_type, time_t> is_indexed(query_condition *condition, gcs::Client* client) {
     std::string bucket_name = condition->property_name;
     replace_all(bucket_name, ".", "-");
     StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->GetBucketMetadata(bucket_name);
     if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound) {
-        return none;
+        return std::make_pair(none, 0);
     }
     if (!bucket_metadata) {
         std::cout << "in error within is_indexed" << std::endl << std::flush;
         throw std::runtime_error(bucket_metadata.status().message());
     }
+    bool bloom_index = false;
+    bool folder_index = false;
+    time_t last_indexed = 0;
     for (auto const& kv : bucket_metadata->labels()) {
         if (kv.first == "bucket_type") {
             if (kv.second == "bloom_index") {
-                return bloom;
+                bloom_index = true;
             } else if (kv.first == "folder_index") {
-                return folder;
+                folder_index = true;
             }
         }
+        if (kv.first == "last_indexed")  {
+            last_indexed = std::stoi(kv.second);
+        }
+        if (kv.first == "root") {
+            auto boundary_times = split_by_string(kv.second, hyphen);
+            last_indexed = std::stoi(boundary_times[0]);
+        }
     }
-    return not_found;
+    if (bloom_index) {
+       return std::make_pair(bloom, last_indexed);
+    }
+    if (folder_index) {
+        return std::make_pair(folder, last_indexed);
+    }
+    return std::make_pair(not_found, 0);
 }
 
 objname_to_matching_trace_ids get_traces_by_indexed_condition(
@@ -193,7 +216,7 @@ std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>
 
 objname_to_matching_trace_ids intersect_index_results(
     std::vector<objname_to_matching_trace_ids> &index_results,
-    traces_by_structure &structural_results, bool verbose) {
+    traces_by_structure &structural_results, time_t last_updated, bool verbose) {
     // Easiest solution is just keep a count
     // Eventually we should parallelize this, but I'm not optimizing it
     // until we measure the rest of the code
@@ -228,10 +251,16 @@ objname_to_matching_trace_ids intersect_index_results(
     int goal_num = index_results.size() + 1;
     objname_to_matching_trace_ids to_return;
     for (auto const &pair : count) {
+        auto object = std::get<0>(pair.first);
         if (pair.second == goal_num) {
-            auto object = std::get<0>(pair.first);
             auto trace_id = std::get<1>(pair.first);
             to_return[object].push_back(trace_id);
+        } else {
+            auto timestamps = extract_batch_timestamps(object);
+            if (std::get<0>(timestamps) > last_updated) {
+                auto trace_id = std::get<1>(pair.first);
+                to_return[object].push_back(trace_id);
+            }
         }
     }
     print_progress(1, "Intersecting results", verbose);

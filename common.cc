@@ -1,6 +1,6 @@
 #include "common.h"
 
-std::vector<std::string> split_by_string(std::string& str, const char* ch) {
+std::vector<std::string> split_by_string(const std::string& str, const char* ch) {
     std::vector<std::string> tokens;
     // https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
 
