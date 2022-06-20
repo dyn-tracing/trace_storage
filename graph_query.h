@@ -65,7 +65,8 @@ fetched_data fetch_data(
     std::vector<query_condition> &conditions,
     gcs::Client* client
 );
-index_type is_indexed(const query_condition *condition, gcs::Client* client);
+
+std::tuple<index_type, time_t>  is_indexed(const query_condition *condition, gcs::Client* client);
 bool does_span_satisfy_condition(
     std::string &span_id, std::string &service_name,
     query_condition &condition, const std::string &batch_name, fetched_data& evaluation_data
@@ -110,7 +111,7 @@ std::vector<std::string> get_return_value(
 );
 objname_to_matching_trace_ids intersect_index_results(
     std::vector<objname_to_matching_trace_ids> &index_results,
-    traces_by_structure &structural_results, bool verbose);
+    traces_by_structure &structural_results, time_t last_indexed, bool verbose);
 
 int dummy_tests();
 
