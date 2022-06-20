@@ -50,10 +50,8 @@ enum index_type {
     not_found,
 };
 
-
-
 /// **************** pure string processing ********************************
-std::vector<std::string> split_by_string(std::string& str,  const char* ch);
+std::vector<std::string> split_by_string(const std::string& str,  const char* ch);
 std::string hex_str(const std::string &data, int len);
 bool is_same_hex_str(const std::string &data, int len, const std::string &compare);
 std::string strip_from_the_end(std::string object, char stripper);
@@ -62,7 +60,7 @@ void print_progress(float progress, std::string label, bool verbose);
 
 /// *********** string processing according to system conventions **********
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
-    std::string spans_data, std::vector<std::string> trace_ids);
+    const std::string &spans_data, const std::vector<std::string> &trace_ids);
 bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, int end_time);
 std::string extract_batch_name(std::string object_name);
 std::pair<int, int> extract_batch_timestamps(std::string batch_name);
@@ -74,8 +72,8 @@ std::string extract_trace_from_traces_object(std::string trace_id, std::string& 
 
 /// **************** GCS processing ********************************
 opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
-    std::string bucket, std::string object_name, gcs::Client* client);
-std::string read_object(std::string bucket, std::string object, gcs::Client* client);
+    const std::string &bucket, const std::string &object_name, gcs::Client* client);
+std::string read_object(const std::string &bucket, const std::string &object, gcs::Client* client);
 
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     std::vector<std::string> trace_ids,

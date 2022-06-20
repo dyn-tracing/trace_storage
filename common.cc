@@ -1,6 +1,6 @@
 #include "common.h"
 
-std::vector<std::string> split_by_string(std::string& str, const char* ch) {
+std::vector<std::string> split_by_string(const std::string& str, const char* ch) {
     std::vector<std::string> tokens;
     // https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
 
@@ -17,10 +17,10 @@ std::vector<std::string> split_by_string(std::string& str, const char* ch) {
 }
 
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
-    std::string spans_data, std::vector<std::string> trace_ids) {
+    const std::string &spans_data, const std::vector<std::string> &trace_ids) {
     std::map<std::string, std::pair<int, int>> response;
 
-    opentelemetry::proto::trace::v1::TracesData trace_data;
+    ot::TracesData trace_data;
     bool ret = trace_data.ParseFromString(spans_data);
     if (false == ret) {
         std::cerr << "Error in ParseFromString" << std::endl;
@@ -28,7 +28,7 @@ std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
     }
 
     for (int i=0; i < trace_data.resource_spans(0).scope_spans(0).spans_size(); i++) {
-        const opentelemetry::proto::trace::v1::Span* sp = &trace_data.resource_spans(0).scope_spans(0).spans(i);
+        const ot::Span* sp = &trace_data.resource_spans(0).scope_spans(0).spans(i);
         std::string trace_id = hex_str(sp->trace_id(), sp->trace_id().length());
 
         // getting timestamps and converting from nanosecond precision to seconds precision
@@ -41,7 +41,7 @@ std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
     return response;
 }
 
-std::string hex_str(const std::string &data, int len) {
+std::string hex_str(const std::string &data, const int len) {
     constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
     std::string s(len * 2, ' ');
@@ -53,7 +53,7 @@ std::string hex_str(const std::string &data, int len) {
     return s;
 }
 
-bool is_same_hex_str(const std::string &data, int len, const std::string &compare) {
+bool is_same_hex_str(const std::string &data, const int len, const std::string &compare) {
     assert(compare.size() == len*2);
     constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
@@ -71,11 +71,11 @@ bool is_same_hex_str(const std::string &data, int len, const std::string &compar
 
 
 
-opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
-    std::string bucket, std::string object_name, gcs::Client* client
+ot::TracesData read_object_and_parse_traces_data(
+    const std::string &bucket, const std::string& object_name, gcs::Client* client
 ) {
     auto data = read_object(bucket, object_name, client);
-    opentelemetry::proto::trace::v1::TracesData trace_data;
+    ot::TracesData trace_data;
     if (data == "") {
         return trace_data;
     }
@@ -89,7 +89,7 @@ opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
     return trace_data;
 }
 
-std::string read_object(std::string bucket, std::string object, gcs::Client* client) {
+std::string read_object(const std::string &bucket, const std::string &object, gcs::Client* client) {
     auto reader = client->ReadObject(bucket, object);
     if (!reader) {
         if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
@@ -158,11 +158,11 @@ std::pair<int, int> extract_batch_timestamps(std::string batch_name) {
 }
 
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
-    std::vector<std::string> trace_ids,
-    std::string batch_name,
-    std::string object_content,
-    int start_time,
-    int end_time,
+    const std::vector<std::string> trace_ids,
+    const std::string batch_name,
+    const std::string object_content,
+    const int start_time,
+    const int end_time,
     gcs::Client* client) {
     std::vector<std::string> response;
 
