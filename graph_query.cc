@@ -47,7 +47,8 @@ std::vector<std::string> query(
     print_progress(1, "Retrieving indices", verbose);
     std::cout << std::endl;
 
-    objname_to_matching_trace_ids intersection = intersect_index_results(index_results, struct_results, earliest_last_updated, verbose);
+    objname_to_matching_trace_ids intersection = intersect_index_results(
+        index_results, struct_results, earliest_last_updated, verbose);
 
     fetched_data fetched = fetch_data(
         struct_results,
@@ -132,7 +133,7 @@ std::tuple<index_type, time_t> is_indexed(query_condition *condition, gcs::Clien
         }
     }
     if (bloom_index) {
-       return std::make_pair(bloom, last_indexed); 
+       return std::make_pair(bloom, last_indexed);
     }
     if (folder_index) {
         return std::make_pair(folder, last_indexed);
