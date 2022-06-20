@@ -33,6 +33,7 @@ std::vector<std::string> query(
     print_progress(0, "Retrieving indices", verbose);
 
     std::vector<objname_to_matching_trace_ids> index_results;
+    index_results.reserve(index_results_futures.size());
     for (int i=0; i < index_results_futures.size(); i++) {
         index_results.push_back(index_results_futures[i].get());
         print_progress((i+1.0)/(index_results_futures.size()+1.0), "Retrieving indices", verbose);
@@ -240,16 +241,16 @@ objname_to_matching_trace_ids intersect_index_results(
 }
 
 std::string get_return_value_from_traces_data(
-    opentelemetry::proto::trace::v1::TracesData *trace_data,
+    ot::TracesData *trace_data,
     const std::string span_to_find,
     return_value ret
 ) {
      int sp_size = trace_data->resource_spans(0).scope_spans(0).spans_size();
      for (int i=0; i < sp_size; i++) {
-        const opentelemetry::proto::trace::v1::Span *sp =
+        const ot::Span *sp =
             &trace_data->resource_spans(0).scope_spans(0).spans(i);
-        auto span_id = sp->opentelemetry::proto::trace::v1::Span::span_id();
-        if (is_same_hex_str(span_id, span_id.size(), span_to_find)) {
+        auto span_id = sp->ot::Span::span_id();
+        if (is_same_hex_str(span_id, span_to_find)) {
             return get_value_as_string(sp, ret.func, ret.type);
         }
     }
@@ -263,7 +264,7 @@ std::string retrieve_object_and_get_return_value_from_traces_data(
     return_value ret, gcs::Client* client
 ) {
     std::string contents = read_object(bucket_name, object_name, client);
-    opentelemetry::proto::trace::v1::TracesData trace_data;
+    ot::TracesData trace_data;
     trace_data.ParseFromString(contents);
     return get_return_value_from_traces_data(&trace_data, span_to_find, ret);
 }
@@ -293,13 +294,13 @@ std::vector<std::string> get_return_value(
 
                 if (data.spans_objects_by_bn_sn[object].find(service_name) !=
                     data.spans_objects_by_bn_sn[object].end()) {
-                    opentelemetry::proto::trace::v1::TracesData* trace_data =
+                    ot::TracesData* trace_data =
                         &data.spans_objects_by_bn_sn[object][service_name];
                     return_values_fut.push_back(std::async(std::launch::async, get_return_value_from_traces_data,
                         trace_data, span_id_to_find, ret));
                 } else if (spans_objects_by_bn_sn[object].find(service_name) !=
                     spans_objects_by_bn_sn[object].end()) {
-                    opentelemetry::proto::trace::v1::TracesData* trace_data =
+                    ot::TracesData* trace_data =
                         &spans_objects_by_bn_sn[object][service_name];
                     return_values_fut.push_back(std::async(std::launch::async, get_return_value_from_traces_data,
                         trace_data, span_id_to_find, ret));
@@ -335,7 +336,7 @@ fetched_data fetch_data(
         std::unordered_map<
             std::string,
             std::future<
-                opentelemetry::proto::trace::v1::TracesData>>> response_futures;
+                ot::TracesData>>> response_futures;
 
     std::string trace_structure_bucket_prefix(TRACE_STRUCT_BUCKET_PREFIX);
     std::string buckets_suffix(BUCKETS_SUFFIX);
@@ -463,22 +464,17 @@ std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_s
 
         std::string trace = extract_trace_from_traces_object(trace_id,
             evaluation_data.structural_objects_by_bn[batch_name]);
-        std::vector<std::string> trace_lines = split_by_string(trace, newline);
 
-        for (auto line : trace_lines) {
+        for (auto line : split_by_string(trace, newline)) {
             if (line.find(return_service) != std::string::npos) {
-                auto span_info = split_by_string(line, colon);
-                auto span_id = span_info[1];
-                node_ind_to_span_id_map[ret.node_index] = span_id;
+                node_ind_to_span_id_map[ret.node_index] = split_by_string(line, colon)[1];
             }
 
             if (line.find(condition_service) != std::string::npos) {
                 auto span_info = split_by_string(line, colon);
-                auto span_id = span_info[1];
-                auto service_name = span_info[2];
-                node_ind_to_span_id_map[curr_condition.node_index] = span_id;
+                node_ind_to_span_id_map[curr_condition.node_index] = span_info[1];
                 does_trace_satisfy_condition = does_span_satisfy_condition(
-                    span_id, service_name, curr_condition, batch_name, evaluation_data);
+                    span_info[1], span_info[2], curr_condition, batch_name, evaluation_data);
             }
         }
 
@@ -501,14 +497,13 @@ bool does_span_satisfy_condition(
             exit(1);
     }
 
-    opentelemetry::proto::trace::v1::TracesData* trace_data = &(
-        evaluation_data.spans_objects_by_bn_sn[batch_name][service_name]);
+    ot::TracesData* trace_data = &(evaluation_data.spans_objects_by_bn_sn[batch_name][service_name]);
 
-    const opentelemetry::proto::trace::v1::Span* sp;
+    const ot::Span* sp;
     for (int i=0; i < trace_data->resource_spans(0).scope_spans(0).spans_size(); i++) {
         sp = &(trace_data->resource_spans(0).scope_spans(0).spans(i));
 
-        if (is_same_hex_str(sp->span_id(), sp->span_id().length(), span_id)) {
+        if (is_same_hex_str(sp->span_id(), span_id)) {
             return does_condition_hold(sp, condition);
         }
     }

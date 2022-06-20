@@ -42,8 +42,6 @@ std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
 }
 
 std::string hex_str(const std::string &data, const int len) {
-    constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-
     std::string s(len * 2, ' ');
     for (int i = 0; i < len; ++i) {
         s[2 * i]     = hexmap[(data[i] & 0xF0) >> 4];
@@ -53,10 +51,8 @@ std::string hex_str(const std::string &data, const int len) {
     return s;
 }
 
-bool is_same_hex_str(const std::string &data, const int len, const std::string &compare) {
-    assert(compare.size() == len*2);
-    constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-
+bool is_same_hex_str(const std::string &data, const std::string &compare) {
+    constexpr int len = 8;
     for (int i = 0; i < len; ++i) {
         if (compare[2 * i] != hexmap[(data[i] & 0xF0) >> 4]) {
             return false;
@@ -148,6 +144,7 @@ std::string extract_batch_name(const std::string &object_name) {
 
 std::pair<int, int> extract_batch_timestamps(const std::string &batch_name) {
     std::vector<std::string> result;
+    result.reserve(3);
     boost::split(result, batch_name, boost::is_any_of("-"));
     if (result.size() != 3) {
         std::cerr << "Error in extract_batch_timestamps with batch name: " << batch_name << std::endl;
@@ -227,7 +224,7 @@ std::string extract_any_trace(std::vector<std::string>& trace_ids, std::string& 
 	return "";
 }
 
-std::string extract_trace_from_traces_object(std::string trace_id, std::string& object_content) {
+std::string extract_trace_from_traces_object(const std::string &trace_id, std::string& object_content) {
 	const int start_ind = object_content.find("Trace ID: " + trace_id + ":");
 	if (start_ind == std::string::npos) {
 		return "";
