@@ -32,11 +32,10 @@ std::vector<std::string> query(
     }
     print_progress(0, "Retrieving indices", verbose);
 
-    size_t irf_size = index_results_futures.size();
     std::vector<objname_to_matching_trace_ids> index_results;
-    for (int i=0; i < irf_size; i++) {
+    for (int i=0; i < index_results_futures.size(); i++) {
         index_results.push_back(index_results_futures[i].get());
-        print_progress((i+1.0)/(irf_size+1.0), "Retrieving indices", verbose);
+        print_progress((i+1.0)/(index_results_futures.size()+1.0), "Retrieving indices", verbose);
     }
     auto struct_results = struct_filter_obj.get();
     print_progress(1, "Retrieving indices", verbose);
@@ -72,7 +71,7 @@ std::vector<std::string> query(
 }
 
 ret_req_data fetch_return_data(
-    std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
+    const std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
     return_value &ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client
 ) {
     ret_req_data response;
@@ -94,7 +93,7 @@ ret_req_data fetch_return_data(
     return response;
 }
 
-index_type is_indexed(query_condition *condition, gcs::Client* client) {
+index_type is_indexed(const query_condition *condition, gcs::Client* client) {
     std::string bucket_name = condition->property_name;
     replace_all(bucket_name, ".", "-");
     StatusOr<gcs::BucketMetadata> bucket_metadata =
@@ -119,7 +118,8 @@ index_type is_indexed(query_condition *condition, gcs::Client* client) {
 }
 
 objname_to_matching_trace_ids get_traces_by_indexed_condition(
-    int start_time, int end_time, query_condition *condition, index_type ind_type, gcs::Client* client) {
+    const int start_time, const int end_time, const query_condition *condition, const index_type ind_type,
+    gcs::Client* client) {
     switch (ind_type) {
         case bloom: {
             assert(condition->comp == Equal_to);

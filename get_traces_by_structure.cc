@@ -137,7 +137,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
             }
         }
 
-        auto trace_ids_to_append = filter_trace_ids_based_on_query_timestamp(
+        auto trace_ids_to_append = filter_trace_ids_based_on_query_timestamp_for_given_root_service(
             response_trace_ids, batch_name, start_time, end_time, root_service_name, client);
 
         int trace_id_offset = to_return.trace_ids.size();
@@ -171,7 +171,7 @@ std::string get_root_service_name(const std::string &trace) {
     return "";
 }
 
-std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
+std::vector<std::string> filter_trace_ids_based_on_query_timestamp_for_given_root_service(
     std::vector<std::string> &trace_ids,
     std::string &batch_name,
     int start_time,

@@ -111,7 +111,7 @@ struct vf2_callback_custom {
 };
 
 std::string get_root_service_name(const std::string &trace);
-std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
+std::vector<std::string> filter_trace_ids_based_on_query_timestamp_for_given_root_service(
     std::vector<std::string> &trace_ids,
     std::string &batch_name,
     int start_time,

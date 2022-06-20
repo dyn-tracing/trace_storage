@@ -65,7 +65,7 @@ fetched_data fetch_data(
     std::vector<query_condition> &conditions,
     gcs::Client* client
 );
-index_type is_indexed(query_condition *condition, gcs::Client* client);
+index_type is_indexed(const query_condition *condition, gcs::Client* client);
 bool does_span_satisfy_condition(
     std::string &span_id, std::string &service_name,
     query_condition &condition, const std::string &batch_name, fetched_data& evaluation_data
@@ -75,7 +75,7 @@ std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_s
     int curr_cond_ind, fetched_data& evaluation_data, traces_by_structure& structural_results, return_value &ret
 );
 objname_to_matching_trace_ids get_traces_by_indexed_condition(
-    int start_time, int end_time, query_condition *condition, index_type ind_type, gcs::Client* client);
+    int start_time, int end_time, const query_condition *condition, const index_type ind_type, gcs::Client* client);
 std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> filter_based_on_conditions(
     objname_to_matching_trace_ids &intersection,
     traces_by_structure &structural_results,
@@ -100,7 +100,7 @@ std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(
 // ***************** query-related ******************************************
 
 ret_req_data fetch_return_data(
-    std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
+    const std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
     return_value &ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client
 );
 std::vector<std::string> get_return_value(
