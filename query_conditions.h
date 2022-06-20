@@ -13,11 +13,11 @@ enum property_comparison {
 
 // https://stackoverflow.com/questions/16770690/function-pointer-to-different-functions-with-different-arguments-in-c
 typedef union {
-  std::string (opentelemetry::proto::trace::v1::Span::*string_func)() const;
-  bool (opentelemetry::proto::trace::v1::Span::*bool_func)() const;
-  uint64_t (opentelemetry::proto::trace::v1::Span::*int_func)() const;
-  double (opentelemetry::proto::trace::v1::Span::*double_func)() const;
-  const std::string &(opentelemetry::proto::trace::v1::Span::*bytes_func)() const; // NOLINT
+  std::string (ot::Span::*string_func)() const;
+  bool (ot::Span::*bool_func)() const;
+  uint64_t (ot::Span::*int_func)() const;
+  double (ot::Span::*double_func)() const;
+  const std::string &(ot::Span::*bytes_func)() const; // NOLINT
 } get_value_func;
 
 enum property_type {
@@ -43,12 +43,12 @@ struct query_condition {
     std::string property_name;
 };
 
-std::string get_value_as_string(const opentelemetry::proto::trace::v1::Span* sp,
+std::string get_value_as_string(const ot::Span* sp,
     get_value_func val_func, property_type prop_type);
-bool does_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition);
+bool does_condition_hold(const ot::Span* sp, query_condition condition);
 
-bool does_latency_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition);
-bool does_start_time_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition);
-bool does_end_time_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition);
+bool does_latency_condition_hold(const ot::Span* sp, query_condition condition);
+bool does_start_time_condition_hold(const ot::Span* sp, query_condition condition);
+bool does_end_time_condition_hold(const ot::Span* sp, query_condition condition);
 
 #endif  // QUERY_CONDITIONS_H_ // NOLINT

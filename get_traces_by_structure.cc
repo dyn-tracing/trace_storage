@@ -4,10 +4,8 @@ traces_by_structure get_traces_by_structure(
     trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
     std::vector<std::future<traces_by_structure>> response_futures;
 
-    std::string prefix(TRACE_HASHES_BUCKET_PREFIX);
-    std::string suffix(BUCKETS_SUFFIX);
-
-    for (auto&& prefix : client->ListObjectsAndPrefixes(prefix+suffix, gcs::Delimiter("/"))) {
+    std::string prefix_to_search = std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
+    for (auto&& prefix : client->ListObjectsAndPrefixes(prefix_to_search, gcs::Delimiter("/"))) {
         if (!prefix) {
             std::cerr << "Error in getting prefixes" << std::endl;
             exit(1);
@@ -18,11 +16,10 @@ traces_by_structure get_traces_by_structure(
             std::cerr << "Error in getting prefixes" << std::endl;
             exit(1);
         }
-        std::string prefix_ = absl::get<std::string>(result);
 
         response_futures.push_back(std::async(
             std::launch::async, process_trace_hashes_prefix_and_retrieve_relevant_trace_ids,
-            prefix_, query_trace, start_time, end_time, client));
+            absl::get<std::string>(result), query_trace, start_time, end_time, client));
     }
 
     traces_by_structure response;
@@ -82,31 +79,30 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 ) {
     traces_by_structure to_return;
 
-    std::string suffix(BUCKETS_SUFFIX);
-    std::string trace_hashes_bucket(TRACE_HASHES_BUCKET_PREFIX);
+    std::string prefix_to_search = std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
 
     std::string root_service_name = "";
 
-    for (auto&& object_metadata : client->ListObjects(trace_hashes_bucket+suffix, gcs::Prefix(prefix))) {
+    for (auto&& object_metadata : client->ListObjects(prefix_to_search, gcs::Prefix(prefix))) {
         if (!object_metadata) {
             std::cerr << object_metadata.status().message() << std::endl;
             exit(1);
         }
 
-        std::string object_name = object_metadata->name();
-        std::string batch_name = extract_batch_name(object_name);
+        std::string batch_name = extract_batch_name(object_metadata->name());
 
-        std::pair<int, int> batch_time = extract_batch_timestamps(batch_name);
-        if (false == is_object_within_timespan(batch_time, start_time, end_time)) {
+        if (false == is_object_within_timespan(extract_batch_timestamps(batch_name), start_time, end_time)) {
             continue;
         }
 
-        std::vector<std::string> response_trace_ids = get_trace_ids_from_trace_hashes_object(object_name, client);
+        std::vector<std::string> response_trace_ids = get_trace_ids_from_trace_hashes_object(
+            object_metadata->name(), client);
         if (response_trace_ids.size() < 1) {
             continue;
         }
 
-        std::string object_content = read_object(TRACE_STRUCT_BUCKET_PREFIX+suffix, batch_name, client);
+        std::string object_content = read_object(TRACE_STRUCT_BUCKET_PREFIX+std::string(BUCKETS_SUFFIX),
+            batch_name, client);
         if (object_content == "") {
             continue;
         }
@@ -137,7 +133,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
             }
         }
 
-        auto trace_ids_to_append = filter_trace_ids_based_on_query_timestamp(
+        auto trace_ids_to_append = filter_trace_ids_based_on_query_timestamp_for_given_root_service(
             response_trace_ids, batch_name, start_time, end_time, root_service_name, client);
 
         int trace_id_offset = to_return.trace_ids.size();
@@ -159,33 +155,28 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
     return to_return;
 }
 
-std::string get_root_service_name(std::string &trace) {
-    std::vector<std::string> trace_lines = split_by_string(trace, newline);
-    for (auto line : trace_lines) {
+std::string get_root_service_name(const std::string &trace) {
+    for (auto line : split_by_string(trace, newline)) {
         if (line.substr(0, 1) == ":") {
-            std::vector<std::string> root_span_info = split_by_string(line, colon);
-            std::string root_service = root_span_info[2];
-            return root_service;
+            return split_by_string(line, colon)[2];
         }
     }
     return "";
 }
 
-std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
+std::vector<std::string> filter_trace_ids_based_on_query_timestamp_for_given_root_service(
     std::vector<std::string> &trace_ids,
     std::string &batch_name,
-    int start_time,
-    int end_time,
+    const int start_time,
+    const int end_time,
     std::string &root_service_name,
     gcs::Client* client) {
     std::vector<std::string> response;
 
-    std::string buckets_suffix(BUCKETS_SUFFIX);
-    std::string bucket = root_service_name + buckets_suffix;
-    std::string spans_data = read_object(bucket, batch_name, client);
+    std::string spans_data = read_object(root_service_name + std::string(BUCKETS_SUFFIX), batch_name, client);
 
-    std::map<std::string, std::pair<int, int>>
-    trace_id_to_timestamp_map = get_timestamp_map_for_trace_ids(spans_data, trace_ids);
+    std::map<std::string, std::pair<int, int>> trace_id_to_timestamp_map = get_timestamp_map_for_trace_ids(
+        spans_data, trace_ids);
 
     for (auto& trace_id : trace_ids) {
         std::pair<int, int> trace_timestamp = trace_id_to_timestamp_map[trace_id];
@@ -230,16 +221,15 @@ std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
     return isomorphism_maps;
 }
 
-std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string &object_name, gcs::Client* client) {
-    std::string trace_hashes_bucket(TRACE_HASHES_BUCKET_PREFIX);
-    std::string suffix(BUCKETS_SUFFIX);
-    std::string object_content = read_object(trace_hashes_bucket+suffix, object_name, client);
+std::vector<std::string> get_trace_ids_from_trace_hashes_object(const std::string &object_name, gcs::Client* client) {
+    std::string object_content = read_object(
+        std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX),
+        object_name, client);
     if (object_content == "") {
         return std::vector<std::string>();
     }
-    auto trace_ids = split_by_string(object_content, newline);
     std::vector<std::string> response;
-    for (auto curr_trace_id : trace_ids) {
+    for (auto curr_trace_id : split_by_string(object_content, newline)) {
         if (curr_trace_id != "") {
             response.push_back(curr_trace_id);
         }
@@ -250,12 +240,11 @@ std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string &obj
 trace_structure morph_trace_object_to_trace_structure(std::string &trace) {
     trace_structure response;
 
-    std::vector<std::string> trace_lines = split_by_string(trace, newline);
     std::unordered_map<std::string, std::string> span_to_service;
     std::unordered_map<std::string, int> reverse_node_names;
     std::multimap<std::string, std::string> edges;
 
-    for (auto line : trace_lines) {
+    for (auto line : split_by_string(trace, newline)) {
         if (line.substr(0, 10) == "Trace ID: ") {
             continue;
         }
