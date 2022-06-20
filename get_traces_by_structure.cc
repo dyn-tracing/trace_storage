@@ -160,12 +160,9 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 }
 
 std::string get_root_service_name(const std::string &trace) {
-    std::vector<std::string> trace_lines = split_by_string(trace, newline);
-    for (auto line : trace_lines) {
+    for (auto line : split_by_string(trace, newline)) {
         if (line.substr(0, 1) == ":") {
-            std::vector<std::string> root_span_info = split_by_string(line, colon);
-            std::string root_service = root_span_info[2];
-            return root_service;
+            return split_by_string(line, colon)[2];
         }
     }
     return "";
@@ -174,15 +171,13 @@ std::string get_root_service_name(const std::string &trace) {
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp_for_given_root_service(
     std::vector<std::string> &trace_ids,
     std::string &batch_name,
-    int start_time,
-    int end_time,
+    const int start_time,
+    const int end_time,
     std::string &root_service_name,
     gcs::Client* client) {
     std::vector<std::string> response;
 
-    std::string buckets_suffix(BUCKETS_SUFFIX);
-    std::string bucket = root_service_name + buckets_suffix;
-    std::string spans_data = read_object(bucket, batch_name, client);
+    std::string spans_data = read_object(root_service_name + std::string(BUCKETS_SUFFIX), batch_name, client);
 
     std::map<std::string, std::pair<int, int>>
     trace_id_to_timestamp_map = get_timestamp_map_for_trace_ids(spans_data, trace_ids);
