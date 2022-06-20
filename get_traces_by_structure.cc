@@ -174,8 +174,8 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp_for_given_roo
 
     std::string spans_data = read_object(root_service_name + std::string(BUCKETS_SUFFIX), batch_name, client);
 
-    std::map<std::string, std::pair<int, int>>
-    trace_id_to_timestamp_map = get_timestamp_map_for_trace_ids(spans_data, trace_ids);
+    std::map<std::string, std::pair<int, int>> trace_id_to_timestamp_map = get_timestamp_map_for_trace_ids(
+        spans_data, trace_ids);
 
     for (auto& trace_id : trace_ids) {
         std::pair<int, int> trace_timestamp = trace_id_to_timestamp_map[trace_id];
