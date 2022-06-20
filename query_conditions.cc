@@ -1,7 +1,7 @@
 #include "query_conditions.h"
 
-std::string get_value_as_string(const opentelemetry::proto::trace::v1::Span* sp,
-    get_value_func val_func, property_type prop_type) {
+std::string get_value_as_string(const ot::Span* sp,
+    const get_value_func val_func, const property_type prop_type) {
     switch (prop_type) {
         case string_value:
             return (sp->*val_func.string_func)();
@@ -33,10 +33,10 @@ std::string get_value_as_string(const opentelemetry::proto::trace::v1::Span* sp,
 }
 
 
-bool does_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition) {
+bool does_condition_hold(const ot::Span* sp, const query_condition condition) {
     switch (condition.type) {
         case string_value: {
-            std::string span_value = (sp->*condition.func.string_func)();
+            const std::string span_value = (sp->*condition.func.string_func)();
             switch (condition.comp) {
                 case Equal_to:
                     return span_value.compare(condition.node_property_value) == 0;
@@ -45,7 +45,7 @@ bool does_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_
             }
         }
         case bool_value: {
-            bool val = (sp->*condition.func.bool_func)();
+            const bool val = (sp->*condition.func.bool_func)();
             std::string span_val;
             if (val) {
                 span_val = "false";
@@ -60,8 +60,8 @@ bool does_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_
             }
         }
         case int_value: {
-            int span_val = (sp->*condition.func.int_func)();
-            int cond_val = std::stoi(condition.node_property_value);
+            const int span_val = (sp->*condition.func.int_func)();
+            const int cond_val = std::stoi(condition.node_property_value);
             switch (condition.comp) {
                 case Equal_to: return span_val == cond_val;
                 case Lesser_than: return span_val < cond_val;
@@ -69,8 +69,8 @@ bool does_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_
             }
         }
         case double_value: {
-            double span_val = (sp->*condition.func.double_func)();
-            double cond_val = std::stod(condition.node_property_value);
+            const double span_val = (sp->*condition.func.double_func)();
+            const double cond_val = std::stod(condition.node_property_value);
             switch (condition.comp) {
                 case Equal_to: return span_val == cond_val;
                 case Lesser_than: return span_val < cond_val;
@@ -89,8 +89,8 @@ bool does_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_
  * 
  */
 
-bool does_latency_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition) {
-    auto latency = sp->end_time_unix_nano() - sp->start_time_unix_nano();
+bool does_latency_condition_hold(const ot::Span* sp, const query_condition condition) {
+    const auto latency = sp->end_time_unix_nano() - sp->start_time_unix_nano();
 
     switch (condition.comp) {
         case Equal_to:
@@ -106,7 +106,7 @@ bool does_latency_condition_hold(const opentelemetry::proto::trace::v1::Span* sp
     return false;
 }
 
-bool does_start_time_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition) {
+bool does_start_time_condition_hold(const ot::Span* sp, const query_condition condition) {
     auto start_time = sp->start_time_unix_nano();
 
     switch (condition.comp) {
@@ -123,7 +123,7 @@ bool does_start_time_condition_hold(const opentelemetry::proto::trace::v1::Span*
     return false;
 }
 
-bool does_end_time_condition_hold(const opentelemetry::proto::trace::v1::Span* sp, query_condition condition) {
+bool does_end_time_condition_hold(const ot::Span* sp, const query_condition condition) {
     auto end_time = sp->end_time_unix_nano();
 
     switch (condition.comp) {

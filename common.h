@@ -39,6 +39,8 @@ const char newline[] = "\n";
 const char colon[] = ":";
 
 namespace gcs = ::google::cloud::storage;
+namespace ot = opentelemetry::proto::trace::v1;
+
 typedef std::map<std::string, std::vector<std::string>> objname_to_matching_trace_ids;
 
 enum index_type {
