@@ -12,7 +12,6 @@
 const char TRACE_HASHES_BUCKET_PREFIX[] = "tracehashes";
 const char ASTERISK_SERVICE[] = "NONE";
 
-namespace gcs = ::google::cloud::storage;
 using ::google::cloud::StatusOr;
 namespace bg = boost::graph;
 
@@ -111,7 +110,7 @@ struct vf2_callback_custom {
         IsomorphismMaps& isomorphism_maps_;
 };
 
-std::string get_root_service_name(std::string &trace);
+std::string get_root_service_name(const std::string &trace);
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     std::vector<std::string> &trace_ids,
     std::string &batch_name,
@@ -126,6 +125,6 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
     gcs::Client* client);
 trace_structure morph_trace_object_to_trace_structure(std::string &trace);
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure &input_graph);
-std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string &object_name, gcs::Client* client);
+std::vector<std::string> get_trace_ids_from_trace_hashes_object(const std::string &object_name, gcs::Client* client);
 void print_trace_structure(trace_structure trace);
 #endif  // BY_STRUCT_H_ // NOLINT

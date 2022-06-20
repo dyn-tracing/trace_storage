@@ -159,7 +159,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
     return to_return;
 }
 
-std::string get_root_service_name(std::string &trace) {
+std::string get_root_service_name(const std::string &trace) {
     std::vector<std::string> trace_lines = split_by_string(trace, newline);
     for (auto line : trace_lines) {
         if (line.substr(0, 1) == ":") {
@@ -230,7 +230,7 @@ std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
     return isomorphism_maps;
 }
 
-std::vector<std::string> get_trace_ids_from_trace_hashes_object(std::string &object_name, gcs::Client* client) {
+std::vector<std::string> get_trace_ids_from_trace_hashes_object(const std::string &object_name, gcs::Client* client) {
     std::string trace_hashes_bucket(TRACE_HASHES_BUCKET_PREFIX);
     std::string suffix(BUCKETS_SUFFIX);
     std::string object_content = read_object(trace_hashes_bucket+suffix, object_name, client);
