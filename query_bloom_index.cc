@@ -113,7 +113,7 @@ std::pair<time_t, time_t> get_nearest_node(std::pair<time_t, time_t> root, time_
     time_t start_time, time_t end_time) {
     // we want to find the node with the nearest range; this is equivalent to
     // doing in order traversal of the tree defined by the root and granularity.
-    std::pair<time_t, time_t> curr = root;
+    std::tuple<time_t, time_t> curr = root;
     bool child_also_has_range = false;
     do {
         child_also_has_range = false;
@@ -123,8 +123,8 @@ std::pair<time_t, time_t> get_nearest_node(std::pair<time_t, time_t> root, time_
                 child_also_has_range = true;
             }
         }
-    } while (curr.first <= start_time && curr.second >= end_time &&
-           curr.second - curr.first > granularity && child_also_has_range);
+    } while (std::get<0>(curr) <= start_time && std::get<1>(curr) >= end_time &&
+           std::get<1>(curr) - std::get<0>(curr) > granularity && child_also_has_range);
     return curr;
 }
 
