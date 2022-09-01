@@ -150,7 +150,8 @@ objname_to_matching_trace_ids get_traces_by_indexed_condition(
             assert(condition->comp == Equal_to);
             std::string bucket_name = condition->property_name;
             replace_all(bucket_name, ".", "-");
-            return query_bloom_index_for_value(client, condition->node_property_value, bucket_name);
+            return query_bloom_index_for_value(client, condition->node_property_value, bucket_name,
+            start_time, end_time);
         }
         case folder: {
             return get_obj_name_to_trace_ids_map_from_folders_index(
