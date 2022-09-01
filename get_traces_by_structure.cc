@@ -126,6 +126,9 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 
             if (root_service_name == "") {
                 root_service_name = get_root_service_name(trace);
+                if (root_service_name == "") {
+                    return {};
+                }
             }
 
             if (to_return.iso_maps.size() < 1) {
