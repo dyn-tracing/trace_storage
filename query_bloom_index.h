@@ -19,7 +19,7 @@ bool is_trace_id_in_nonterminal_node(
     time_t end_time, std::string index_bucket
 );
 std::vector<std::tuple<time_t, time_t>> get_children(std::tuple<time_t, time_t> parent, time_t granularity);
-std::pair<time_t, time_t> get_nearest_node(std::pair<time_t, time_t> root, time_t granularity,
+std::tuple<time_t, time_t> get_nearest_node(std::tuple<time_t, time_t> root, time_t granularity,
     time_t start_time, time_t end_time);
 
 #endif // QUERY_BLOOM_INDEX_H // NOLINT
