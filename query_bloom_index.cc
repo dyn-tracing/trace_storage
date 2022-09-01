@@ -108,18 +108,43 @@ objname_to_matching_trace_ids get_return_value_from_objnames(gcs::Client* client
     return to_return;
 }
 
+
+std::pair<time_t, time_t> get_nearest_node(std::pair<time_t, time_t> root, time_t granularity,
+    time_t start_time, time_t end_time) {
+    // we want to find the node with the nearest range; this is equivalent to
+    // doing in order traversal of the tree defined by the root and granularity.
+    std::pair<time_t, time_t> curr = root;
+    std::cout << "here" << std::endl << std::flush;
+    while (curr.first <= start_time && curr.second >= end_time &&
+           curr.second - curr.first > granularity
+    ) {
+        std::cout << "curr is now " << std::get<0>(curr) << "   " << std::get<1>(curr) << std::endl << std::flush;
+        bool child_also_has_range = false;
+        for (auto & child : get_children(curr, granularity) ) {
+            if (!child_also_has_range && std::get<0>(child) <= start_time && std::get<1>(child) >= end_time) {
+                std::cout << "curr is now " << std::get<0>(child) << "   " << std::get<1>(child) << std::endl  << std::flush;
+                curr = child;
+                child_also_has_range = true;
+            }
+        }
+    }
+    return curr;
+}
+
+
 // Right now, I return the object name -> all trace IDs in that object, because
 // the Bloom filter index does not distinguish on a trace-by-trace level
 // trace ID queries and span ID are the exception;  those may be inferred with a single GET.
 // so it's actually more efficient for the index to return what may be a superset
 objname_to_matching_trace_ids query_bloom_index_for_value(
-    gcs::Client* client, std::string queried_value, std::string index_bucket) {
+    gcs::Client* client, std::string queried_value, std::string index_bucket, time_t start_time,
+    time_t end_time) {
     std::tuple<time_t, time_t> root;
     time_t granularity;
     get_root_and_granularity(client, root, granularity, index_bucket);
 
     std::vector<std::tuple<time_t, time_t>> unvisited_nodes;
-    unvisited_nodes.push_back(root);
+    unvisited_nodes.push_back(get_nearest_node(root, granularity, start_time, end_time));
 
     // this will contain lists of batches that have the trace ID according to their bloom filters
     // this is a vector and not a single value because bloom filters may give false positives
