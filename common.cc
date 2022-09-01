@@ -100,6 +100,29 @@ std::string read_object(const std::string &bucket, const std::string &object, gc
     return object_content;
 }
 
+bool object_could_have_out_of_bound_traces(std::pair<int, int> batch_time, int start_time, int end_time) {
+    std::pair<int, int> query_timespan = std::make_pair(start_time, end_time);
+
+    // query timespan between object timespan
+    if (batch_time.first < query_timespan.first && batch_time.second > query_timespan.second) {
+        return true;
+    }
+
+    // batch timespan overlaps but starts before query timespan
+    if (batch_time.first <= query_timespan.first && batch_time.second < query_timespan.second
+    && batch_time.second >= query_timespan.first) {
+        return true;
+    }
+
+    // vice versa
+    if (batch_time.first > query_timespan.first && batch_time.second >= query_timespan.second
+    && batch_time.first <= query_timespan.second) {
+        return true;
+    }
+
+    return false;
+}
+
 bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, int end_time) {
     std::pair<int, int> query_timespan = std::make_pair(start_time, end_time);
 
