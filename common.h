@@ -63,6 +63,7 @@ void print_progress(float progress, std::string label, bool verbose);
 /// *********** string processing according to system conventions **********
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
     const std::string &spans_data, const std::vector<std::string> &trace_ids);
+bool object_could_have_out_of_bound_traces(std::pair<int, int> batch_time, int start_time, int end_time);
 bool is_object_within_timespan(std::pair<int, int> batch_time, int start_time, int end_time);
 std::string extract_batch_name(const std::string &object_name);
 std::pair<int, int> extract_batch_timestamps(const std::string &batch_name);
