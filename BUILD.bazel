@@ -183,6 +183,18 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "query_bloom_index_test",
+    size = "small",
+    srcs = [
+            "query_bloom_index_test.cc",
+         ],
+    deps = [
+        "//:query_bloom_index",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "folders_index_lib",
     srcs = [

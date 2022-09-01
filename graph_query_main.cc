@@ -39,11 +39,9 @@ int main(int argc, char* argv[]) {
 
     ret.func = ret_union;
     boost::posix_time::ptime start, stop;
-	start = boost::posix_time::microsec_clock::local_time();
-    
+	  start = boost::posix_time::microsec_clock::local_time();
     auto res = query(query_trace, 1661969600, 1661969610, conditions, ret, false, &client);
     // auto res2 = get_traces_by_structure(query_trace, 1660239561, 1660239571, &client);
-    
     stop = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration dur = stop - start;
 	int64_t milliseconds = dur.total_milliseconds();
