@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <tuple>
+#include <utility>
 #include "id_index/id_index.h"
 
 objname_to_matching_trace_ids query_bloom_index_for_value(

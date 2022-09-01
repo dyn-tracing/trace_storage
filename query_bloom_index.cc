@@ -117,15 +117,14 @@ std::pair<time_t, time_t> get_nearest_node(std::pair<time_t, time_t> root, time_
     bool child_also_has_range = false;
     do {
         child_also_has_range = false;
-        for (auto & child : get_children(curr, granularity) ) {
+        for (auto & child : get_children(curr, granularity)) {
             if (!child_also_has_range && std::get<0>(child) <= start_time && std::get<1>(child) >= end_time) {
                 curr = child;
                 child_also_has_range = true;
             }
         }
     } while (curr.first <= start_time && curr.second >= end_time &&
-           curr.second - curr.first > granularity && child_also_has_range
-    );
+           curr.second - curr.first > granularity && child_also_has_range);
     return curr;
 }
 
