@@ -136,8 +136,12 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
             }
         }
 
-        auto trace_ids_to_append = filter_trace_ids_based_on_query_timestamp_for_given_root_service(
-            response_trace_ids, batch_name, start_time, end_time, root_service_name, client);
+        auto trace_ids_to_append = response_trace_ids;
+
+        if (object_could_have_out_of_bound_traces(extract_batch_timestamps(batch_name), start_time, end_time)) {
+            trace_ids_to_append = filter_trace_ids_based_on_query_timestamp_for_given_root_service(
+                response_trace_ids, batch_name, start_time, end_time, root_service_name, client);
+        }
 
         int trace_id_offset = to_return.trace_ids.size();
         to_return.trace_ids.insert(to_return.trace_ids.end(),
