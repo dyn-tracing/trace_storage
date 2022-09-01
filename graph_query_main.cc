@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
     get_value_func condition_1_union;
     condition_1_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
     condition1.func = condition_1_union;
-    condition1.node_property_value = "28e62eb7f3d643445aa2fc6e67340788";
+    condition1.node_property_value = "a18d24d4a46c0bc2c3d6697829301c63";
     condition1.comp = Equal_to;
     condition1.property_name = "trace-id";
 
@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
     ret.func = ret_union;
     boost::posix_time::ptime start, stop;
 	  start = boost::posix_time::microsec_clock::local_time();
-    auto res = query(query_trace, 1661969600, 1661969610, conditions, ret, false, &client);
+    auto res = query(query_trace, 1661969609, 1661969612, conditions, ret, false, &client);
     // auto res2 = get_traces_by_structure(query_trace, 1660239561, 1660239571, &client);
     stop = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration dur = stop - start;

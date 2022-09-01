@@ -78,7 +78,14 @@ bool does_condition_hold(const ot::Span* sp, const query_condition condition) {
             }
         }
         case bytes_value: {
-            // TODO(jessica)  not sure how to do this
+            // for bytes, we use a string representation
+            const std::string span_value = (sp->*condition.func.bytes_func)();
+            switch (condition.comp) {
+                case Equal_to:
+                    return hex_str(span_value, span_value.size()).compare(condition.node_property_value) == 0;
+                default:
+                    return hex_str(span_value, span_value.size()).compare(condition.node_property_value);
+            }
         }
     }
 }
