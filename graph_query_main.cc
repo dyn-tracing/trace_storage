@@ -6,7 +6,7 @@ int main(int argc, char* argv[]) {
     // query trace structure
     trace_structure query_trace;
     query_trace.num_nodes = 1;
-    query_trace.node_names.insert(std::make_pair(0, ASTERISK_SERVICE));
+    query_trace.node_names.insert(std::make_pair(0, "frontend"));
     // query_trace.node_names.insert(std::make_pair(1, "adservice"));
     // query_trace.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
 
@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
     get_value_func condition_1_union;
     condition_1_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
     condition1.func = condition_1_union;
-    condition1.node_property_value = "f3450f04679d90b8772061e199c86797";
+    condition1.node_property_value = "28e62eb7f3d643445aa2fc6e67340788";
     condition1.comp = Equal_to;
     condition1.property_name = "trace-id";
 
@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
     boost::posix_time::ptime start, stop;
 	start = boost::posix_time::microsec_clock::local_time();
     
-    auto res = query(query_trace, 1661969600, 1661969610, conditions, ret, true, &client);
+    auto res = query(query_trace, 1661969600, 1661969610, conditions, ret, false, &client);
     // auto res2 = get_traces_by_structure(query_trace, 1660239561, 1660239571, &client);
     
     stop = boost::posix_time::microsec_clock::local_time();

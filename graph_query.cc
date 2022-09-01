@@ -45,7 +45,9 @@ std::vector<std::string> query(
     }
     auto struct_results = struct_filter_obj.get();
     print_progress(1, "Retrieving indices", verbose);
-    std::cout << std::endl;
+    if (verbose) {
+        std::cout << std::endl;
+    }
 
     objname_to_matching_trace_ids intersection = intersect_index_results(
         index_results, struct_results, earliest_last_updated, verbose);
@@ -56,24 +58,18 @@ std::vector<std::string> query(
         conditions,
         client);
 
-    std::cout << "fetched data" << std::endl;
+    if (verbose) {
+        std::cout << "fetched data" << std::endl;
+    }
     auto filtered = filter_based_on_conditions(
         intersection, struct_results, conditions, fetched, ret);
 
-    std::cout << "filtered based on conditions" << std::endl;
-
-    boost::posix_time::ptime start, stop;
-    start = boost::posix_time::microsec_clock::local_time();
+    if (verbose) {
+        std::cout << "filtered based on conditions" << std::endl;
+    }
 
     ret_req_data spans_objects_by_bn_sn = fetch_return_data(filtered, ret, fetched, query_trace, client);
     auto returned = get_return_value(filtered, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
-
-    stop = boost::posix_time::microsec_clock::local_time();
-    boost::posix_time::time_duration dur = stop - start;
-    int64_t milliseconds = dur.total_milliseconds();
-    std::cout << "Time taken by get_return_value: " << milliseconds << std::endl;
-    std::cout << "len returned is " << returned.size() << std::endl;
-
     return returned;
 }
 
@@ -266,7 +262,9 @@ objname_to_matching_trace_ids intersect_index_results(
         }
     }
     print_progress(1, "Intersecting results", verbose);
-    std::cout << std::endl;
+    if (verbose) {
+        std::cout << std::endl;
+    }
     return to_return;
 }
 
