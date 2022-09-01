@@ -109,7 +109,7 @@ objname_to_matching_trace_ids get_return_value_from_objnames(gcs::Client* client
 }
 
 
-std::pair<time_t, time_t> get_nearest_node(std::pair<time_t, time_t> root, time_t granularity,
+std::tuple<time_t, time_t> get_nearest_node(std::pair<time_t, time_t> root, time_t granularity,
     time_t start_time, time_t end_time) {
     // we want to find the node with the nearest range; this is equivalent to
     // doing in order traversal of the tree defined by the root and granularity.
