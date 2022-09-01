@@ -114,20 +114,18 @@ std::pair<time_t, time_t> get_nearest_node(std::pair<time_t, time_t> root, time_
     // we want to find the node with the nearest range; this is equivalent to
     // doing in order traversal of the tree defined by the root and granularity.
     std::pair<time_t, time_t> curr = root;
-    std::cout << "here" << std::endl << std::flush;
-    while (curr.first <= start_time && curr.second >= end_time &&
-           curr.second - curr.first > granularity
-    ) {
-        std::cout << "curr is now " << std::get<0>(curr) << "   " << std::get<1>(curr) << std::endl << std::flush;
-        bool child_also_has_range = false;
+    bool child_also_has_range = false;
+    do {
+        child_also_has_range = false;
         for (auto & child : get_children(curr, granularity) ) {
             if (!child_also_has_range && std::get<0>(child) <= start_time && std::get<1>(child) >= end_time) {
-                std::cout << "curr is now " << std::get<0>(child) << "   " << std::get<1>(child) << std::endl  << std::flush;
                 curr = child;
                 child_also_has_range = true;
             }
         }
-    }
+    } while (curr.first <= start_time && curr.second >= end_time &&
+           curr.second - curr.first > granularity && child_also_has_range
+    );
     return curr;
 }
 
