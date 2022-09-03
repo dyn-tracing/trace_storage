@@ -200,8 +200,7 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
 time_t create_index_bucket(gcs::Client* client, std::string index_bucket) {
     google::cloud::StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->CreateBucketForProject(
-          index_bucket, "tempocostestimate",
-        //   index_bucket, "dynamic-tracing",
+          index_bucket, "dynamic-tracing",
           gcs::BucketMetadata()
               .set_location("us-central1")
               .set_storage_class(gcs::storage_class::Regional()));
