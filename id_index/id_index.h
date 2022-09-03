@@ -19,7 +19,8 @@
 #include "query_conditions.h"
 
 // TODO(jessica): these are already defined in common under different names
-const char trace_struct_bucket[] = "dyntraces-snicket2";
+// const char trace_struct_bucket[] = "dyntraces-snicket2";
+const char trace_struct_bucket[] = "dyntraces-snicket3";
 const char SPAN_ID[] = "span.id";
 const char SPAN_ID_BUCKET[] = "span-id";
 const char TRACE_ID[] = "trace.id";
