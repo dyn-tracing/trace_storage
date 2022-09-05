@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
     get_value_func condition_1_union;
     condition_1_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
     condition1.func = condition_1_union;
-    condition1.node_property_value = "a18d24d4a46c0bc2c3d6697829301c63";
+    condition1.node_property_value = "a27abcf29be19908eba8298db950cf1e";
     condition1.comp = Equal_to;
     condition1.property_name = "trace-id";
 
@@ -38,14 +38,19 @@ int main(int argc, char* argv[]) {
     ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
 
     ret.func = ret_union;
-    boost::posix_time::ptime start, stop;
-	start = boost::posix_time::microsec_clock::local_time();
-    auto res = query(query_trace, 1661969609, 1661969612, conditions, ret, false, &client);
-    // auto res2 = get_traces_by_structure(query_trace, 1660239561, 1660239571, &client);
-    stop = boost::posix_time::microsec_clock::local_time();
-    boost::posix_time::time_duration dur = stop - start;
-	int64_t milliseconds = dur.total_milliseconds();
-	std::cout << "Time taken: " << milliseconds << std::endl;
-    std::cout << "Total results: " << res.size() << std::endl;
+    for (int i = 0; i < 20; i++) {
+        boost::posix_time::ptime start, stop;
+        start = boost::posix_time::microsec_clock::local_time();
+        auto res = query(query_trace, 1662226680, 1662226681, conditions, ret, false, &client);
+        // auto res2 = get_traces_by_structure(query_trace, 1660239561, 1660239571, &client);
+        stop = boost::posix_time::microsec_clock::local_time();
+        boost::posix_time::time_duration dur = stop - start;
+        int64_t milliseconds = dur.total_milliseconds();
+        if (res.size() < 1) {
+            std::cout << "Wrong wroing" << std::endl;
+            exit(1);
+        }
+        std::cout << milliseconds << std::endl;
+    }
     return 0;
 }
