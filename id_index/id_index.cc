@@ -590,6 +590,7 @@ int bubble_up_leaves(gcs::Client* client, time_t start_time, time_t end_time,
 std::vector<struct BatchObjectNames> split_batches_by_leaf(
     std::vector<std::string> object_names, time_t last_updated, time_t to_update, time_t granularity) {
     int num_leaves = (to_update-last_updated)/granularity;
+    std::cout << to_update << " " << last_updated << " " << granularity << " " << num_leaves << std::endl;
     std::vector<BatchObjectNames> to_return;
 
     for (int i=0; i < num_leaves; i++) {
@@ -684,8 +685,7 @@ time_t get_lowest_time_val(gcs::Client* client) {
 
 int update_index(gcs::Client* client, std::string property_name, time_t granularity,
     property_type prop_type, get_value_func val_func) {
-    std::string index_bucket = property_name;
-    replace_all(index_bucket, ".", "-");
+    std::string index_bucket = get_index_bucket_name(property_name);
     time_t now;
     time(&now);
     //  time_t to_update = now-(now%granularity); // this is the right thing
@@ -694,7 +694,7 @@ int update_index(gcs::Client* client, std::string property_name, time_t granular
         last_updated = get_lowest_time_val(client);
         last_updated = last_updated - (last_updated%granularity);
     }
-    time_t to_update = last_updated + (20*granularity);
+    time_t to_update = last_updated + (100*granularity);
 
     std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, to_update);
     std::vector<BatchObjectNames> batches_by_leaf = split_batches_by_leaf(

@@ -317,3 +317,9 @@ void print_progress(float progress, std::string label, bool verbose) {
     std::cout << "] " << int(progress * 100.0) << "% " << label << "\r";
     std::cout.flush();
 }
+
+std::string get_index_bucket_name(std::string property_name) {
+    std::string bucket_name = property_name + BUCKETS_SUFFIX;
+    replace_all(bucket_name, ".", "-");
+    return bucket_name;
+}

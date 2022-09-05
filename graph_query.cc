@@ -99,8 +99,7 @@ ret_req_data fetch_return_data(
 
 // Returns index type and last updated
 std::tuple<index_type, time_t> is_indexed(const query_condition *condition, gcs::Client* client) {
-    std::string bucket_name = condition->property_name;
-    replace_all(bucket_name, ".", "-");
+    std::string bucket_name = get_index_bucket_name(condition->property_name);
     StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->GetBucketMetadata(bucket_name);
     if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound) {
@@ -144,8 +143,7 @@ objname_to_matching_trace_ids get_traces_by_indexed_condition(
     switch (ind_type) {
         case bloom: {
             assert(condition->comp == Equal_to);
-            std::string bucket_name = condition->property_name;
-            replace_all(bucket_name, ".", "-");
+            std::string bucket_name = get_index_bucket_name(condition->property_name);
             return query_bloom_index_for_value(client, condition->node_property_value, bucket_name,
             start_time, end_time);
         }

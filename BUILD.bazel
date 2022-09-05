@@ -154,6 +154,45 @@ cc_binary(
 
 
 cc_binary(
+    name = "id_query",
+    srcs = [
+        "id_query_main.cc",
+    ],
+    deps = [
+        "//:bloom_filter",
+        "//:graph_query_lib",
+        "//:query_bloom_index",
+        "//:folders_index_query_lib",
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:algorithm",
+        "@boost//:graph",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+        "//:common",
+    ],
+)
+
+cc_binary(
+    name = "id_query_alt",
+    srcs = [
+        "id_query_main_alt.cc",
+    ],
+    deps = [
+        "//:bloom_filter",
+        "//:graph_query_lib",
+        "//:query_bloom_index",
+        "//:folders_index_query_lib",
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:algorithm",
+        "@boost//:graph",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+        "//:common",
+    ],
+)
+
+
+cc_binary(
     name = "id_index",
     srcs = [
         "id_index/main.cc",

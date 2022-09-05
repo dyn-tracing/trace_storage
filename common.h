@@ -87,5 +87,6 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     gcs::Client* client);
 
 std::vector<std::string> get_spans_buckets_names(gcs::Client* client);
+std::string get_index_bucket_name(std::string property_name);
 
 #endif  // COMMON_H_ // NOLINT
