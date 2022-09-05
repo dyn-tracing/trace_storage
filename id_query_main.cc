@@ -14,17 +14,15 @@ std::string fetch_obj_name_from_index(std::string trace_id, int start_time, int 
     }
 
     std::string bucket_name = get_index_bucket_name(qc.property_name);
-    auto res = query_bloom_index_for_value(client, trace_id, bucket_name, start_time, end_time);
+    auto res_tup = query_bloom_index_for_value(client, trace_id, bucket_name, start_time, end_time);
+    auto res = &std::get<0>(res_tup);
     
-    if (res.size() != 1) {
+    if (res->size() != 1) {
         std::cerr << "Shouldn't happen!" << std::endl;
         exit(1);
     }
     
-    for (auto [obj_name, trace_ids] : res) {
-        return obj_name;
-    }
-    return "";
+    return std::get<1>(res_tup)[0];
 }
 
 int main(int argc, char* argv[]) {
@@ -38,9 +36,7 @@ int main(int argc, char* argv[]) {
         boost::posix_time::ptime start, stop;
         start = boost::posix_time::microsec_clock::local_time();
 
-        auto obj_name = fetch_obj_name_from_index(trace_id, start_time, end_time, &client);
-        auto obj = read_object(TRACE_STRUCT_BUCKET, obj_name, &client);
-        auto res = extract_trace_from_traces_object(trace_id, obj);
+        auto res = fetch_obj_name_from_index(trace_id, start_time, end_time, &client);
         
         stop = boost::posix_time::microsec_clock::local_time();
         boost::posix_time::time_duration dur = stop - start;

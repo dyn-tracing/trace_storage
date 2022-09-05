@@ -50,11 +50,13 @@ bool is_trace_id_in_nonterminal_node(
     return bf.contains(traceID_c_str, len);
 }
 
-objname_to_matching_trace_ids get_return_value_from_objnames(gcs::Client* client,
+std::tuple<objname_to_matching_trace_ids, std::vector<std::string>> get_return_value_from_objnames(gcs::Client* client,
     std::vector<std::string> object_names,
     std::string index_bucket, std::string queried_value) {
 
     objname_to_matching_trace_ids to_return;
+    std::vector<std::string> trace_struct_objects;
+
     if (index_bucket.compare(TRACE_ID_BUCKET) == 0) {
         for (int i=0; i < object_names.size(); i++) {
             auto reader = client->ReadObject(TRACE_STRUCT_BUCKET, object_names[i]);
@@ -63,8 +65,10 @@ objname_to_matching_trace_ids get_return_value_from_objnames(gcs::Client* client
                 throw std::runtime_error("Error reading node object");
             }
             std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-            if (contents.find(queried_value) != -1) {
+            auto trace_obj = extract_trace_from_traces_object(queried_value, contents);
+            if (trace_obj.empty() == false) {
                 to_return[object_names[i]].push_back(queried_value);
+                trace_struct_objects.push_back(trace_obj);
             }
         }
     } else if (index_bucket.compare(SPAN_ID_BUCKET) == 0) {
@@ -105,7 +109,8 @@ objname_to_matching_trace_ids get_return_value_from_objnames(gcs::Client* client
             }
         }
     }
-    return to_return;
+
+    return std::make_tuple(to_return, trace_struct_objects);
 }
 
 
@@ -136,7 +141,7 @@ std::tuple<time_t, time_t> get_nearest_node(std::tuple<time_t, time_t> root, tim
 // the Bloom filter index does not distinguish on a trace-by-trace level
 // trace ID queries and span ID are the exception;  those may be inferred with a single GET.
 // so it's actually more efficient for the index to return what may be a superset
-objname_to_matching_trace_ids query_bloom_index_for_value(
+std::tuple<objname_to_matching_trace_ids, std::vector<std::string>> query_bloom_index_for_value(
     gcs::Client* client, std::string queried_value, std::string index_bucket, time_t start_time,
     time_t end_time) {
     std::tuple<time_t, time_t> root;

@@ -23,7 +23,7 @@ const char trace_struct_bucket[] = "dyntraces-snicket2";
 const char SPAN_ID[] = "span.id";
 const char SPAN_ID_BUCKET[] = "span-id";
 const char TRACE_ID[] = "trace.id";
-const char TRACE_ID_BUCKET[] = "trace-id";
+const char TRACE_ID_BUCKET[] = "trace-id-snicket2";
 const int branching_factor = 10;
 
 // Leaf struct
