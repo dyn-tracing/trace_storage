@@ -126,6 +126,8 @@ std::tuple<time_t, time_t> get_nearest_node(std::tuple<time_t, time_t> root, tim
     } while (std::get<0>(curr) <= start_time && std::get<1>(curr) >= end_time &&
            std::get<1>(curr) - std::get<0>(curr) > granularity && child_also_has_range);
     
+    // std::cout << start_time << " " << end_time << " " << granularity << " " << std::get<0>(curr) << " " << std::get<1>(curr) << std::endl;
+    // std::cout << std::get<0>(root) << " " << std::get<1>(root) << std::endl;
     return curr;
 }
 

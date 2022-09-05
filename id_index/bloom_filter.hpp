@@ -291,14 +291,10 @@ public:
         is.read((char *) &desired_false_positive_probability_, sizeof(double));
 
         salt_.resize(salt_count_, static_cast<unsigned int> (0x00));
-        for (unsigned int i=0; i<salt_count_; i++) {
-            is.read((char *) &salt_[i], sizeof(unsigned int));
-        }
+        is.read((char *) &salt_[0], sizeof(unsigned int)*salt_count_);
 
         bit_table_.resize(table_size_ / bits_per_char, static_cast<unsigned char>(0x00));
-        for (unsigned int i=0; i<table_size_/bits_per_char; i++) {
-            is.read((char *) &bit_table_[i], sizeof(unsigned char)); // this is unsigned char
-        }
+        is.read((char *) &bit_table_[0], sizeof(unsigned char)*table_size_/bits_per_char);
    }
 
    inline bool operator != (const bloom_filter& f) const

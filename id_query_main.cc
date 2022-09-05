@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
 
     auto client = gcs::Client();
 
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 1; i++) {
         boost::posix_time::ptime start, stop;
         start = boost::posix_time::microsec_clock::local_time();
 

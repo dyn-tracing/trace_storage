@@ -14,10 +14,10 @@ TEST(Index, GetNearestNodeForLeaf) {
 
 TEST(Index, GetNearestNodesRoot) {
   std::tuple<time_t, time_t> ret = get_nearest_node(
-        /* root */ std::make_tuple(0, 100),
+        /* root */ std::make_tuple(1662220000, 1662230000),
         /* granularity */ 10,
-        /* start time */ 0,
-        /* end time */ 90);
+        /* start time */ 1662226680,
+        /* end time */ 1662226681);
   EXPECT_EQ(std::get<0>(ret), 0);
   EXPECT_EQ(std::get<1>(ret), 100);
 }

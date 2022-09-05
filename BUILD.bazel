@@ -152,6 +152,25 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "graph_query2",
+    srcs = [
+        "graph_query_main2.cc",
+    ],
+    deps = [
+        "//:bloom_filter",
+        "//:graph_query_lib",
+        "//:query_bloom_index",
+        "//:folders_index_query_lib",
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:algorithm",
+        "@boost//:graph",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+        "//:common",
+    ],
+)
+
 
 cc_binary(
     name = "id_query",

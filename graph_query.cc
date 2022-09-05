@@ -68,6 +68,16 @@ std::vector<std::string> query(
         std::cout << "filtered based on conditions" << std::endl;
     }
 
+    // just a small hack, should check for trace id return instead
+    if (ret.type == bytes_value) {
+        std::vector<std::string> res;
+        auto obj_to_traces = std::get<0>(filtered);
+        for (auto [obj, trace_ids] : obj_to_traces) {
+            res.insert(res.end(), trace_ids.begin(), trace_ids.end());
+        }
+        return res;
+    }
+
     ret_req_data spans_objects_by_bn_sn = fetch_return_data(filtered, ret, fetched, query_trace, client);
     auto returned = get_return_value(filtered, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
     return returned;
