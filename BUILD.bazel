@@ -192,9 +192,9 @@ cc_binary(
 )
 
 cc_binary(
-    name = "id_query_alt",
+    name = "id_query2",
     srcs = [
-        "id_query_main_alt.cc",
+        "id_query_main2.cc",
     ],
     deps = [
         "//:bloom_filter",
@@ -209,7 +209,6 @@ cc_binary(
         "//:common",
     ],
 )
-
 
 cc_binary(
     name = "id_index",

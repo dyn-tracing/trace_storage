@@ -159,9 +159,10 @@ std::string strip_from_the_end(std::string object, char stripper) {
 }
 
 std::string extract_batch_name(const std::string &object_name) {
+    std::cout << object_name << std::endl;
     std::vector<std::string> result;
     boost::split(result, object_name, boost::is_any_of("/"));
-
+    std::cout << result[1] << std::endl;
     return result[1];
 }
 
