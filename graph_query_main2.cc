@@ -38,10 +38,10 @@ int main(int argc, char* argv[]) {
     ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
 
     ret.func = ret_union;
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 1; i++) {
         boost::posix_time::ptime start, stop;
         start = boost::posix_time::microsec_clock::local_time();
-        auto res = query(query_trace, 1662476239, 1662476240, conditions, ret, false, &client);
+        auto res = query(query_trace, 1662476230, 1662476240, conditions, ret, false, &client);
         // auto res2 = get_traces_by_structure(query_trace, 1660239561, 1660239571, &client);
         stop = boost::posix_time::microsec_clock::local_time();
         boost::posix_time::time_duration dur = stop - start;

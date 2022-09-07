@@ -86,6 +86,16 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     int end_time,
     gcs::Client* client);
 
+std::vector<std::string> filter_span_ids_based_on_query_timestamp(
+    const std::vector<std::string> &span_ids,
+    const std::string &batch_name,
+    const std::string &object_content,
+    const int start_time,
+    const int end_time,
+    gcs::Client* client);
+
+std::vector<std::string> trace_id_to_span_ids(std::string trace_id, std::string object);
+
 std::vector<std::string> get_spans_buckets_names(gcs::Client* client);
 std::string get_index_bucket_name(std::string property_name);
 

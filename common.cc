@@ -207,6 +207,50 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     return response;
 }
 
+std::vector<std::string> filter_span_ids_based_on_query_timestamp(
+    const std::vector<std::string> &span_ids,
+    const std::string &batch_name,
+    const std::string &object_content,
+    const int start_time,
+    const int end_time,
+    gcs::Client* client) {
+    std::vector<std::string> response;
+
+    std::map<std::string, std::string> trace_id_to_root_service_map = get_trace_id_to_root_service_map(object_content);
+    std::map<std::string, std::vector<std::string>> root_service_to_trace_ids_map = get_root_service_to_trace_ids_map(
+        trace_id_to_root_service_map);
+
+    std::string buckets_suffix(BUCKETS_SUFFIX);
+    for (auto const& elem : root_service_to_trace_ids_map) {
+        std::map<std::string, std::pair<int, int>> trace_id_to_timestamp_map =
+            get_timestamp_map_for_trace_ids(
+                read_object(elem.first + buckets_suffix, batch_name, client),
+                span_ids);
+
+        for (auto const& trace_id : elem.second) {
+            std::pair<int, int> trace_timestamp = trace_id_to_timestamp_map[trace_id];
+            if (is_object_within_timespan(trace_timestamp, start_time, end_time)) {
+                auto spans = trace_id_to_span_ids(trace_id, object_content);
+                response.insert(response.end(), spans.begin(), spans.end());
+            }
+        }
+    }
+
+    return response;
+}
+
+std::vector<std::string> trace_id_to_span_ids(std::string trace_id, std::string object) {
+    auto trace = extract_trace_from_traces_object(trace_id, object);
+    std::vector<std::string> spans;
+    for (auto ele : split_by_string(trace, "\n")) {
+        auto parts = split_by_string(ele, ":");
+        if (parts.size() == 4) {
+            spans.push_back(parts[1]);
+        }
+    }
+    return spans;
+}
+
 std::map<std::string, std::string> get_trace_id_to_root_service_map(const std::string &object_content) {
     std::map<std::string, std::string> response;
 

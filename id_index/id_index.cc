@@ -368,7 +368,7 @@ bloom_filter create_bloom_filter_partial_batch(
     std::string contents{std::istreambuf_iterator<char>{reader}, {}};
     auto values = filter_trace_ids_based_on_query_timestamp(
         values_unfiltered, batch, contents, earliest, latest, client);
-
+    
     for (int i=0; i < values.size(); i++) {
         filter.insert(values[i]);
     }

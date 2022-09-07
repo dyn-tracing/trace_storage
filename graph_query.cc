@@ -24,6 +24,8 @@ std::vector<std::string> query(
 
     time_t earliest_last_updated = -1;
     std::vector<std::future<objname_to_matching_trace_ids>> index_results_futures;
+    std::vector<query_condition> new_conditions;
+
     for (int i=0; i < conditions.size(); i++) {
         auto indexed = is_indexed(&conditions[i], client);
         index_type i_type = std::get<0>(indexed);
@@ -33,6 +35,8 @@ std::vector<std::string> query(
             }
             index_results_futures.push_back(std::async(std::launch::async, get_traces_by_indexed_condition,
             start_time, end_time, &conditions[i], i_type, client));
+        } else {
+            new_conditions.push_back(conditions[i]);
         }
     }
     print_progress(0, "Retrieving indices", verbose);
@@ -51,6 +55,16 @@ std::vector<std::string> query(
 
     objname_to_matching_trace_ids intersection = intersect_index_results(
         index_results, struct_results, earliest_last_updated, verbose);
+
+    
+    if (ret.type == bytes_value && new_conditions.size() == 0) {
+        std::vector<std::string> res;
+        auto obj_to_traces = intersection;
+        for (auto [obj, trace_ids] : obj_to_traces) {
+            res.insert(res.end(), trace_ids.begin(), trace_ids.end());
+        }
+        return res;
+    }
 
     fetched_data fetched = fetch_data(
         struct_results,
@@ -369,6 +383,11 @@ fetched_data fetch_data(
     gcs::Client* client
 ) {
     fetched_data response;
+
+    if (conditions.size() == 0) {
+        std::cout << "here!" << std::endl;
+        return response;
+    }
 
     std::unordered_map<
         std::string,
