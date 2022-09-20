@@ -10,7 +10,7 @@ int update_index(gcs::Client* client, time_t last_updated, std::string indexed_a
 	trace_struct_object_names = sort_object_names_on_start_time(trace_struct_object_names);
 
 	int thread_pool_size = 500;
-	for (uint64 i=0; i < trace_struct_object_names.size(); i=i+thread_pool_size) {
+	for (uint64_t i=0; i < trace_struct_object_names.size(); i=i+thread_pool_size) {
 		update_index_batched(client, last_updated, indexed_attribute, span_buckets_names,
 			trace_struct_object_names, i, thread_pool_size);
 	}
@@ -48,7 +48,7 @@ void update_index_batched(gcs::Client* client, time_t last_updated, std::string 
 	}
 
 	index_batch current_index_batch = index_batch();
-	for (uint64 i = 0; i < response_futures.size(); i++) {
+	for (uint64_t i = 0; i < response_futures.size(); i++) {
 		auto object_name = response_futures[i].first;
 		auto attr_to_trace_ids_map = response_futures[i].second.get();
 
@@ -152,7 +152,7 @@ void take_per_field_union(std::unordered_map<std::string, std::vector<std::strin
 		}
 
 		auto* previous_trace_ids = &(attr_to_trace_ids_map[local_attribute]);
-		for (uint64 trace_id_ind = 0; trace_id_ind < local_trace_ids->size(); trace_id_ind++) {
+		for (uint64_t trace_id_ind = 0; trace_id_ind < local_trace_ids->size(); trace_id_ind++) {
 			if (std::find(
 					previous_trace_ids->begin(),
 					previous_trace_ids->end(),

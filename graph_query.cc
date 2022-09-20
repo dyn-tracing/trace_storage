@@ -24,7 +24,7 @@ std::vector<std::string> query(
 
     time_t earliest_last_updated = -1;
     std::vector<std::future<objname_to_matching_trace_ids>> index_results_futures;
-    for (uint64 i=0; i < conditions.size(); i++) {
+    for (uint64_t i=0; i < conditions.size(); i++) {
         auto indexed = is_indexed(&conditions[i], client);
         index_type i_type = std::get<0>(indexed);
         if (i_type != none) {
@@ -39,7 +39,7 @@ std::vector<std::string> query(
 
     std::vector<objname_to_matching_trace_ids> index_results;
     index_results.reserve(index_results_futures.size());
-    for (uint64 i=0; i < index_results_futures.size(); i++) {
+    for (uint64_t i=0; i < index_results_futures.size(); i++) {
         index_results.push_back(index_results_futures[i].get());
         print_progress((i+1.0)/(index_results_futures.size()+1.0), "Retrieving indices", verbose);
     }
@@ -202,7 +202,7 @@ std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>
     std::map<std::string, iso_to_span_id> trace_id_to_span_id_mappings;
 
     auto* trace_ids = &(intersection[object_name_to_process]);
-    for (uint64 i=0; i < trace_ids->size(); i++) {
+    for (uint64_t i=0; i < trace_ids->size(); i++) {
         iso_to_span_id res_ii_to_ni_to_si = does_trace_satisfy_conditions(
             (*trace_ids)[i], object_name_to_process, conditions, fetched, structural_results, ret);
         if (res_ii_to_ni_to_si.size() > 0) {
@@ -222,11 +222,11 @@ objname_to_matching_trace_ids intersect_index_results(
     // Premature optimization is of the devil and all that.
     print_progress(0, "Intersecting results", verbose);
     std::map<std::tuple<std::string, std::string>, int> count;
-    for (uint64 i=0; i < index_results.size(); i++) {
+    for (uint64_t i=0; i < index_results.size(); i++) {
         print_progress(i/index_results.size(), "Intersecting results", verbose);
         for (auto const &obj_to_id : index_results[i]) {
             std::string object = obj_to_id.first;
-            for (uint64 j=0; j < obj_to_id.second.size(); j++) {
+            for (uint64_t j=0; j < obj_to_id.second.size(); j++) {
                 count[std::make_tuple(object, obj_to_id.second[j])] += 1;
             }
         }
@@ -234,15 +234,15 @@ objname_to_matching_trace_ids intersect_index_results(
 
     std::map<int, std::string> ind_to_trace_id;
     std::map<int, std::string> ind_to_obj;
-    for (uint64 i=0; i < structural_results.trace_ids.size(); i++) {
+    for (uint64_t i=0; i < structural_results.trace_ids.size(); i++) {
         ind_to_trace_id[i] = structural_results.trace_ids[i];
     }
-    for (uint64 i=0; i < structural_results.object_names.size(); i++) {
+    for (uint64_t i=0; i < structural_results.object_names.size(); i++) {
         ind_to_obj[i] = structural_results.object_names[i];
     }
     for (auto const &obj_to_id : structural_results.object_name_to_trace_ids_of_interest) {
         std::string obj = ind_to_obj[obj_to_id.first];
-        for (uint64 j=0; j < obj_to_id.second.size(); j++) {
+        for (uint64_t j=0; j < obj_to_id.second.size(); j++) {
             count[std::make_tuple(obj, ind_to_trace_id[obj_to_id.second[j]])] += 1;
         }
     }
@@ -308,7 +308,7 @@ std::vector<std::string> get_return_value(
 
     for (auto const &obj_to_trace_ids : std::get<0>(filtered)) {
         std::string object = obj_to_trace_ids.first;
-        for (uint64 i=0; i < obj_to_trace_ids.second.size(); i++) {
+        for (uint64_t i=0; i < obj_to_trace_ids.second.size(); i++) {
             std::string trace_id = obj_to_trace_ids.second[i];
 
             // for each trace id, there may be multiple isomaps
@@ -342,7 +342,7 @@ std::vector<std::string> get_return_value(
     }
     std::vector<std::string> to_return;
     to_return.reserve(return_values_fut.size());
-    for (uint64 i=0; i < return_values_fut.size(); i++) {
+    for (uint64_t i=0; i < return_values_fut.size(); i++) {
         to_return.push_back(return_values_fut[i].get());
     }
 

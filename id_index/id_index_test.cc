@@ -10,7 +10,7 @@ TEST(Prefixes, TestGeneratePrefixesSmall) {
   std::vector<std::string> expect;
   expect.push_back("1651696");
   expect.push_back("1651697");
-  for (uint64 i=0; i < prefixes.size(); i++) {
+  for (uint64_t i=0; i < prefixes.size(); i++) {
     EXPECT_EQ(prefixes[i].compare(expect[i]), 0);
   }
 }
@@ -25,7 +25,7 @@ TEST(Prefixes, TestGeneratePrefixesBig) {
   for (int i=1; i <= 7; i++) {
     expect.push_back("165169" + std::to_string(i));
   }
-  for (uint64 i=0; i < expect.size(); i++) {
+  for (uint64_t i=0; i < expect.size(); i++) {
     EXPECT_EQ(prefixes[i].compare(expect[i]), 0);
   }
 }
@@ -66,7 +66,7 @@ TEST(Serialization, TestSerializationLeaf) {
   EXPECT_TRUE(leaf_sizes_equal(leaf1, leaf2));
   EXPECT_TRUE(batch_names_equal(leaf1, leaf2));
   EXPECT_EQ(leaf1.bloom_filters.size(), leaf2.bloom_filters.size());
-  for (uint64 i=0; i < leaf1.bloom_filters.size(); i++) {
+  for (uint64_t i=0; i < leaf1.bloom_filters.size(); i++) {
     EXPECT_TRUE(leaf1.bloom_filters[i].ints_match(leaf2.bloom_filters[i]));
   }
   EXPECT_TRUE(bloom_filters_equal(leaf1, leaf2));
