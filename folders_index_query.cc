@@ -52,7 +52,7 @@ process_findex_object_and_retrieve_obj_name_to_trace_ids_map(
             continue;
         }
 		std::vector<std::string> trace_ids;
-		for (int i = 1; i < lines.size(); i++) {
+		for (uint64 i = 1; i < lines.size(); i++) {
 			if (lines[i].length() > 1) {
 				trace_ids.push_back(lines[i]);
 			}
