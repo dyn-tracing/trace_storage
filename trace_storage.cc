@@ -120,7 +120,7 @@ std::vector<std::future<opentelemetry::proto::trace::v1::Span>> get_trace(
                     std::vector<std::string> split_spans;
                     split_spans = split_string_by_newline(spans);
                     // start at 1 because first line will be trace ID
-                    for (int k = 1; k < split_spans.size(); k++) {
+                    for (uint64_t k = 1; k < split_spans.size(); k++) {
                         if (split_spans[k] != "") {
                             std::vector<std::string> span_info;
                             span_info = split_string_by_colon(split_spans[k]);
@@ -148,7 +148,7 @@ int main(int argc, char* argv[]) {
     auto span_futures = get_trace("0000898de3ac90dc60a138fbc9c9d6b0",
                      1651500643, 1651500644, &client);
     std::cout << "len span_futures: " << span_futures.size() << std::endl;
-    for (int i=0; i < span_futures.size(); i++) {
+    for (uint64_t i=0; i < span_futures.size(); i++) {
         auto span = span_futures[i].get();
         std::cout << "span id " << hex_str(span.span_id(), span.span_id().length())
         << " " << span.name() << " " << std::to_string(span.start_time_unix_nano()) << std::endl;
