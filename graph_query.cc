@@ -153,7 +153,12 @@ objname_to_matching_trace_ids get_traces_by_indexed_condition(
             return get_obj_name_to_trace_ids_map_from_folders_index(
             condition->property_name, condition->node_property_value, start_time, end_time, client);
         }
+        case none: break;
+        case not_found: break;
     }
+    // TODO: Should never get a none or not found, so shouldn't get here.
+    objname_to_matching_trace_ids empty;
+    return empty;
 }
 
 std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> filter_based_on_conditions(
