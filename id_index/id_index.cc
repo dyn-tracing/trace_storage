@@ -619,7 +619,7 @@ std::vector<struct BatchObjectNames> split_batches_by_leaf(
             if (index_for_start == index_for_end) {
                 to_return[index_for_start].inclusive.push_back(object_names[i]);
             } else {
-                if (index_for_end < to_return.size()) {
+                if (static_cast<uint64_t>(index_for_end) < to_return.size()) {
                     to_return[index_for_start].late.push_back(object_names[i]);
                     to_return[index_for_end].early.push_back(object_names[i]);
                 } else {

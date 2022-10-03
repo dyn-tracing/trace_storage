@@ -88,6 +88,7 @@ bool does_condition_hold(const ot::Span* sp, const query_condition condition) {
             }
         }
     }
+    return false;
 }
 
 /**
