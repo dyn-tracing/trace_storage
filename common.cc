@@ -214,7 +214,7 @@ std::map<std::string, std::string> get_trace_id_to_root_service_map(const std::s
     for (std::string i : split_by_string(object_content, "Trace ID: ")) {
         std::vector<std::string> trace = split_by_string(i, newline);
         std::string trace_id = trace[0].substr(0, TRACE_ID_LENGTH);
-        for (int ind = 1; ind < trace.size(); ind ++) {
+        for (uint64_t ind = 1; ind < trace.size(); ind ++) {
             if (trace[ind].substr(0, 1) == ":") {
                 std::vector<std::string> root_span_info = split_by_string(trace[ind], colon);
                 response.insert(std::make_pair(trace_id, root_span_info[2]));
@@ -248,12 +248,12 @@ std::string extract_any_trace(std::vector<std::string>& trace_ids, std::string& 
 }
 
 std::string extract_trace_from_traces_object(const std::string &trace_id, std::string& object_content) {
-	const int start_ind = object_content.find("Trace ID: " + trace_id + ":");
+	const std::size_t start_ind = object_content.find("Trace ID: " + trace_id + ":");
 	if (start_ind == std::string::npos) {
 		return "";
 	}
 
-	int end_ind = object_content.find("Trace ID", start_ind+1);
+	std::size_t end_ind = object_content.find("Trace ID", start_ind+1);
 	if (end_ind == std::string::npos) {
 		// not necessarily required as end_ind=npos does the same thing, but for clarity:
 		end_ind = object_content.length() - start_ind;

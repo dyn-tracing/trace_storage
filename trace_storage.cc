@@ -148,7 +148,7 @@ int main(int argc, char* argv[]) {
     auto span_futures = get_trace("0000898de3ac90dc60a138fbc9c9d6b0",
                      1651500643, 1651500644, &client);
     std::cout << "len span_futures: " << span_futures.size() << std::endl;
-    for (int i=0; i < span_futures.size(); i++) {
+    for (uint64_t i=0; i < span_futures.size(); i++) {
         auto span = span_futures[i].get();
         std::cout << "span id " << hex_str(span.span_id(), span.span_id().length())
         << " " << span.name() << " " << std::to_string(span.start_time_unix_nano()) << std::endl;

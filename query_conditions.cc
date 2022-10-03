@@ -101,11 +101,11 @@ bool does_latency_condition_hold(const ot::Span* sp, const query_condition condi
 
     switch (condition.comp) {
         case Equal_to:
-            return latency == std::stol(condition.node_property_value);
+            return latency == std::stoul(condition.node_property_value);
         case Lesser_than:
-            return latency < std::stol(condition.node_property_value);
+            return latency < std::stoul(condition.node_property_value);
         case Greater_than:
-            return latency > std::stol(condition.node_property_value);
+            return latency > std::stoul(condition.node_property_value);
         default:
             return false;
     }
