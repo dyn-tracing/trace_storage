@@ -200,9 +200,9 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
 time_t create_index_bucket(gcs::Client* client, std::string index_bucket) {
     google::cloud::StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->CreateBucketForProject(
-          index_bucket, "dynamic-tracing",
+          index_bucket, PROJECT_ID,
           gcs::BucketMetadata()
-              .set_location("us-central1")
+              .set_location(BUCKETS_LOCATION)
               .set_storage_class(gcs::storage_class::Regional()));
     if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kAborted) {
       // means we've already created the bucket
