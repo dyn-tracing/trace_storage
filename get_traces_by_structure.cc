@@ -47,7 +47,7 @@ traces_by_structure get_traces_by_structure(
             // now merge the pointers by adding the offsets to everything
             for (const auto &pair : new_trace_by_struct.object_name_to_trace_ids_of_interest) {
                 auto object_name = pair.first;
-                for (int i=0; i < pair.second.size(); i++) {
+                for (uint64_t i=0; i < pair.second.size(); i++) {
                     response.object_name_to_trace_ids_of_interest[object_name].push_back(
                         pair.second[i] + trace_id_offset);
                 }
@@ -55,7 +55,7 @@ traces_by_structure get_traces_by_structure(
 
             for (const auto &pair : new_trace_by_struct.trace_id_to_isomap_indices) {
                 std::vector<int> isomap_indices;
-                for (int i=0; i < pair.second.size(); i++) {
+                for (uint64_t i=0; i < pair.second.size(); i++) {
                     isomap_indices.push_back(pair.second[i] + iso_map_offset);
                 }
                 response.trace_id_to_isomap_indices[pair.first] = isomap_indices;
@@ -65,7 +65,7 @@ traces_by_structure get_traces_by_structure(
             if (new_trace_by_struct.trace_node_names.size() > 0) {
                 response.trace_node_names.push_back(new_trace_by_struct.trace_node_names[0]);
                 int tnn_index = response.trace_node_names.size()-1;
-                for (int i=iso_map_offset; i < response.iso_maps.size(); i++) {
+                for (uint64_t i=iso_map_offset; i < response.iso_maps.size(); i++) {
                     response.iso_map_to_trace_node_names[i] = tnn_index;
                 }
             }
@@ -152,8 +152,8 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 
         to_return.object_names.push_back(batch_name);
         int batch_name_index = to_return.object_names.size()-1;
-        for (int i=trace_id_offset; i < to_return.trace_ids.size(); i++) {
-            for (int j=0; j < to_return.iso_maps.size(); j++) {
+        for (uint64_t i=trace_id_offset; i < to_return.trace_ids.size(); i++) {
+            for (uint64_t j=0; j < to_return.iso_maps.size(); j++) {
                 to_return.trace_id_to_isomap_indices[to_return.trace_ids[i]].push_back(j);
             }
             to_return.object_name_to_trace_ids_of_interest[batch_name_index].push_back(i);

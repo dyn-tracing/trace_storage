@@ -1,6 +1,7 @@
 #include "query_bloom_index.h"
 
-std::vector<std::tuple<time_t, time_t>> get_children(std::tuple<time_t, time_t> parent, time_t granularity) {
+std::vector<std::tuple<time_t, time_t>> get_children(
+    const std::tuple<time_t, time_t> parent, const time_t granularity) {
     time_t chunk_size = (std::get<1>(parent)-std::get<0>(parent))/granularity;
     std::vector<std::tuple<time_t, time_t>> to_return;
     for (time_t i=std::get<0>(parent); i < std::get<1>(parent); i += chunk_size) {
@@ -10,7 +11,8 @@ std::vector<std::tuple<time_t, time_t>> get_children(std::tuple<time_t, time_t> 
 }
 
 std::vector<std::string> is_trace_id_in_leaf(
-    gcs::Client* client, std::string traceID, time_t start_time, time_t end_time, std::string index_bucket) {
+    gcs::Client* client, const std::string traceID, const time_t start_time,
+    const time_t end_time, const std::string index_bucket) {
     std::vector<std::string> to_return;
     const char* traceID_c_str = traceID.c_str();
     size_t len = traceID.length();
@@ -32,7 +34,8 @@ std::vector<std::string> is_trace_id_in_leaf(
 }
 
 bool is_trace_id_in_nonterminal_node(
-    gcs::Client* client, std::string traceID, time_t start_time, time_t end_time, std::string index_bucket
+    gcs::Client* client, const std::string traceID, const time_t start_time,
+    const time_t end_time, const std::string index_bucket
 ) {
     std::string bloom_filter_name = std::to_string(start_time) + "-" + std::to_string(end_time);
     auto reader = client->ReadObject(index_bucket, bloom_filter_name);
@@ -134,8 +137,8 @@ std::tuple<time_t, time_t> get_nearest_node(std::tuple<time_t, time_t> root, tim
 // trace ID queries and span ID are the exception;  those may be inferred with a single GET.
 // so it's actually more efficient for the index to return what may be a superset
 objname_to_matching_trace_ids query_bloom_index_for_value(
-    gcs::Client* client, std::string queried_value, std::string index_bucket, time_t start_time,
-    time_t end_time) {
+    gcs::Client* client, std::string queried_value, std::string index_bucket, const time_t start_time,
+    const time_t end_time) {
     std::tuple<time_t, time_t> root;
     time_t granularity;
     get_root_and_granularity(client, root, granularity, index_bucket);
