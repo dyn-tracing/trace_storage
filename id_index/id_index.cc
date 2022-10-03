@@ -240,7 +240,7 @@ std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std
 
     std::vector<std::string> trace_and_spans = split_by_string(contents, newline);
     for (uint64_t j=0; j < trace_and_spans.size(); j++) {
-        if (trace_and_spans[j].find("Trace ID") != -1) {
+        if (trace_and_spans[j].find("Trace ID") != std::string::npos) {
             int start = trace_and_spans[j].find("Trace ID");
             std::string trace_id =
                 trace_and_spans[j].substr(start + 10, trace_and_spans[j].length() - 11);  // 8 is len of Trace ID
@@ -263,7 +263,7 @@ std::vector<std::string> span_ids_from_trace_id_object(gcs::Client* client, std:
     std::string contents{std::istreambuf_iterator<char>{reader}, {}};
     std::vector<std::string> trace_and_spans = split_by_string(contents, newline);
     for (uint64_t j=0; j < trace_and_spans.size(); j++) {
-        if (trace_and_spans[j].find("Trace ID") == -1 && trace_and_spans[j].size() > 0) {
+        if (trace_and_spans[j].find("Trace ID") == std::string::npos && trace_and_spans[j].size() > 0) {
             std::vector<std::string> sp = split_by_string(trace_and_spans[j], colon);
             to_return.push_back(sp[1]);
         }

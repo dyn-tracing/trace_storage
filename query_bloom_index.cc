@@ -78,7 +78,7 @@ objname_to_matching_trace_ids get_return_value_from_objnames(gcs::Client* client
                 throw std::runtime_error("Error reading node object");
             }
             std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-            int index = contents.find(queried_value);
+            std::size_t index = contents.find(queried_value);
             if (index != std::string::npos) {
                 int trace_id_index = contents.rfind("Trace ID", index);
                 std::string trace_id = contents.substr(trace_id_index + 10, TRACE_ID_LENGTH);
@@ -95,7 +95,7 @@ objname_to_matching_trace_ids get_return_value_from_objnames(gcs::Client* client
             std::string contents{std::istreambuf_iterator<char>{reader}, {}};
             std::vector<std::string> lines = split_by_string(contents, newline);
             for (uint64_t j=0; j < lines.size(); j++) {
-                int trace_id_index = lines[j].find("Trace ID");
+                std::size_t trace_id_index = lines[j].find("Trace ID");
                 if (trace_id_index != std::string::npos) {
                     std::string trace_id = contents.substr(trace_id_index+10, TRACE_ID_LENGTH);
                     if (std::find(to_return[object_names[i]].begin(),
