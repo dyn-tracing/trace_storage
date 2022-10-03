@@ -156,7 +156,7 @@ objname_to_matching_trace_ids get_traces_by_indexed_condition(
         case none: break;
         case not_found: break;
     }
-    // TODO: Should never get a none or not found, so shouldn't get here.
+    // TODO(jessberg): Should never get a none or not found, so shouldn't get here.
     objname_to_matching_trace_ids empty;
     return empty;
 }
