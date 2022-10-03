@@ -40,7 +40,7 @@ std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
     std::string e_str = e.str();
     std::string l_str = l.str();
 
-    int i = 0;
+    uint64_t i = 0;
     for ( ; i < e_str.length(); i++) {
         if (e_str[i] != l_str[i]) {
             break;
