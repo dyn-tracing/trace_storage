@@ -22,7 +22,7 @@ jobs:
       with:
         path: "~/.cache/bazel"
         key: bazel
-    - run: bazel build //...
+    - run: bazel build //...  --cxxopt='-std=c++17'
   test:
     runs-on: ubuntu-latest
     steps:
