@@ -120,7 +120,7 @@ std::vector<std::future<opentelemetry::proto::trace::v1::Span>> get_trace(
                     std::vector<std::string> split_spans;
                     split_spans = split_string_by_newline(spans);
                     // start at 1 because first line will be trace ID
-                    for (int k = 1; k < split_spans.size(); k++) {
+                    for (uint64_t k = 1; k < split_spans.size(); k++) {
                         if (split_spans[k] != "") {
                             std::vector<std::string> span_info;
                             span_info = split_string_by_colon(split_spans[k]);
