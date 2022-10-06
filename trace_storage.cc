@@ -20,6 +20,7 @@
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
 #include <boost/regex.hpp>
 #include <boost/algorithm/string/regex.hpp>
+#include "absl/status/statusor.h"
 
 const char trace_struct_bucket[] = "dyntraces-snicket4";
 const char ending[] = "-snicket4";
