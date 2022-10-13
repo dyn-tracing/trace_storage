@@ -1,20 +1,21 @@
 #include "get_traces_by_structure.h"
 
-traces_by_structure get_traces_by_structure(
+StatusOr<traces_by_structure> get_traces_by_structure(
     trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
-    std::vector<std::future<traces_by_structure>> response_futures;
+    
+    std::vector<std::future<StatusOr<traces_by_structure>>> response_futures;
 
     std::string prefix_to_search = std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
     for (auto&& prefix : client->ListObjectsAndPrefixes(prefix_to_search, gcs::Delimiter("/"))) {
         if (!prefix) {
             std::cerr << "Error in getting prefixes" << std::endl;
-            exit(1);
+            return prefix.status();
         }
 
         auto result = *std::move(prefix);
         if (false == absl::holds_alternative<std::string>(result)) {
             std::cerr << "Error in getting prefixes" << std::endl;
-            exit(1);
+            return Status(google::cloud::StatusCode::kUnavailable, "error while moving prefix in get_traces_by_structure");
         }
 
         response_futures.push_back(std::async(
@@ -23,57 +24,65 @@ traces_by_structure get_traces_by_structure(
     }
 
     traces_by_structure response;
-    for_each(response_futures.begin(), response_futures.end(),
-        [&response](std::future<traces_by_structure>& fut){
-            traces_by_structure new_trace_by_struct = fut.get();
-            // now merge it into response
-            int trace_id_offset = response.trace_ids.size();
-            int iso_map_offset = response.iso_maps.size();
+    for (int i = 0; i < response_futures.size(); i++) {
+        std::future<StatusOr<traces_by_structure>>& fut = response_futures[i];
 
-            // first merge the vectors of the data itself
-            response.trace_ids.insert(response.trace_ids.end(),
-                                      new_trace_by_struct.trace_ids.begin(),
-                                      new_trace_by_struct.trace_ids.end());
-            response.object_names.insert(response.object_names.end(),
-                                         new_trace_by_struct.object_names.begin(),
-                                         new_trace_by_struct.object_names.end());
-            response.iso_maps.insert(response.iso_maps.end(),
-                                     new_trace_by_struct.iso_maps.begin(),
-                                     new_trace_by_struct.iso_maps.end());
-            response.trace_node_names.insert(response.trace_node_names.end(),
-                                             new_trace_by_struct.trace_node_names.begin(),
-                                             new_trace_by_struct.trace_node_names.end());
+        auto new_trace_by_struct_res = fut.get();
+        if (!new_trace_by_struct_res.ok()) {
+            std::cerr << new_trace_by_struct_res.status().message() << std::endl;
+            return new_trace_by_struct_res.status();
+        }
+        auto new_trace_by_struct = new_trace_by_struct_res.value();
 
-            // now merge the pointers by adding the offsets to everything
-            for (const auto &pair : new_trace_by_struct.object_name_to_trace_ids_of_interest) {
-                auto object_name = pair.first;
-                for (uint64_t i=0; i < pair.second.size(); i++) {
-                    response.object_name_to_trace_ids_of_interest[object_name].push_back(
-                        pair.second[i] + trace_id_offset);
-                }
+        // now merge it into response
+        int trace_id_offset = response.trace_ids.size();
+        int iso_map_offset = response.iso_maps.size();
+
+        // first merge the vectors of the data itself
+        response.trace_ids.insert(response.trace_ids.end(),
+                                    new_trace_by_struct.trace_ids.begin(),
+                                    new_trace_by_struct.trace_ids.end());
+        response.object_names.insert(response.object_names.end(),
+                                        new_trace_by_struct.object_names.begin(),
+                                        new_trace_by_struct.object_names.end());
+        response.iso_maps.insert(response.iso_maps.end(),
+                                    new_trace_by_struct.iso_maps.begin(),
+                                    new_trace_by_struct.iso_maps.end());
+        response.trace_node_names.insert(response.trace_node_names.end(),
+                                            new_trace_by_struct.trace_node_names.begin(),
+                                            new_trace_by_struct.trace_node_names.end());
+
+        // now merge the pointers by adding the offsets to everything
+        for (const auto &pair : new_trace_by_struct.object_name_to_trace_ids_of_interest) {
+            auto object_name = pair.first;
+            for (uint64_t i=0; i < pair.second.size(); i++) {
+                response.object_name_to_trace_ids_of_interest[object_name].push_back(
+                    pair.second[i] + trace_id_offset);
             }
+        }
 
-            for (const auto &pair : new_trace_by_struct.trace_id_to_isomap_indices) {
-                std::vector<int> isomap_indices;
-                for (uint64_t i=0; i < pair.second.size(); i++) {
-                    isomap_indices.push_back(pair.second[i] + iso_map_offset);
-                }
-                response.trace_id_to_isomap_indices[pair.first] = isomap_indices;
+        for (const auto &pair : new_trace_by_struct.trace_id_to_isomap_indices) {
+            std::vector<int> isomap_indices;
+            for (uint64_t i=0; i < pair.second.size(); i++) {
+                isomap_indices.push_back(pair.second[i] + iso_map_offset);
             }
+            response.trace_id_to_isomap_indices[pair.first] = isomap_indices;
+        }
 
-            // then finally deal with trace node name stuff
-            if (new_trace_by_struct.trace_node_names.size() > 0) {
-                response.trace_node_names.push_back(new_trace_by_struct.trace_node_names[0]);
-                int tnn_index = response.trace_node_names.size()-1;
-                for (uint64_t i=iso_map_offset; i < response.iso_maps.size(); i++) {
-                    response.iso_map_to_trace_node_names[i] = tnn_index;
-                }
+        // then finally deal with trace node name stuff
+        if (new_trace_by_struct.trace_node_names.size() > 0) {
+            response.trace_node_names.push_back(new_trace_by_struct.trace_node_names[0]);
+            int tnn_index = response.trace_node_names.size()-1;
+            for (uint64_t i=iso_map_offset; i < response.iso_maps.size(); i++) {
+                response.iso_map_to_trace_node_names[i] = tnn_index;
             }
-    });
+        }
+    }
+
     return response;
 }
 
-traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
+StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
     std::string prefix, trace_structure query_trace, int start_time, int end_time,
     gcs::Client* client
 ) {
@@ -86,7 +95,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
     for (auto&& object_metadata : client->ListObjects(prefix_to_search, gcs::Prefix(prefix))) {
         if (!object_metadata) {
             std::cerr << object_metadata.status().message() << std::endl;
-            exit(1);
+            return object_metadata.status();
         }
 
         std::string batch_name = extract_batch_name(object_metadata->name());
@@ -127,7 +136,8 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
             if (root_service_name == "") {
                 root_service_name = get_root_service_name(trace);
                 if (root_service_name == "") {
-                    return {};
+                    traces_by_structure empty_res;
+                    return empty_res;
                 }
             }
 
@@ -159,6 +169,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
             to_return.object_name_to_trace_ids_of_interest[batch_name_index].push_back(i);
         }
     }
+
     return to_return;
 }
 

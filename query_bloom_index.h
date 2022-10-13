@@ -9,7 +9,7 @@
 #include <utility>
 #include "id_index/id_index.h"
 
-objname_to_matching_trace_ids query_bloom_index_for_value(
+StatusOr<objname_to_matching_trace_ids> query_bloom_index_for_value(
     gcs::Client* client, std::string queried_value, std::string index_bucket, time_t start_time,
     time_t end_time);
 std::vector<std::string> is_trace_id_in_leaf(

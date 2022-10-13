@@ -136,7 +136,7 @@ std::tuple<time_t, time_t> get_nearest_node(std::tuple<time_t, time_t> root, tim
 // the Bloom filter index does not distinguish on a trace-by-trace level
 // trace ID queries and span ID are the exception;  those may be inferred with a single GET.
 // so it's actually more efficient for the index to return what may be a superset
-objname_to_matching_trace_ids query_bloom_index_for_value(
+StatusOr<objname_to_matching_trace_ids> query_bloom_index_for_value(
     gcs::Client* client, std::string queried_value, std::string index_bucket, const time_t start_time,
     const time_t end_time) {
     std::tuple<time_t, time_t> root;

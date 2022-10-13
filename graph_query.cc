@@ -18,12 +18,12 @@ std::vector<std::string> query(
     // first, get all matches to indexed query conditions
     // note that structural is always indexed
 
-    std::future<traces_by_structure> struct_filter_obj = std::async(std::launch::async,
+    std::future<StatusOr<traces_by_structure>> struct_filter_obj = std::async(std::launch::async,
         get_traces_by_structure,
         query_trace, start_time, end_time, client);
 
     time_t earliest_last_updated = -1;
-    std::vector<std::future<objname_to_matching_trace_ids>> index_results_futures;
+    std::vector<std::future<StatusOr<objname_to_matching_trace_ids>>> index_results_futures;
     for (uint64_t i=0; i < conditions.size(); i++) {
         auto indexed = is_indexed(&conditions[i], client);
         index_type i_type = std::get<0>(indexed);
@@ -40,20 +40,33 @@ std::vector<std::string> query(
     std::vector<objname_to_matching_trace_ids> index_results;
     index_results.reserve(index_results_futures.size());
     for (uint64_t i=0; i < index_results_futures.size(); i++) {
-        index_results.push_back(index_results_futures[i].get());
+        auto res = index_results_futures[i].get();
+        if (!res.ok()) {
+            std::cerr << "yooo" << std::endl;
+            std::cerr << res.status().message() << std::endl;
+        } else {
+            index_results.push_back(res.value());
+        }
         print_progress((i+1.0)/(index_results_futures.size()+1.0), "Retrieving indices", verbose);
     }
+
     auto struct_results = struct_filter_obj.get();
+    if (!struct_results.ok()) {
+        std::cout << "dann" << std::endl;
+        std::cerr << struct_results.status().message() << std::endl;
+        return {};
+    }
+
     print_progress(1, "Retrieving indices", verbose);
     if (verbose) {
         std::cout << std::endl;
     }
 
     objname_to_matching_trace_ids intersection = intersect_index_results(
-        index_results, struct_results, earliest_last_updated, verbose);
+        index_results, struct_results.value(), earliest_last_updated, verbose);
 
     fetched_data fetched = fetch_data(
-        struct_results,
+        struct_results.value(),
         intersection,
         conditions,
         client);
@@ -62,7 +75,7 @@ std::vector<std::string> query(
         std::cout << "fetched data" << std::endl;
     }
     auto filtered = filter_based_on_conditions(
-        intersection, struct_results, conditions, fetched, ret);
+        intersection, struct_results.value(), conditions, fetched, ret);
 
     if (verbose) {
         std::cout << "filtered based on conditions" << std::endl;
@@ -138,7 +151,7 @@ std::tuple<index_type, time_t> is_indexed(const query_condition *condition, gcs:
     return std::make_pair(not_found, 0);
 }
 
-objname_to_matching_trace_ids get_traces_by_indexed_condition(
+StatusOr<objname_to_matching_trace_ids> get_traces_by_indexed_condition(
     const int start_time, const int end_time, const query_condition *condition, const index_type ind_type,
     gcs::Client* client) {
     switch (ind_type) {

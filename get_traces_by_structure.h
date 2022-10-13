@@ -35,7 +35,7 @@ struct trace_structure {
 };
 
 // This is the highest level function
-traces_by_structure get_traces_by_structure(
+StatusOr<traces_by_structure> get_traces_by_structure(
     trace_structure query_trace, int start_time, int end_time, gcs::Client* client);
 
 template < typename PropertyMapFirst, typename PropertyMapSecond >
@@ -120,7 +120,7 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp_for_given_roo
     gcs::Client* client);
 std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
     trace_structure &candidate_trace, trace_structure &query_trace);
-traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
+StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
     std::string prefix, trace_structure query_trace, int start_time, int end_time,
     gcs::Client* client);
 trace_structure morph_trace_object_to_trace_structure(std::string &trace);

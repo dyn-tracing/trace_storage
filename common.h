@@ -45,6 +45,7 @@ constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a'
 namespace gcs = ::google::cloud::storage;
 namespace ot = opentelemetry::proto::trace::v1;
 using ::google::cloud::StatusOr;
+using ::google::cloud::Status;
 
 typedef std::map<std::string, std::vector<std::string>> objname_to_matching_trace_ids;
 
