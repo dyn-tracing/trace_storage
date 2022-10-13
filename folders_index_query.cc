@@ -1,6 +1,6 @@
 #include "folders_index_query.h"
 
-std::map<std::string, std::vector<std::string>> get_obj_name_to_trace_ids_map_from_folders_index(
+StatusOr<std::map<std::string, std::vector<std::string>>> get_obj_name_to_trace_ids_map_from_folders_index(
 	std::string attr_key, std::string attr_val, int start_time, int end_time, gcs::Client* client
 ) {
 	std::vector<std::future<std::unordered_map<std::string, std::vector<std::string>>>> response_futures;
@@ -10,7 +10,7 @@ std::map<std::string, std::vector<std::string>> get_obj_name_to_trace_ids_map_fr
 	for (auto&& object_metadata : client->ListObjects(bucket_name, gcs::Prefix(folder))) {
 		if (!object_metadata) {
 			std::cerr << object_metadata.status().message() << std::endl;
-			exit(1);
+			return object_metadata.status();
 		}
 
         if (false == is_object_within_timespan(
@@ -46,6 +46,9 @@ process_findex_object_and_retrieve_obj_name_to_trace_ids_map(
 	auto sections = split_by_string(object_content, "Timestamp: ");
 
 	for (auto& curr_section : sections) {
+		if (curr_section.size() == 0) {
+			continue;
+		}
 		auto lines = split_by_string(curr_section, newline);
 		auto obj_name = lines[0];
         if (false == is_object_within_timespan(extract_batch_timestamps(obj_name), start_time, end_time)) {
