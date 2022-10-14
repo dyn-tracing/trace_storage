@@ -85,6 +85,18 @@ ot::TracesData read_object_and_parse_traces_data(
     return trace_data;
 }
 
+StatusOr<std::string> read_object2(const std::string &bucket, const std::string &object, gcs::Client* client) {
+    auto reader = client->ReadObject(bucket, object);
+    if (!reader) {
+        std::cerr << "Error reading object " << bucket << "/" << object << " :" << reader.status() << "\n";
+
+        return reader.status();
+    }
+
+    std::string object_content{std::istreambuf_iterator<char>{reader}, {}};
+    return object_content;
+}
+
 std::string read_object(const std::string &bucket, const std::string &object, gcs::Client* client) {
     auto reader = client->ReadObject(bucket, object);
     if (!reader) {

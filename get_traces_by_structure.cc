@@ -104,17 +104,24 @@ StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_
             continue;
         }
 
-        std::vector<std::string> response_trace_ids = get_trace_ids_from_trace_hashes_object(
+        auto response_trace_ids_or_status = get_trace_ids_from_trace_hashes_object(
             object_metadata->name(), client);
+        
+        if (!response_trace_ids_or_status.ok()) {
+            return response_trace_ids_or_status.status();
+        }
+
+        auto response_trace_ids = response_trace_ids_or_status.value();
         if (response_trace_ids.size() < 1) {
             continue;
         }
 
-        std::string object_content = read_object(TRACE_STRUCT_BUCKET_PREFIX+std::string(BUCKETS_SUFFIX),
+        auto object_content_or_status = read_object2(TRACE_STRUCT_BUCKET_PREFIX+std::string(BUCKETS_SUFFIX),
             batch_name, client);
-        if (object_content == "") {
+        if (!object_content_or_status.ok()) {
             continue;
         }
+        auto object_content = object_content_or_status.value();
 
         if (to_return.iso_maps.size() < 1) {
             std::string trace = extract_any_trace(response_trace_ids, object_content);
@@ -149,8 +156,12 @@ StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_
         auto trace_ids_to_append = response_trace_ids;
 
         if (object_could_have_out_of_bound_traces(extract_batch_timestamps(batch_name), start_time, end_time)) {
-            trace_ids_to_append = filter_trace_ids_based_on_query_timestamp_for_given_root_service(
+            auto trace_ids_to_append_or_status = filter_trace_ids_based_on_query_timestamp_for_given_root_service(
                 response_trace_ids, batch_name, start_time, end_time, root_service_name, client);
+            if (!trace_ids_to_append_or_status.ok()) {
+                return trace_ids_to_append_or_status.status();
+            }
+            trace_ids_to_append = trace_ids_to_append_or_status.value();
         }
 
         int trace_id_offset = to_return.trace_ids.size();
@@ -182,7 +193,7 @@ std::string get_root_service_name(const std::string &trace) {
     return "";
 }
 
-std::vector<std::string> filter_trace_ids_based_on_query_timestamp_for_given_root_service(
+StatusOr<std::vector<std::string>> filter_trace_ids_based_on_query_timestamp_for_given_root_service(
     std::vector<std::string> &trace_ids,
     std::string &batch_name,
     const int start_time,
@@ -191,10 +202,13 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp_for_given_roo
     gcs::Client* client) {
     std::vector<std::string> response;
 
-    std::string spans_data = read_object(root_service_name + std::string(BUCKETS_SUFFIX), batch_name, client);
+    auto spans_data = read_object2(root_service_name + std::string(BUCKETS_SUFFIX), batch_name, client);
+    if (!spans_data.ok()) {
+        return spans_data.status();
+    }
 
     std::map<std::string, std::pair<int, int>> trace_id_to_timestamp_map = get_timestamp_map_for_trace_ids(
-        spans_data, trace_ids);
+        spans_data.value(), trace_ids);
 
     for (auto& trace_id : trace_ids) {
         std::pair<int, int> trace_timestamp = trace_id_to_timestamp_map[trace_id];
@@ -239,15 +253,19 @@ std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
     return isomorphism_maps;
 }
 
-std::vector<std::string> get_trace_ids_from_trace_hashes_object(const std::string &object_name, gcs::Client* client) {
-    std::string object_content = read_object(
+StatusOr<std::vector<std::string>> get_trace_ids_from_trace_hashes_object(const std::string &object_name, gcs::Client* client) {
+    auto object_content = read_object2(
         std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX),
         object_name, client);
-    if (object_content == "") {
+    if (!object_content.ok()) {
+        return object_content.status();
+    }
+
+    if (object_content.value() == "") {
         return std::vector<std::string>();
     }
     std::vector<std::string> response;
-    for (auto curr_trace_id : split_by_string(object_content, newline)) {
+    for (auto curr_trace_id : split_by_string(object_content.value(), newline)) {
         if (curr_trace_id != "") {
             response.push_back(curr_trace_id);
         }

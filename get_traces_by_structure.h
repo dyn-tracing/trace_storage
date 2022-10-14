@@ -111,7 +111,7 @@ struct vf2_callback_custom {
 };
 
 std::string get_root_service_name(const std::string &trace);
-std::vector<std::string> filter_trace_ids_based_on_query_timestamp_for_given_root_service(
+StatusOr<std::vector<std::string>> filter_trace_ids_based_on_query_timestamp_for_given_root_service(
     std::vector<std::string> &trace_ids,
     std::string &batch_name,
     int start_time,
@@ -125,6 +125,6 @@ StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_
     gcs::Client* client);
 trace_structure morph_trace_object_to_trace_structure(std::string &trace);
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure &input_graph);
-std::vector<std::string> get_trace_ids_from_trace_hashes_object(const std::string &object_name, gcs::Client* client);
+StatusOr<std::vector<std::string>> get_trace_ids_from_trace_hashes_object(const std::string &object_name, gcs::Client* client);
 void print_trace_structure(trace_structure trace);
 #endif  // BY_STRUCT_H_ // NOLINT
