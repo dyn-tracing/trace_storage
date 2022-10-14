@@ -66,7 +66,7 @@ fetched_data fetch_data(
     gcs::Client* client
 );
 
-std::tuple<index_type, time_t>  is_indexed(const query_condition *condition, gcs::Client* client);
+StatusOr<std::tuple<index_type, time_t>>  is_indexed(const query_condition *condition, gcs::Client* client);
 bool does_span_satisfy_condition(
     std::string &span_id, std::string &service_name,
     query_condition &condition, const std::string &batch_name, fetched_data& evaluation_data

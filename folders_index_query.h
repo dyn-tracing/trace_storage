@@ -20,7 +20,7 @@ using ::google::cloud::StatusOr;
 StatusOr<std::map<std::string, std::vector<std::string>>> get_obj_name_to_trace_ids_map_from_folders_index(
 	std::string attr_key, std::string attr_val, int start_time, int end_time, gcs::Client* client
 );
-std::unordered_map<std::string, std::vector<std::string>>
+StatusOr<std::unordered_map<std::string, std::vector<std::string>>>
 process_findex_object_and_retrieve_obj_name_to_trace_ids_map(
 	std::string findex_obj_name, std::string findex_bucket_name, int start_time, int end_time, gcs::Client* client
 );

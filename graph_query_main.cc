@@ -5,26 +5,26 @@
 int main(int argc, char* argv[]) {
     // query trace structure
     trace_structure query_trace;
-    query_trace.num_nodes = 1;
+    query_trace.num_nodes = 3;
     query_trace.node_names.insert(std::make_pair(0, "frontend"));
-    // query_trace.node_names.insert(std::make_pair(1, "adservice"));
-    // query_trace.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
+    query_trace.node_names.insert(std::make_pair(1, "adservice"));
+    query_trace.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
 
-    // query_trace.edges.insert(std::make_pair(0, 1));
-    // query_trace.edges.insert(std::make_pair(1, 2));
+    query_trace.edges.insert(std::make_pair(0, 1));
+    query_trace.edges.insert(std::make_pair(1, 2));
 
     // query conditions
     std::vector<query_condition> conditions;
 
     query_condition condition1;
     condition1.node_index = 0;
-    condition1.type = bytes_value;
+    condition1.type = string_value;
     get_value_func condition_1_union;
     condition_1_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
     condition1.func = condition_1_union;
-    condition1.node_property_value = "a18d24d4a46c0bc2c3d6697829301c63";
+    condition1.node_property_value = "server";
     condition1.comp = Equal_to;
-    condition1.property_name = "trace-id";
+    condition1.property_name = "span-kind";
 
     conditions.push_back(condition1);
 
@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
     ret.func = ret_union;
     boost::posix_time::ptime start, stop;
 	  start = boost::posix_time::microsec_clock::local_time();
-    auto res = query(query_trace, 1661969609, 1661969612, conditions, ret, true, &client);
+    auto res = query(query_trace, 1663255784, 1663255785, conditions, ret, true, &client);
     // auto res2 = get_traces_by_structure(query_trace, 1660239561, 1660239571, &client);
     stop = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration dur = stop - start;

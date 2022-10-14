@@ -25,7 +25,12 @@ std::vector<std::string> query(
     time_t earliest_last_updated = -1;
     std::vector<std::future<StatusOr<objname_to_matching_trace_ids>>> index_results_futures;
     for (uint64_t i=0; i < conditions.size(); i++) {
-        auto indexed = is_indexed(&conditions[i], client);
+        auto indexed_or_status = is_indexed(&conditions[i], client);
+        if (!indexed_or_status.ok()) {
+            std::cerr << "Error in is_indexed:" << std::endl;
+            std::cerr << indexed_or_status.status().message() << std::endl;
+        }
+        auto indexed = indexed_or_status.value();
         index_type i_type = std::get<0>(indexed);
         if (i_type != none) {
             if (earliest_last_updated == -1 || std::get<1>(indexed) < earliest_last_updated) {
@@ -52,7 +57,7 @@ std::vector<std::string> query(
 
     auto struct_results = struct_filter_obj.get();
     if (!struct_results.ok()) {
-        std::cout << "dann" << std::endl;
+        std::cerr << "Error in struct_results:" << std::endl;
         std::cerr << struct_results.status().message() << std::endl;
         return {};
     }
@@ -111,18 +116,21 @@ ret_req_data fetch_return_data(
 
 
 // Returns index type and last updated
-std::tuple<index_type, time_t> is_indexed(const query_condition *condition, gcs::Client* client) {
+StatusOr<std::tuple<index_type, time_t>> is_indexed(const query_condition *condition, gcs::Client* client) {
     std::string bucket_name = condition->property_name;
     replace_all(bucket_name, ".", "-");
     StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->GetBucketMetadata(bucket_name);
     if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound) {
-        return std::make_pair(none, 0);
+        std::tuple<index_type, time_t> res = std::make_pair(none, 0);
+        return res;
     }
-    if (!bucket_metadata) {
+
+    if (!bucket_metadata.ok()) {
         std::cout << "in error within is_indexed" << std::endl << std::flush;
-        throw std::runtime_error(bucket_metadata.status().message());
+        return bucket_metadata.status();
     }
+
     bool bloom_index = false;
     bool folder_index = false;
     time_t last_indexed = 0;
@@ -143,12 +151,15 @@ std::tuple<index_type, time_t> is_indexed(const query_condition *condition, gcs:
         }
     }
     if (bloom_index) {
-       return std::make_pair(bloom, last_indexed);
+        std::tuple<index_type, time_t> res = std::make_pair(bloom, last_indexed);
+       return res;
     }
     if (folder_index) {
-        return std::make_pair(folder, last_indexed);
+        std::tuple<index_type, time_t> res = std::make_pair(folder, last_indexed);
+        return res;
     }
-    return std::make_pair(not_found, 0);
+    std::tuple<index_type, time_t> res = std::make_pair(not_found, 0);
+    return res;
 }
 
 StatusOr<objname_to_matching_trace_ids> get_traces_by_indexed_condition(
