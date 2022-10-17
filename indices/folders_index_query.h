@@ -10,7 +10,7 @@
 #include <future>
 
 #include "common.h"
-#include "folders_index/trace_attributes.h"
+#include "make_folders_index/trace_attributes.h"
 #include "google/cloud/storage/client.h"
 
 namespace gcs = ::google::cloud::storage;

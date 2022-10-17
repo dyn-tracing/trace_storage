@@ -1,4 +1,4 @@
-#include "id_index/id_index.h"
+#include "indices/make_sequence_bloom_tree/id_index.h"
 
 using ::google::cloud::StatusOr;
 

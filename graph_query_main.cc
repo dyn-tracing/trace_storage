@@ -1,6 +1,6 @@
 #include "get_traces_by_structure.h"
 #include "graph_query.h"
-#include "query_bloom_index.h"
+#include "indices/query_bloom_index.h"
 
 int main(int argc, char* argv[]) {
     // query trace structure
