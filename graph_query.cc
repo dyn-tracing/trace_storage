@@ -125,8 +125,7 @@ std::tuple<index_type, time_t> is_indexed(const query_condition *condition, gcs:
             last_indexed = std::stoi(kv.second);
         }
         if (kv.first == "root") {
-            auto boundary_times = split_by_string(kv.second, hyphen);
-            last_indexed = std::stoi(boundary_times[0]);
+            last_indexed = std::stoi(split_by_string(kv.second, hyphen)[0]);
         }
     }
     if (bloom_index) {
@@ -278,8 +277,7 @@ std::string get_return_value_from_traces_data(
      for (int i=0; i < sp_size; i++) {
         const ot::Span *sp =
             &trace_data->resource_spans(0).scope_spans(0).spans(i);
-        auto span_id = sp->ot::Span::span_id();
-        if (is_same_hex_str(span_id, span_to_find)) {
+        if (is_same_hex_str(sp->ot::Span::span_id(), span_to_find)) {
             return get_value_as_string(sp, ret.func, ret.type);
         }
     }

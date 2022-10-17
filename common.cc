@@ -70,7 +70,7 @@ bool is_same_hex_str(const std::string &data, const std::string &compare) {
 ot::TracesData read_object_and_parse_traces_data(
     const std::string &bucket, const std::string& object_name, gcs::Client* client
 ) {
-    auto data = read_object(bucket, object_name, client);
+    std::string data = read_object(bucket, object_name, client);
     ot::TracesData trace_data;
     if (data == "") {
         return trace_data;
@@ -238,8 +238,8 @@ std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_ma
 }
 
 std::string extract_any_trace(std::vector<std::string>& trace_ids, std::string& object_content) {
-	for (auto& curr_trace_id : trace_ids) {
-		auto res = extract_trace_from_traces_object(curr_trace_id, object_content);
+	for (const std::string & curr_trace_id : trace_ids) {
+		const std::string res = extract_trace_from_traces_object(curr_trace_id, object_content);
 		if (res != "") {
 			return res;
 		}
