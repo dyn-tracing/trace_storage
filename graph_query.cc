@@ -73,6 +73,79 @@ std::vector<std::string> query(
     return returned;
 }
 
+
+std::vector<std::string> run_query_for_batch(
+    const std::string batch_name,
+    const std::vector<std::string> trace_ids,
+    const std::vector<query_condition> &conditions,
+    gcs::Client* client) {
+    // Make sure there is data to fetch
+    if (trace_ids.size() < 1) {
+        return std::vector::Empty();
+    }  
+    // (1) fetch data for batch
+    std::unordered_map<std::string, ot::proto::trace::v1::TracesData> service_name_to_trace_data = 
+        fetch_data_for_batch(batch_name, conditions)
+
+    // (2) filter based on conditions
+
+    // (3) fetch return data
+
+    // (4) get the return value
+}
+
+// Returns map of service name -> trace data that is necessary to evaluate the conditions.
+std::unordered_map<std::string, ot::proto::trace::v1::TracesData> fetch_data_for_batch(
+    const std::string& batch_name,
+    const std::vector<query_condition>& conditions,
+    gcs::Client* client) {
+    // (1) get the structural object
+    std::string trace_structure_bucket_prefix(TRACE_STRUCT_BUCKET_PREFIX);
+    std::string buckets_suffix(BUCKETS_SUFFIX);
+    std::string structural_object = read_object(        
+                trace_structure_bucket_prefix+buckets_suffix, batch_name, client);
+
+    // (2) get the relevant services
+}
+
+// Returns map of trace ID -> 
+std::vector<iso_to_span_id> filter_batch_based_on_conditions() {
+    for (uint64_t i=0; i<trace_ids.size(); i++) {
+        iso_to_span_id isomap_to_satisfying_span_ids = does_trace_satisfy_conditions(
+            trace_ids[i],
+            batch_name,
+            conditions,
+            service_name_to_trace_data,
+            structural_results,
+            ret);
+        if (isomap_to_satisfying_span_ids.size() > 0) {
+            // we satisfy all conditions in this trace ID, and should get a return value
+        }
+    }
+
+}
+
+// Fetch whatever data to augment the already retrieved data to get return value.
+std::unordered_map<std::string, ot::proto::trace::v1::TracesData> fetch_return_data_for_batch() {
+    // TODO
+}
+
+std::vector<std::string> get_return_values_for_batch() {
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 ret_req_data fetch_return_data(
     const std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
     return_value &ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client
@@ -221,6 +294,8 @@ objname_to_matching_trace_ids intersect_index_results(
     // Premature optimization is of the devil and all that.
     print_progress(0, "Intersecting results", verbose);
     std::map<std::tuple<std::string, std::string>, int> count;
+
+    // (1) increment per [batch name, trace ID] for each non-structural index 
     for (uint64_t i=0; i < index_results.size(); i++) {
         print_progress(i/index_results.size(), "Intersecting results", verbose);
         for (auto const &obj_to_id : index_results[i]) {
@@ -231,20 +306,16 @@ objname_to_matching_trace_ids intersect_index_results(
         }
     }
 
-    std::map<int, std::string> ind_to_trace_id;
-    std::map<int, std::string> ind_to_obj;
-    for (uint64_t i=0; i < structural_results.trace_ids.size(); i++) {
-        ind_to_trace_id[i] = structural_results.trace_ids[i];
-    }
-    for (uint64_t i=0; i < structural_results.object_names.size(); i++) {
-        ind_to_obj[i] = structural_results.object_names[i];
-    }
+    // (2) add 1 for the structural result being correct
     for (auto const &obj_to_id : structural_results.object_name_to_trace_ids_of_interest) {
-        std::string obj = ind_to_obj[obj_to_id.first];
+        std::string obj = structural_results.object_names[obj_to_id.first];
         for (uint64_t j=0; j < obj_to_id.second.size(); j++) {
-            count[std::make_tuple(obj, ind_to_trace_id[obj_to_id.second[j]])] += 1;
+            count[std::make_tuple(obj, structural_results.trace_ids[obj_to_id.second[j]])] += 1;
         }
     }
+
+    // (3) if we have satisfied all of the indices, include the [batch name, trace ID]
+    //     in what we return. otherwise, discard
 
     int goal_num = index_results.size() + 1;
     objname_to_matching_trace_ids to_return;
@@ -254,6 +325,7 @@ objname_to_matching_trace_ids intersect_index_results(
             auto trace_id = std::get<1>(pair.first);
             to_return[object].push_back(trace_id);
         } else {
+            // also include it if the indices haven't caught up to this timestamp
             auto timestamps = extract_batch_timestamps(object);
             if (std::get<0>(timestamps) > last_updated) {
                 auto trace_id = std::get<1>(pair.first);
