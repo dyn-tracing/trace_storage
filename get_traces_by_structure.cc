@@ -83,6 +83,10 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 
     std::string root_service_name = "";
 
+    // TODO(haseeb): Get rid of some of these sanity checks. Flow should be:
+    // (1) get 1 random exemplar from hash prefix. if no isomaps, exit.
+    // (2) if random exemplar matches, request object names using generate_prefixes function
+    // (3) in parallel, create object names to trace IDs map
     for (auto&& object_metadata : client->ListObjects(prefix_to_search, gcs::Prefix(prefix))) {
         if (!object_metadata) {
             std::cerr << object_metadata.status().message() << std::endl;
@@ -101,7 +105,6 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
             continue;
         }
 
-        // TODO(jessberg) this should be parallelized
         std::string object_content = read_object(prefix_to_search,
             batch_name, client);
         if (object_content == "") {

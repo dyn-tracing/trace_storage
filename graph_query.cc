@@ -172,21 +172,21 @@ std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>
             std::ref(structural_results), std::ref(conditions), std::ref(fetched), ret));
     }
 
-    objname_to_matching_trace_ids res_otmti;
-    std::map<std::string, iso_to_span_id> itsi_map;
+    objname_to_matching_trace_ids obj_to_trace_ids;
+    std::map<std::string, iso_to_span_id> trace_id_to_maps;
 
     for_each(response_futures.begin(), response_futures.end(),
-		[&res_otmti, &itsi_map](
+		[&obj_to_trace_ids, &trace_id_to_maps](
             std::future<std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>>& fut) {
 			    std::tuple<
                     objname_to_matching_trace_ids,
                     std::map<std::string, iso_to_span_id>> response_tuple = fut.get();
 
-                res_otmti.insert(std::get<0>(response_tuple).begin(), std::get<0>(response_tuple).end());
-                itsi_map.insert(std::get<1>(response_tuple).begin(), std::get<1>(response_tuple).end());
+                obj_to_trace_ids.insert(std::get<0>(response_tuple).begin(), std::get<0>(response_tuple).end());
+                trace_id_to_maps.insert(std::get<1>(response_tuple).begin(), std::get<1>(response_tuple).end());
 	});
 
-    return {res_otmti, itsi_map};
+    return {obj_to_trace_ids, trace_id_to_maps};
 }
 
 std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> filter_based_on_conditions_batched(
