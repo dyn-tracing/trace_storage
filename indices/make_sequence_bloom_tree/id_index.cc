@@ -2,64 +2,6 @@
 
 using ::google::cloud::StatusOr;
 
-bool less_than(time_t first, std::string second) {
-    std::stringstream sec_stream;
-    sec_stream << second;
-    std::string sec_str = sec_stream.str();
-    time_t s = stol(sec_str);
-    return first < s;
-}
-
-bool greater_than(time_t first, std::string second) {
-    std::stringstream sec_stream;
-    sec_stream << second;
-    std::string sec_str = sec_stream.str();
-    time_t s = stol(sec_str);
-    return first > s;
-}
-
-time_t time_t_from_string(std::string str) {
-    std::stringstream stream;
-    stream << str;
-    std::string sec_str = stream.str();
-    return stol(sec_str);
-}
-
-std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
-    // you want to generate a list of prefixes between earliest and latest
-    // find the first digit at which they differ, then do a list on lowest to highest there
-    // is this the absolute most efficient?  No, but at a certain point the network calls cost,
-    // and I think this is good enough.
-
-    std::vector<std::string> to_return;
-    std::stringstream e;
-    e << earliest;
-    std::stringstream l;
-    l << latest;
-
-    std::string e_str = e.str();
-    std::string l_str = l.str();
-
-    int i = 0;
-    for ( ; i < e_str.length(); i++) {
-        if (e_str[i] != l_str[i]) {
-            break;
-        }
-    }
-
-    // i is now the first spot of difference
-
-    int min = std::stoi(e_str.substr(i, 1));
-    int max = std::stoi(l_str.substr(i, 1));
-
-    for (int j = min; j <= max; j++) {
-        std::string prefix = e_str.substr(0, i);
-        prefix += std::to_string(j);
-        to_return.push_back(prefix);
-    }
-    return to_return;
-}
-
 bool leaf_sizes_equal(struct Leaf &leaf1, struct Leaf &leaf2) {
     if (leaf1.batch_names.size() != leaf2.batch_names.size()) { return false; }
     if (leaf1.bloom_filters.size() != leaf2.bloom_filters.size()) { return false; }
@@ -125,72 +67,6 @@ struct Leaf deserialize_leaf(std::istream &is) {
         leaf.bloom_filters.push_back(bf);
     }
     return leaf;
-}
-
-std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix, time_t earliest, time_t latest) {
-    std::vector<std::string> to_return;
-    std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
-    std::string suffix(BUCKETS_SUFFIX);
-    for (auto&& object_metadata : client->ListObjects(trace_struct_bucket+suffix, gcs::Prefix(prefix))) {
-        if (!object_metadata) {
-            throw std::runtime_error(object_metadata.status().message());
-        }
-        // before we push back, should make sure that it's actually between the bounds
-        std::string name = object_metadata->name();
-        to_return.push_back(name);
-        std::vector<std::string> times = split_by_string(name, hyphen);
-        // we care about three of these:
-        // if we are neatly between earliest and latest, or if we overlap on one side
-        if (less_than(earliest, times[1]) && less_than(earliest, times[2])) {
-            // we're too far back, already indexed this, ignore
-            continue;
-        } else if (greater_than(latest, times[1]) && greater_than(latest, times[2])) {
-            // we're too far ahead;  we're still in the waiting period for this data
-            continue;
-        } else {
-            to_return.push_back(name);
-        }
-    }
-    return to_return;
-}
-
-std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest) {
-    std::vector<std::string> prefixes = generate_prefixes(earliest, latest);
-    std::vector<std::future<std::vector<std::string>>> object_names;
-    for (uint64_t i = 0; i < prefixes.size(); i++) {
-        for (int j = 0; j < 10; j++) {
-            for (int k=0; k < 10; k++) {
-                std::string new_prefix = std::to_string(j) + std::to_string(k) + "-" + prefixes[i];
-                object_names.push_back(
-                    std::async(std::launch::async, get_list_result, client, new_prefix, earliest, latest));
-            }
-        }
-    }
-    std::vector<std::string> to_return;
-    for (uint64_t m=0; m < object_names.size(); m++) {
-        auto names = object_names[m].get();
-        for (uint64_t n=0; n < names.size(); n++) {
-            // check that these are actually within range
-            std::vector<std::string> timestamps = split_by_string(names[n], hyphen);
-            std::stringstream stream;
-            stream << timestamps[1];
-            std::string str = stream.str();
-            time_t start_time = stol(str);
-
-            std::stringstream end_stream;
-            end_stream << timestamps[2];
-            std::string end_str = end_stream.str();
-            time_t end_time = stol(end_str);
-
-            if ((start_time >= earliest && end_time <= latest) ||
-                (start_time <= earliest && end_time >= earliest) ||
-                (start_time <= latest && end_time >= latest)
-            ) {
-                to_return.push_back(names[n]);
-            }
-        }
-    }
-    return to_return;
 }
 
 /*
