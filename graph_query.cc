@@ -354,7 +354,7 @@ std::vector<std::string> get_return_value(
  */
 fetched_data fetch_data(
     traces_by_structure& structs_result,
-    std::map<std::string, std::vector<std::string>>& object_name_to_trace_ids_of_interest,
+    objname_to_matching_trace_ids& object_name_to_trace_ids_of_interest,
     std::vector<query_condition> &conditions,
     gcs::Client* client
 ) {
