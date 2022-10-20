@@ -125,8 +125,7 @@ std::tuple<index_type, time_t> is_indexed(const query_condition *condition, gcs:
             last_indexed = std::stoi(kv.second);
         }
         if (kv.first == "root") {
-            auto boundary_times = split_by_string(kv.second, hyphen);
-            last_indexed = std::stoi(boundary_times[0]);
+            last_indexed = std::stoi(split_by_string(kv.second, hyphen)[0]);
         }
     }
     if (bloom_index) {
@@ -178,21 +177,21 @@ std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>
             std::ref(structural_results), std::ref(conditions), std::ref(fetched), ret));
     }
 
-    objname_to_matching_trace_ids res_otmti;
-    std::map<std::string, iso_to_span_id> itsi_map;
+    objname_to_matching_trace_ids obj_to_trace_ids;
+    std::map<std::string, iso_to_span_id> trace_id_to_maps;
 
     for_each(response_futures.begin(), response_futures.end(),
-		[&res_otmti, &itsi_map](
+		[&obj_to_trace_ids, &trace_id_to_maps](
             std::future<std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>>& fut) {
 			    std::tuple<
                     objname_to_matching_trace_ids,
                     std::map<std::string, iso_to_span_id>> response_tuple = fut.get();
 
-                res_otmti.insert(std::get<0>(response_tuple).begin(), std::get<0>(response_tuple).end());
-                itsi_map.insert(std::get<1>(response_tuple).begin(), std::get<1>(response_tuple).end());
+                obj_to_trace_ids.insert(std::get<0>(response_tuple).begin(), std::get<0>(response_tuple).end());
+                trace_id_to_maps.insert(std::get<1>(response_tuple).begin(), std::get<1>(response_tuple).end());
 	});
 
-    return {res_otmti, itsi_map};
+    return {obj_to_trace_ids, trace_id_to_maps};
 }
 
 std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> filter_based_on_conditions_batched(
@@ -283,8 +282,7 @@ std::string get_return_value_from_traces_data(
      for (int i=0; i < sp_size; i++) {
         const ot::Span *sp =
             &trace_data->resource_spans(0).scope_spans(0).spans(i);
-        auto span_id = sp->ot::Span::span_id();
-        if (is_same_hex_str(span_id, span_to_find)) {
+        if (is_same_hex_str(sp->ot::Span::span_id(), span_to_find)) {
             return get_value_as_string(sp, ret.func, ret.type);
         }
     }
@@ -359,7 +357,7 @@ std::vector<std::string> get_return_value(
  */
 fetched_data fetch_data(
     traces_by_structure& structs_result,
-    std::map<std::string, std::vector<std::string>>& object_name_to_trace_ids_of_interest,
+    objname_to_matching_trace_ids& object_name_to_trace_ids_of_interest,
     std::vector<query_condition> &conditions,
     gcs::Client* client
 ) {
@@ -375,9 +373,9 @@ fetched_data fetch_data(
     std::string trace_structure_bucket_prefix(TRACE_STRUCT_BUCKET_PREFIX);
     std::string buckets_suffix(BUCKETS_SUFFIX);
 
-    for (auto& ontii_ele : object_name_to_trace_ids_of_interest) {
-        auto batch_name = ontii_ele.first;
-        auto trace_ids = ontii_ele.second;
+    for (auto& trace_id_map : object_name_to_trace_ids_of_interest) {
+        const std::string& batch_name = trace_id_map.first;
+        const std::vector<std::string>& trace_ids = trace_id_map.second;
         if (trace_ids.size() < 1) {
             continue;
         }
@@ -387,12 +385,13 @@ fetched_data fetch_data(
                 trace_structure_bucket_prefix+buckets_suffix, batch_name, client);
         }
 
-        auto iso_map_indices = structs_result.trace_id_to_isomap_indices[trace_ids[0]];
-        for (auto curr_condition : conditions) {
-            for (auto curr_iso_map_ind : iso_map_indices) {
-                auto trace_node_names_ind = structs_result.iso_map_to_trace_node_names[curr_iso_map_ind];
-                auto trace_node_index = structs_result.iso_maps[curr_iso_map_ind][curr_condition.node_index];
-                auto condition_service = structs_result.trace_node_names[trace_node_names_ind][trace_node_index];
+        std::vector<int>& iso_map_indices = structs_result.trace_id_to_isomap_indices[trace_ids[0]];
+        for (query_condition& curr_condition : conditions) {
+            for (int curr_iso_map_ind : iso_map_indices) {
+                const int trace_node_names_ind = structs_result.iso_map_to_trace_node_names[curr_iso_map_ind];
+                const int trace_node_index = structs_result.iso_maps[curr_iso_map_ind][curr_condition.node_index];
+                const std::string& condition_service =
+                    structs_result.trace_node_names[trace_node_names_ind][trace_node_index];
 
                 /**
                  * @brief while parallelizing, just make 
@@ -401,7 +400,7 @@ fetched_data fetch_data(
                  * spans_objects_by_bn_sn[batch_name][service_name_without_hash_id], so we dont wanna fetch same obj
                  * more than once.
                  */
-                auto service_name_without_hash_id = split_by_string(condition_service, ":")[0];
+                const std::string service_name_without_hash_id = split_by_string(condition_service, ":")[0];
                 if (response_futures[batch_name].find(service_name_without_hash_id) ==
                     response_futures[batch_name].end()
                 ) {

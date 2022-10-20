@@ -83,6 +83,10 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 
     std::string root_service_name = "";
 
+    // TODO(haseeb): Get rid of some of these sanity checks. Flow should be:
+    // (1) get 1 random exemplar from hash prefix. if no isomaps, exit.
+    // (2) if random exemplar matches, request object names using generate_prefixes function
+    // (3) in parallel, create object names to trace IDs map
     for (auto&& object_metadata : client->ListObjects(prefix_to_search, gcs::Prefix(prefix))) {
         if (!object_metadata) {
             std::cerr << object_metadata.status().message() << std::endl;
@@ -101,7 +105,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
             continue;
         }
 
-        std::string object_content = read_object(TRACE_STRUCT_BUCKET_PREFIX+std::string(BUCKETS_SUFFIX),
+        std::string object_content = read_object(prefix_to_search,
             batch_name, client);
         if (object_content == "") {
             continue;
@@ -163,7 +167,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 }
 
 std::string get_root_service_name(const std::string &trace) {
-    for (auto line : split_by_string(trace, newline)) {
+    for (const std::string& line : split_by_string(trace, newline)) {
         if (line.substr(0, 1) == ":") {
             return split_by_string(line, colon)[2];
         }
@@ -185,7 +189,7 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp_for_given_roo
     std::map<std::string, std::pair<int, int>> trace_id_to_timestamp_map = get_timestamp_map_for_trace_ids(
         spans_data, trace_ids);
 
-    for (auto& trace_id : trace_ids) {
+    for (const auto& trace_id : trace_ids) {
         std::pair<int, int> trace_timestamp = trace_id_to_timestamp_map[trace_id];
         if (is_object_within_timespan(trace_timestamp, start_time, end_time)) {
             response.push_back(trace_id);
@@ -236,7 +240,7 @@ std::vector<std::string> get_trace_ids_from_trace_hashes_object(const std::strin
         return std::vector<std::string>();
     }
     std::vector<std::string> response;
-    for (auto curr_trace_id : split_by_string(object_content, newline)) {
+    for (const std::string& curr_trace_id : split_by_string(object_content, newline)) {
         if (curr_trace_id != "") {
             response.push_back(curr_trace_id);
         }
@@ -251,7 +255,7 @@ trace_structure morph_trace_object_to_trace_structure(std::string &trace) {
     std::unordered_map<std::string, int> reverse_node_names;
     std::multimap<std::string, std::string> edges;
 
-    for (auto line : split_by_string(trace, newline)) {
+    for (std::string& line : split_by_string(trace, newline)) {
         if (line.substr(0, 10) == "Trace ID: ") {
             continue;
         }

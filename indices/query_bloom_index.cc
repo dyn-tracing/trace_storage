@@ -120,7 +120,7 @@ std::tuple<time_t, time_t> get_nearest_node(std::tuple<time_t, time_t> root, tim
     bool child_also_has_range = false;
     do {
         child_also_has_range = false;
-        for (auto & child : get_children(curr, granularity)) {
+        for (std::tuple<time_t, time_t>& child : get_children(curr, granularity)) {
             if (!child_also_has_range && std::get<0>(child) <= start_time && std::get<1>(child) >= end_time) {
                 curr = child;
                 child_also_has_range = true;
@@ -172,8 +172,8 @@ objname_to_matching_trace_ids query_bloom_index_for_value(
         // now we need to see how many of the non-terminal nodes showed up positive
         for (uint64_t i=0; i < got_positive.size(); i++) {
             if (got_positive[i].get()) {
-                auto children = get_children(got_positive_limits[i], granularity);
-                for (uint64_t j=0; j < children.size(); j++) {
+                std::vector<std::tuple<time_t, time_t>> children = get_children(got_positive_limits[i], granularity);
+                for (int j=0; j < children.size(); j++) {
                     new_unvisited.push_back(children[j]);
                 }
             }
