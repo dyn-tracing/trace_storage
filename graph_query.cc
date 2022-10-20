@@ -390,7 +390,8 @@ fetched_data fetch_data(
             for (int curr_iso_map_ind : iso_map_indices) {
                 const int trace_node_names_ind = structs_result.iso_map_to_trace_node_names[curr_iso_map_ind];
                 const int trace_node_index = structs_result.iso_maps[curr_iso_map_ind][curr_condition.node_index];
-                const std::string& condition_service = structs_result.trace_node_names[trace_node_names_ind][trace_node_index];
+                const std::string& condition_service =
+                    structs_result.trace_node_names[trace_node_names_ind][trace_node_index];
 
                 /**
                  * @brief while parallelizing, just make 
