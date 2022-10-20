@@ -11,6 +11,7 @@
 #include <vector>
 #include <future>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 #include "google/cloud/storage/client.h"
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
