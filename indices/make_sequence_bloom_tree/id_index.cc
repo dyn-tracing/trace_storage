@@ -76,9 +76,9 @@ struct Leaf deserialize_leaf(std::istream &is) {
 time_t create_index_bucket(gcs::Client* client, std::string index_bucket) {
     google::cloud::StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->CreateBucketForProject(
-          index_bucket, "dynamic-tracing",
+          index_bucket, PROJECT_ID,
           gcs::BucketMetadata()
-              .set_location("us-central1")
+              .set_location(BUCKETS_LOCATION)
               .set_storage_class(gcs::storage_class::Regional()));
     if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kAborted) {
       // means we've already created the bucket
@@ -116,7 +116,7 @@ std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std
 
     std::vector<std::string> trace_and_spans = split_by_string(contents, newline);
     for (uint64_t j=0; j < trace_and_spans.size(); j++) {
-        if (trace_and_spans[j].find("Trace ID") != -1) {
+        if (trace_and_spans[j].find("Trace ID") != std::string::npos) {
             int start = trace_and_spans[j].find("Trace ID");
             std::string trace_id =
                 trace_and_spans[j].substr(start + 10, trace_and_spans[j].length() - 11);  // 8 is len of Trace ID
@@ -139,7 +139,7 @@ std::vector<std::string> span_ids_from_trace_id_object(gcs::Client* client, std:
     std::string contents{std::istreambuf_iterator<char>{reader}, {}};
     std::vector<std::string> trace_and_spans = split_by_string(contents, newline);
     for (uint64_t j=0; j < trace_and_spans.size(); j++) {
-        if (trace_and_spans[j].find("Trace ID") == -1 && trace_and_spans[j].size() > 0) {
+        if (trace_and_spans[j].find("Trace ID") == std::string::npos && trace_and_spans[j].size() > 0) {
             std::vector<std::string> sp = split_by_string(trace_and_spans[j], colon);
             to_return.push_back(sp[1]);
         }
@@ -495,7 +495,7 @@ std::vector<struct BatchObjectNames> split_batches_by_leaf(
             if (index_for_start == index_for_end) {
                 to_return[index_for_start].inclusive.push_back(object_names[i]);
             } else {
-                if (index_for_end < to_return.size()) {
+                if (static_cast<uint64_t>(index_for_end) < to_return.size()) {
                     to_return[index_for_start].late.push_back(object_names[i]);
                     to_return[index_for_end].early.push_back(object_names[i]);
                 } else {

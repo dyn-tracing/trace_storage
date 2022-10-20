@@ -296,7 +296,7 @@ trace_structure morph_trace_object_to_trace_structure(std::string &trace) {
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure &input_graph) {
     graph_type output_graph;
 
-    for (int i = 0; i < input_graph.num_nodes; i++) {
+    for (uint64_t i = 0; i < input_graph.num_nodes; i++) {
         boost::add_vertex(vertex_property(input_graph.node_names[i], i), output_graph);
     }
 

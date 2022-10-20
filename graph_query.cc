@@ -152,7 +152,12 @@ objname_to_matching_trace_ids get_traces_by_indexed_condition(
             return get_obj_name_to_trace_ids_map_from_folders_index(
             condition->property_name, condition->node_property_value, start_time, end_time, client);
         }
+        case none: break;
+        case not_found: break;
     }
+    // TODO(jessberg): Should never get a none or not found, so shouldn't get here.
+    objname_to_matching_trace_ids empty;
+    return empty;
 }
 
 std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> filter_based_on_conditions(
@@ -425,14 +430,14 @@ std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(
 ) {
     // isomap_index_to_node_index_to_span_id -> ii_to_ni_to_si
     std::vector<std::map<int, std::map<int, std::string>>> ii_to_ni_to_si_data_for_all_conditions;
-    for (int curr_cond_ind = 0; curr_cond_ind < conditions.size(); curr_cond_ind++) {
+    for (uint64_t curr_cond_ind = 0; curr_cond_ind < conditions.size(); curr_cond_ind++) {
         ii_to_ni_to_si_data_for_all_conditions.push_back(
             get_iso_maps_indices_for_which_trace_satifies_curr_condition(
                 trace_id, object_name, conditions, curr_cond_ind, evaluation_data, structural_results, ret));
     }
 
     std::map<int, std::map<int, std::string>> aggregate_result;
-    std::map<int, int> iso_map_to_satisfied_conditions_map;
+    std::map<int, uint64_t> iso_map_to_satisfied_conditions_map;
     for (auto vec_ele : ii_to_ni_to_si_data_for_all_conditions) {
         for (auto ele : vec_ele) {
             auto iso_map_index = ele.first;
