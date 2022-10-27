@@ -1,4 +1,8 @@
 #include "count/count_traces.h"
+
+#include <unordered_set>
+#include <vector>
+
 #include "common.h"
 
 struct Counts {
@@ -32,15 +36,14 @@ void count_spans_and_traces(gcs::Client* client) {
     std::vector<std::future<Counts>> counts_futures;
     for (auto& object_metadata : client ->ListObjects(TRACE_STRUCT_BUCKET)) {
         if (!object_metadata) {
-            std::cerr << "Error in getting object" << std::endl;              
+            std::cerr << "Error in getting object" << std::endl;
             exit(1);
         }
         counts_futures.push_back(std::async(
-            std::launch::async, get_counts_for_object, object_metadata->name(), client
-        ));
+            std::launch::async, get_counts_for_object, object_metadata->name(), client));
     }
     Counts summation;
-    for (int i=0; i<counts_futures.size(); i++) {
+    for (int i=0; i < counts_futures.size(); i++) {
         if (i%20 == 0) {
             std::cout << "i " << i << std::endl;
         }

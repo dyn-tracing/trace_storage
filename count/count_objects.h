@@ -1,5 +1,5 @@
-#ifndef  MICROSERVICES_ENV_TRACE_STORAGE_COUNT_OBJECTS_H_ // NOLINT
-#define  MICROSERVICES_ENV_TRACE_STORAGE_COUNT_OBJECTS_H_ // NOLINT
+#ifndef  MICROSERVICES_ENV_TRACE_STORAGE_COUNT_COUNT_OBJECTS_H_ // NOLINT
+#define  MICROSERVICES_ENV_TRACE_STORAGE_COUNT_COUNT_OBJECTS_H_ // NOLINT
 
 #include <stdlib.h>
 #include <string>
@@ -11,4 +11,4 @@ int64_t count_objects_size(std::string bucket_name, gcs::Client* client);
 int64_t count_objects_in_bucket(std::string bucket_name, gcs::Client* client);
 int64_t count_objects(gcs::Client* client, bool size);
 
-#endif
+#endif  // MICROSERVICES_ENV_TRACE_STORAGE_COUNT_COUNT_OBJECTS_H_
