@@ -99,13 +99,14 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
             continue;
         }
 
+
         std::vector<std::string> response_trace_ids = get_trace_ids_from_trace_hashes_object(
             object_metadata->name(), client);
         if (response_trace_ids.size() < 1) {
             continue;
         }
 
-        std::string object_content = read_object(prefix_to_search,
+        std::string object_content = read_object(TRACE_STRUCT_BUCKET_PREFIX+std::string(BUCKETS_SUFFIX),
             batch_name, client);
         if (object_content == "") {
             continue;
@@ -130,12 +131,14 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 
             if (root_service_name == "") {
                 root_service_name = get_root_service_name(trace);
+                std::cout << "no root service " << std::endl;
                 if (root_service_name == "") {
                     return {};
                 }
             }
 
             if (to_return.iso_maps.size() < 1) {
+                std::cout << "no isomaps" << std::endl;
                 return to_return;
             }
         }
