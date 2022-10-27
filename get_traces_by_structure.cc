@@ -99,6 +99,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
             continue;
         }
 
+
         std::vector<std::string> response_trace_ids = get_trace_ids_from_trace_hashes_object(
             object_metadata->name(), client);
         if (response_trace_ids.size() < 1) {
@@ -130,12 +131,14 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
 
             if (root_service_name == "") {
                 root_service_name = get_root_service_name(trace);
+                std::cout << "no root service " << std::endl;
                 if (root_service_name == "") {
                     return {};
                 }
             }
 
             if (to_return.iso_maps.size() < 1) {
+                std::cout << "no isomaps" << std::endl;
                 return to_return;
             }
         }
@@ -296,7 +299,7 @@ trace_structure morph_trace_object_to_trace_structure(std::string &trace) {
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure &input_graph) {
     graph_type output_graph;
 
-    for (int i = 0; i < input_graph.num_nodes; i++) {
+    for (uint64_t i = 0; i < input_graph.num_nodes; i++) {
         boost::add_vertex(vertex_property(input_graph.node_names[i], i), output_graph);
     }
 

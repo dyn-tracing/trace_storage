@@ -25,7 +25,7 @@ std::vector<std::string> is_trace_id_in_leaf(
         throw std::runtime_error("Error reading leaf object");
     }
     Leaf leaf = deserialize_leaf(reader);
-    for (int i=0; i < leaf.batch_names.size(); i++) {
+    for (uint64_t i=0; i < leaf.batch_names.size(); i++) {
         if (leaf.bloom_filters[i].contains(traceID_c_str, len)) {
             to_return.push_back(leaf.batch_names[i]);
         }
@@ -59,34 +59,34 @@ objname_to_matching_trace_ids get_return_value_from_objnames(gcs::Client* client
 
     objname_to_matching_trace_ids to_return;
     if (index_bucket.compare(TRACE_ID_BUCKET) == 0) {
-        for (int i=0; i < object_names.size(); i++) {
+        for (uint64_t i=0; i < object_names.size(); i++) {
             auto reader = client->ReadObject(TRACE_STRUCT_BUCKET, object_names[i]);
             if (!reader) {
                 std::cerr << "Error reading object: " << reader.status() << object_names[i] << "\n";
                 throw std::runtime_error("Error reading node object");
             }
             std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-            if (contents.find(queried_value) != -1) {
+            if (contents.find(queried_value) != std::string::npos) {
                 to_return[object_names[i]].push_back(queried_value);
             }
         }
     } else if (index_bucket.compare(SPAN_ID_BUCKET) == 0) {
-        for (int i=0; i < object_names.size(); i++) {
+        for (uint64_t i=0; i < object_names.size(); i++) {
             auto reader = client->ReadObject(TRACE_STRUCT_BUCKET, object_names[i]);
             if (!reader) {
                 std::cerr << "Error reading object: " << reader.status() << object_names[i] << "\n";
                 throw std::runtime_error("Error reading node object");
             }
             std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-            int index = contents.find(queried_value);
-            if (index != -1) {
+            std::size_t index = contents.find(queried_value);
+            if (index != std::string::npos) {
                 int trace_id_index = contents.rfind("Trace ID", index);
                 std::string trace_id = contents.substr(trace_id_index + 10, TRACE_ID_LENGTH);
                 to_return[object_names[i]].push_back(trace_id);
             }
         }
     } else {
-        for (int i=0; i < object_names.size(); i++) {
+        for (uint64_t i=0; i < object_names.size(); i++) {
             auto reader = client->ReadObject(TRACE_STRUCT_BUCKET, object_names[i]);
             if (!reader) {
                 std::cerr << "Error reading object: " << reader.status() << object_names[i] << "\n";
@@ -94,9 +94,9 @@ objname_to_matching_trace_ids get_return_value_from_objnames(gcs::Client* client
             }
             std::string contents{std::istreambuf_iterator<char>{reader}, {}};
             std::vector<std::string> lines = split_by_string(contents, newline);
-            for (int j=0; j < lines.size(); j++) {
-                int trace_id_index = lines[j].find("Trace ID");
-                if (trace_id_index != -1) {
+            for (uint64_t j=0; j < lines.size(); j++) {
+                std::size_t trace_id_index = lines[j].find("Trace ID");
+                if (trace_id_index != std::string::npos) {
                     std::string trace_id = contents.substr(trace_id_index+10, TRACE_ID_LENGTH);
                     if (std::find(to_return[object_names[i]].begin(),
                                   to_return[object_names[i]].end(),
@@ -155,7 +155,7 @@ objname_to_matching_trace_ids query_bloom_index_for_value(
         std::vector<std::tuple<time_t, time_t>> new_unvisited;
         std::vector<std::future<bool>> got_positive;
         std::vector<std::tuple<time_t, time_t>> got_positive_limits;
-        for (int i=0; i < unvisited_nodes.size(); i++) {
+        for (uint64_t i=0; i < unvisited_nodes.size(); i++) {
             const std::tuple<time_t, time_t>& visit = unvisited_nodes[i];
             // process
             if (std::get<1>(visit)-std::get<0>(visit) == granularity) {
@@ -170,7 +170,7 @@ objname_to_matching_trace_ids query_bloom_index_for_value(
             }
         }
         // now we need to see how many of the non-terminal nodes showed up positive
-        for (int i=0; i < got_positive.size(); i++) {
+        for (uint64_t i=0; i < got_positive.size(); i++) {
             if (got_positive[i].get()) {
                 std::vector<std::tuple<time_t, time_t>> children = get_children(got_positive_limits[i], granularity);
                 for (int j=0; j < children.size(); j++) {
@@ -179,16 +179,16 @@ objname_to_matching_trace_ids query_bloom_index_for_value(
             }
         }
         unvisited_nodes.clear();
-        for (int i=0; i < new_unvisited.size(); i++) {
+        for (uint64_t i=0; i < new_unvisited.size(); i++) {
             unvisited_nodes.push_back(new_unvisited[i]);
         }
     }
     // now figure out which of the batches actually have your trace ID
     // because false positives are a thing, this could potentially be more than one batch that shows up true
     std::vector<std::string> verified_batches;
-    for (int i=0; i < batches.size(); i++) {
+    for (uint64_t i=0; i < batches.size(); i++) {
         std::vector<std::string> verified = batches[i].get();
-        for (int j=0; j < verified.size(); j++) {
+        for (uint64_t j=0; j < verified.size(); j++) {
             verified_batches.push_back(verified[j]);
         }
     }

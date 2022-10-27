@@ -36,7 +36,10 @@ void update_index_batched(gcs::Client* client, time_t last_updated, std::string 
 					std::vector<
 						std::string>>>>> response_futures;
 
-	for (int i = batch_start_ind; (i < trace_struct_object_names.size() && i < batch_start_ind+batch_size); i++) {
+	for (uint64_t i = batch_start_ind;
+        (i < trace_struct_object_names.size() && i < static_cast<uint64_t>(batch_start_ind+batch_size));
+        i++
+    ) {
 		auto object_name = trace_struct_object_names[i];
 		if(is_batch_older_than_last_updated(object_name, last_updated)) {
 			continue;

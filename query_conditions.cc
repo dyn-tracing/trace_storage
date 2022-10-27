@@ -88,6 +88,7 @@ bool does_condition_hold(const ot::Span* sp, const query_condition condition) {
             }
         }
     }
+    return false;
 }
 
 /**
@@ -101,11 +102,11 @@ bool does_latency_condition_hold(const ot::Span* sp, const query_condition condi
 
     switch (condition.comp) {
         case Equal_to:
-            return latency == std::stol(condition.node_property_value);
+            return latency == std::stoul(condition.node_property_value);
         case Lesser_than:
-            return latency < std::stol(condition.node_property_value);
+            return latency < std::stoul(condition.node_property_value);
         case Greater_than:
-            return latency > std::stol(condition.node_property_value);
+            return latency > std::stoul(condition.node_property_value);
         default:
             return false;
     }
@@ -118,11 +119,11 @@ bool does_start_time_condition_hold(const ot::Span* sp, const query_condition co
 
     switch (condition.comp) {
         case Equal_to:
-            return start_time == std::stol(condition.node_property_value);
+            return start_time == std::stoul(condition.node_property_value);
         case Lesser_than:
-            return start_time < std::stol(condition.node_property_value);
+            return start_time < std::stoul(condition.node_property_value);
         case Greater_than:
-            return start_time > std::stol(condition.node_property_value);
+            return start_time > std::stoul(condition.node_property_value);
         default:
             return false;
     }
@@ -135,11 +136,11 @@ bool does_end_time_condition_hold(const ot::Span* sp, const query_condition cond
 
     switch (condition.comp) {
         case Equal_to:
-            return end_time == std::stol(condition.node_property_value);
+            return end_time == std::stoul(condition.node_property_value);
         case Lesser_than:
-            return end_time < std::stol(condition.node_property_value);
+            return end_time < std::stoul(condition.node_property_value);
         case Greater_than:
-            return end_time > std::stol(condition.node_property_value);
+            return end_time > std::stoul(condition.node_property_value);
         default:
             return false;
     }
