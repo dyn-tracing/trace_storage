@@ -26,8 +26,6 @@ int main(int argc, char* argv[]) {
     condition1.comp = Equal_to;
     condition1.property_name = "trace-id";
 
-    // conditions.push_back(condition1);
-
     // querying
     auto client = gcs::Client();
 

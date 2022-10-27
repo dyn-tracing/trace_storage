@@ -33,7 +33,7 @@
 #include "common.h"
 
 
-typedef std::map<int, std::map<int, std::string>> iso_to_span_id; // iso_map_index to (node_id_index to span_id)
+typedef std::map<int, std::map<int, std::string>> iso_to_span_id;   // iso_map_index to (node_id_index to span_id)
 std::vector<std::string> query(
     trace_structure query_trace, int start_time, int end_time,
     std::vector<query_condition> conditions, return_value ret, bool verbose, gcs::Client* client);
