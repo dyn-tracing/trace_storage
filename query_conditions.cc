@@ -34,6 +34,9 @@ std::string get_value_as_string(const ot::Span* sp,
 
 
 bool does_condition_hold(const ot::Span* sp, const query_condition condition) {
+    if (condition.is_latency_condition) {
+        return does_latency_condition_hold(sp, condition);
+    }
     switch (condition.type) {
         case string_value: {
             const std::string span_value = (sp->*condition.func.string_func)();
@@ -98,7 +101,7 @@ bool does_condition_hold(const ot::Span* sp, const query_condition condition) {
  */
 
 bool does_latency_condition_hold(const ot::Span* sp, const query_condition condition) {
-    const auto latency = sp->end_time_unix_nano() - sp->start_time_unix_nano();
+    const __int64_t latency = sp->end_time_unix_nano() - sp->start_time_unix_nano();
 
     switch (condition.comp) {
         case Equal_to:
