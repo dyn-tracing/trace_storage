@@ -1,64 +1,6 @@
-#include "id_index/id_index.h"
+#include "indices/make_sequence_bloom_tree/id_index.h"
 
 using ::google::cloud::StatusOr;
-
-bool less_than(time_t first, std::string second) {
-    std::stringstream sec_stream;
-    sec_stream << second;
-    std::string sec_str = sec_stream.str();
-    time_t s = stol(sec_str);
-    return first < s;
-}
-
-bool greater_than(time_t first, std::string second) {
-    std::stringstream sec_stream;
-    sec_stream << second;
-    std::string sec_str = sec_stream.str();
-    time_t s = stol(sec_str);
-    return first > s;
-}
-
-time_t time_t_from_string(std::string str) {
-    std::stringstream stream;
-    stream << str;
-    std::string sec_str = stream.str();
-    return stol(sec_str);
-}
-
-std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
-    // you want to generate a list of prefixes between earliest and latest
-    // find the first digit at which they differ, then do a list on lowest to highest there
-    // is this the absolute most efficient?  No, but at a certain point the network calls cost,
-    // and I think this is good enough.
-
-    std::vector<std::string> to_return;
-    std::stringstream e;
-    e << earliest;
-    std::stringstream l;
-    l << latest;
-
-    std::string e_str = e.str();
-    std::string l_str = l.str();
-
-    int i = 0;
-    for ( ; i < e_str.length(); i++) {
-        if (e_str[i] != l_str[i]) {
-            break;
-        }
-    }
-
-    // i is now the first spot of difference
-
-    int min = std::stoi(e_str.substr(i, 1));
-    int max = std::stoi(l_str.substr(i, 1));
-
-    for (int j = min; j <= max; j++) {
-        std::string prefix = e_str.substr(0, i);
-        prefix += std::to_string(j);
-        to_return.push_back(prefix);
-    }
-    return to_return;
-}
 
 bool leaf_sizes_equal(struct Leaf &leaf1, struct Leaf &leaf2) {
     if (leaf1.batch_names.size() != leaf2.batch_names.size()) { return false; }
@@ -69,7 +11,7 @@ bool leaf_sizes_equal(struct Leaf &leaf1, struct Leaf &leaf2) {
 }
 
 bool batch_names_equal(struct Leaf &leaf1, struct Leaf &leaf2) {
-    for (int i=0; i < leaf1.batch_names.size(); i++) {
+    for (uint64_t i=0; i < leaf1.batch_names.size(); i++) {
         if (leaf1.batch_names[i].compare(leaf2.batch_names[i]) != 0) {
             return false;
         }
@@ -78,7 +20,7 @@ bool batch_names_equal(struct Leaf &leaf1, struct Leaf &leaf2) {
 }
 
 bool bloom_filters_equal(struct Leaf &leaf1, struct Leaf &leaf2) {
-    for (int i=0; i < leaf1.batch_names.size(); i++) {
+    for (uint64_t i=0; i < leaf1.batch_names.size(); i++) {
         if (leaf1.bloom_filters[i] != leaf2.bloom_filters[i]) {
             return false;
         }
@@ -94,12 +36,12 @@ void serialize_leaf(struct Leaf leaf, std::ostream &os) {
     // when you serialize names, start with number of batch names
     unsigned int batch_size = leaf.batch_names.size();
     os.write(reinterpret_cast<char *>(&batch_size), sizeof(unsigned int));
-    for (int i=0; i < leaf.batch_names.size(); i++) {
+    for (uint64_t i=0; i < leaf.batch_names.size(); i++) {
         unsigned int batch_name_len = leaf.batch_names[i].length();
         os.write(reinterpret_cast<char *>(&batch_name_len), sizeof(unsigned int));
         os << leaf.batch_names[i];
     }
-    for (int i=0; i < leaf.bloom_filters.size(); i++) {
+    for (uint64_t i=0; i < leaf.bloom_filters.size(); i++) {
         leaf.bloom_filters[i].Serialize(os);
     }
 }
@@ -127,72 +69,6 @@ struct Leaf deserialize_leaf(std::istream &is) {
     return leaf;
 }
 
-std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix, time_t earliest, time_t latest) {
-    std::vector<std::string> to_return;
-    std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
-    std::string suffix(BUCKETS_SUFFIX);
-    for (auto&& object_metadata : client->ListObjects(trace_struct_bucket+suffix, gcs::Prefix(prefix))) {
-        if (!object_metadata) {
-            throw std::runtime_error(object_metadata.status().message());
-        }
-        // before we push back, should make sure that it's actually between the bounds
-        std::string name = object_metadata->name();
-        to_return.push_back(name);
-        std::vector<std::string> times = split_by_string(name, hyphen);
-        // we care about three of these:
-        // if we are neatly between earliest and latest, or if we overlap on one side
-        if (less_than(earliest, times[1]) && less_than(earliest, times[2])) {
-            // we're too far back, already indexed this, ignore
-            continue;
-        } else if (greater_than(latest, times[1]) && greater_than(latest, times[2])) {
-            // we're too far ahead;  we're still in the waiting period for this data
-            continue;
-        } else {
-            to_return.push_back(name);
-        }
-    }
-    return to_return;
-}
-
-std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest) {
-    std::vector<std::string> prefixes = generate_prefixes(earliest, latest);
-    std::vector<std::future<std::vector<std::string>>> object_names;
-    for (int i = 0; i < prefixes.size(); i++) {
-        for (int j = 0; j < 10; j++) {
-            for (int k=0; k < 10; k++) {
-                std::string new_prefix = std::to_string(j) + std::to_string(k) + "-" + prefixes[i];
-                object_names.push_back(
-                    std::async(std::launch::async, get_list_result, client, new_prefix, earliest, latest));
-            }
-        }
-    }
-    std::vector<std::string> to_return;
-    for (int m=0; m < object_names.size(); m++) {
-        auto names = object_names[m].get();
-        for (int n=0; n < names.size(); n++) {
-            // check that these are actually within range
-            std::vector<std::string> timestamps = split_by_string(names[n], hyphen);
-            std::stringstream stream;
-            stream << timestamps[1];
-            std::string str = stream.str();
-            time_t start_time = stol(str);
-
-            std::stringstream end_stream;
-            end_stream << timestamps[2];
-            std::string end_str = end_stream.str();
-            time_t end_time = stol(end_str);
-
-            if ((start_time >= earliest && end_time <= latest) ||
-                (start_time <= earliest && end_time >= earliest) ||
-                (start_time <= latest && end_time >= latest)
-            ) {
-                to_return.push_back(names[n]);
-            }
-        }
-    }
-    return to_return;
-}
-
 /*
   If bucket already exists, returns time last updated.
   Otherwise, returns 0.
@@ -200,9 +76,9 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
 time_t create_index_bucket(gcs::Client* client, std::string index_bucket) {
     google::cloud::StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->CreateBucketForProject(
-          index_bucket, "dynamic-tracing",
+          index_bucket, PROJECT_ID,
           gcs::BucketMetadata()
-              .set_location("us-central1")
+              .set_location(BUCKETS_LOCATION)
               .set_storage_class(gcs::storage_class::Regional()));
     if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kAborted) {
       // means we've already created the bucket
@@ -239,8 +115,8 @@ std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std
     std::string contents{std::istreambuf_iterator<char>{reader}, {}};
 
     std::vector<std::string> trace_and_spans = split_by_string(contents, newline);
-    for (int j=0; j < trace_and_spans.size(); j++) {
-        if (trace_and_spans[j].find("Trace ID") != -1) {
+    for (uint64_t j=0; j < trace_and_spans.size(); j++) {
+        if (trace_and_spans[j].find("Trace ID") != std::string::npos) {
             int start = trace_and_spans[j].find("Trace ID");
             std::string trace_id =
                 trace_and_spans[j].substr(start + 10, trace_and_spans[j].length() - 11);  // 8 is len of Trace ID
@@ -262,8 +138,8 @@ std::vector<std::string> span_ids_from_trace_id_object(gcs::Client* client, std:
     }
     std::string contents{std::istreambuf_iterator<char>{reader}, {}};
     std::vector<std::string> trace_and_spans = split_by_string(contents, newline);
-    for (int j=0; j < trace_and_spans.size(); j++) {
-        if (trace_and_spans[j].find("Trace ID") == -1 && trace_and_spans[j].size() > 0) {
+    for (uint64_t j=0; j < trace_and_spans.size(); j++) {
+        if (trace_and_spans[j].find("Trace ID") == std::string::npos && trace_and_spans[j].size() > 0) {
             std::vector<std::string> sp = split_by_string(trace_and_spans[j], colon);
             to_return.push_back(sp[1]);
         }
@@ -309,11 +185,11 @@ std::vector<std::string> values_from_trace_id_object(gcs::Client* client, std::s
     // now, retrieve each value from each span
     std::vector<std::string> span_buckets_names = get_spans_buckets_names(client);
     std::vector<std::future<std::vector<std::string>>> future_values;
-    for (int i=0; i < span_buckets_names.size(); i++) {
+    for (uint64_t i=0; i < span_buckets_names.size(); i++) {
         future_values.push_back(std::async(std::launch::async, get_values_in_span_object,
             client, span_buckets_names[i], obj_name, prop_type, val_func));
     }
-    for (int i=0; i < future_values.size(); i++) {
+    for (uint64_t i=0; i < future_values.size(); i++) {
         auto new_values = future_values[i].get();
         to_return.insert(to_return.end(), new_values.begin(), new_values.end());
     }
@@ -333,7 +209,7 @@ bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string b
     parameters.compute_optimal_parameters();
     bloom_filter filter(parameters);
     auto values = values_from_trace_id_object(client, batch, property_name, prop_type, val_func);
-    for (int i=0; i < values.size(); i++) {
+    for (uint64_t i=0; i < values.size(); i++) {
         size_t len = values[i].length();
         const char* values_c_str = values[i].c_str();
         filter.insert(values_c_str, len);
@@ -369,7 +245,7 @@ bloom_filter create_bloom_filter_partial_batch(
     auto values = filter_trace_ids_based_on_query_timestamp(
         values_unfiltered, batch, contents, earliest, latest, client);
 
-    for (int i=0; i < values.size(); i++) {
+    for (uint64_t i=0; i < values.size(); i++) {
         filter.insert(values[i]);
     }
     return filter;
@@ -386,7 +262,7 @@ Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch,
     std::vector<std::future<bloom_filter>> early_bloom;
     std::vector<std::future<bloom_filter>> late_bloom;
     // 1. Incorporate entire batches
-    for (int i=0; i < batch.inclusive.size(); i++) {
+    for (uint64_t i=0; i < batch.inclusive.size(); i++) {
         leaf.batch_names.push_back(batch.inclusive[i]);
         inclusive_bloom.push_back(std::async(std::launch::async,
             create_bloom_filter_entire_batch, client, batch.inclusive[i],
@@ -394,7 +270,7 @@ Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch,
     }
 
     // 2. Incorporate batches that overlap the first part of the time range (ie go shorter than it)
-    for (int j=0; j < batch.early.size(); j++) {
+    for (uint64_t j=0; j < batch.early.size(); j++) {
         leaf.batch_names.push_back(batch.early[j]);
         early_bloom.push_back(std::async(std::launch::async,
             create_bloom_filter_partial_batch, client, batch.early[j], start_time, end_time,
@@ -402,7 +278,7 @@ Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch,
     }
 
     // 3. Incorporate batches that overlap the later part of the time range (ie go longer than it)
-    for (int k=0; k < batch.late.size(); k++) {
+    for (uint64_t k=0; k < batch.late.size(); k++) {
         leaf.batch_names.push_back(batch.late[k]);
         late_bloom.push_back(std::async(std::launch::async,
             create_bloom_filter_partial_batch, client, batch.late[k], start_time, end_time,
@@ -410,15 +286,15 @@ Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch,
     }
 
     // 4. Get all the futures from async calls to be actual values
-    for (int i=0; i < inclusive_bloom.size(); i++) {
+    for (uint64_t i=0; i < inclusive_bloom.size(); i++) {
         leaf.bloom_filters.push_back(inclusive_bloom[i].get());
     }
 
-    for (int j=0; j < early_bloom.size(); j++) {
+    for (uint64_t j=0; j < early_bloom.size(); j++) {
         leaf.bloom_filters.push_back(early_bloom[j].get());
     }
 
-    for (int k=0; k < late_bloom.size(); k++) {
+    for (uint64_t k=0; k < late_bloom.size(); k++) {
         leaf.bloom_filters.push_back(late_bloom[k].get());
     }
     // 5. Put that leaf in storage
@@ -457,7 +333,7 @@ std::tuple<time_t, time_t>  bubble_up_leaves_helper(gcs::Client* client,
     std::vector<bloom_filter> just_modified_bfs, time_t granularity, std::string index_bucket
 ) {
     std::map<std::tuple<time_t, time_t>, std::vector<int>> parents;
-    for (int i=0; i < just_modified.size(); i++) {
+    for (uint64_t i=0; i < just_modified.size(); i++) {
         // who is my parent?
         auto parent = get_parent(
             std::get<0>(just_modified[i]), std::get<1>(just_modified[i]), granularity);
@@ -516,7 +392,7 @@ std::tuple<time_t, time_t>  bubble_up_leaves_helper(gcs::Client* client,
     // normal case:  we have a lot to be writing here
     for (const auto & [parent, children] : parents) {
         bloom_filter unioned_filter = just_modified_bfs[children[0]];
-        for (int i=0; i < children.size(); i++) {
+        for (uint64_t i=0; i < children.size(); i++) {
             unioned_filter |= just_modified_bfs[children[i]];
         }
         // now write parent
@@ -542,12 +418,12 @@ int bubble_up_leaves(gcs::Client* client, time_t start_time, time_t end_time,
     // we need to bubble up leaf so that means making a bloom filter that is the union of all of them
     std::vector<std::tuple<time_t, time_t>> newly_modified;
     std::vector<bloom_filter> newly_modified_bfs;
-    for (int i=0; i < leaves.size(); i++) {
+    for (uint64_t i=0; i < leaves.size(); i++) {
         newly_modified.push_back(std::make_tuple(leaves[i].start_time, leaves[i].end_time));
             // bloom filter should be union of all
         if (leaves[i].bloom_filters.size() > 0) {
             bloom_filter unioned_bloom = leaves[i].bloom_filters[0];
-            for (int j=0; j < leaves[i].bloom_filters.size(); j++) {
+            for (uint64_t j=0; j < leaves[i].bloom_filters.size(); j++) {
                 unioned_bloom |= leaves[i].bloom_filters[j];
             }
             newly_modified_bfs.push_back(unioned_bloom);
@@ -597,7 +473,7 @@ std::vector<struct BatchObjectNames> split_batches_by_leaf(
         to_return.push_back(new_batch);
     }
 
-    for (int i=0; i < object_names.size(); i++) {
+    for (uint64_t i=0; i < object_names.size(); i++) {
         std::vector<std::string> timestamps = split_by_string(object_names[i], hyphen);
         // are the timestamps in between a range that I have?
         // to do so, mod it by granularity
@@ -619,7 +495,7 @@ std::vector<struct BatchObjectNames> split_batches_by_leaf(
             if (index_for_start == index_for_end) {
                 to_return[index_for_start].inclusive.push_back(object_names[i]);
             } else {
-                if (index_for_end < to_return.size()) {
+                if (static_cast<uint64_t>(index_for_end) < to_return.size()) {
                     to_return[index_for_start].late.push_back(object_names[i]);
                     to_return[index_for_end].early.push_back(object_names[i]);
                 } else {
@@ -710,7 +586,7 @@ int update_index(gcs::Client* client, std::string property_name, time_t granular
         j++;
     }
 
-    for (int i=0; i < leaves_future.size(); i++) {
+    for (uint64_t i=0; i < leaves_future.size(); i++) {
         leaves.push_back(leaves_future[i].get());
     }
     bubble_up_leaves(client, last_updated, to_update, leaves, granularity, index_bucket);

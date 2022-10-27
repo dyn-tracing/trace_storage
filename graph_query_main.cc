@@ -1,17 +1,17 @@
 #include "get_traces_by_structure.h"
 #include "graph_query.h"
-#include "query_bloom_index.h"
+#include "indices/query_bloom_index.h"
 
 int main(int argc, char* argv[]) {
     // query trace structure
     trace_structure query_trace;
-    query_trace.num_nodes = 1;
+    query_trace.num_nodes = 3;
     query_trace.node_names.insert(std::make_pair(0, "frontend"));
-    // query_trace.node_names.insert(std::make_pair(1, "adservice"));
-    // query_trace.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
+    query_trace.node_names.insert(std::make_pair(1, "adservice"));
+    query_trace.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
 
-    // query_trace.edges.insert(std::make_pair(0, 1));
-    // query_trace.edges.insert(std::make_pair(1, 2));
+    query_trace.edges.insert(std::make_pair(0, 1));
+    query_trace.edges.insert(std::make_pair(1, 2));
 
     // query conditions
     std::vector<query_condition> conditions;
@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
     get_value_func condition_1_union;
     condition_1_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
     condition1.func = condition_1_union;
-    condition1.node_property_value = "28e62eb7f3d643445aa2fc6e67340788";
+    condition1.node_property_value = "7d6d78ef1de111a3a45eb33166865bcc";
     condition1.comp = Equal_to;
     condition1.property_name = "trace-id";
 
@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
     ret.func = ret_union;
     boost::posix_time::ptime start, stop;
 	  start = boost::posix_time::microsec_clock::local_time();
-    auto res = query(query_trace, 1661969600, 1661969610, conditions, ret, false, &client);
+    auto res = query(query_trace, 1666822600, 1666822800, conditions, ret, true, &client);
     // auto res2 = get_traces_by_structure(query_trace, 1660239561, 1660239571, &client);
     stop = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration dur = stop - start;

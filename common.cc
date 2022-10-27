@@ -70,7 +70,7 @@ bool is_same_hex_str(const std::string &data, const std::string &compare) {
 ot::TracesData read_object_and_parse_traces_data(
     const std::string &bucket, const std::string& object_name, gcs::Client* client
 ) {
-    auto data = read_object(bucket, object_name, client);
+    std::string data = read_object(bucket, object_name, client);
     ot::TracesData trace_data;
     if (data == "") {
         return trace_data;
@@ -214,7 +214,7 @@ std::map<std::string, std::string> get_trace_id_to_root_service_map(const std::s
     for (std::string i : split_by_string(object_content, "Trace ID: ")) {
         std::vector<std::string> trace = split_by_string(i, newline);
         std::string trace_id = trace[0].substr(0, TRACE_ID_LENGTH);
-        for (int ind = 1; ind < trace.size(); ind ++) {
+        for (uint64_t ind = 1; ind < trace.size(); ind ++) {
             if (trace[ind].substr(0, 1) == ":") {
                 std::vector<std::string> root_span_info = split_by_string(trace[ind], colon);
                 response.insert(std::make_pair(trace_id, root_span_info[2]));
@@ -238,8 +238,8 @@ std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_ma
 }
 
 std::string extract_any_trace(std::vector<std::string>& trace_ids, std::string& object_content) {
-	for (auto& curr_trace_id : trace_ids) {
-		auto res = extract_trace_from_traces_object(curr_trace_id, object_content);
+	for (const std::string & curr_trace_id : trace_ids) {
+		const std::string res = extract_trace_from_traces_object(curr_trace_id, object_content);
 		if (res != "") {
 			return res;
 		}
@@ -248,12 +248,12 @@ std::string extract_any_trace(std::vector<std::string>& trace_ids, std::string& 
 }
 
 std::string extract_trace_from_traces_object(const std::string &trace_id, std::string& object_content) {
-	const int start_ind = object_content.find("Trace ID: " + trace_id + ":");
+	const std::size_t start_ind = object_content.find("Trace ID: " + trace_id + ":");
 	if (start_ind == std::string::npos) {
 		return "";
 	}
 
-	int end_ind = object_content.find("Trace ID", start_ind+1);
+	std::size_t end_ind = object_content.find("Trace ID", start_ind+1);
 	if (end_ind == std::string::npos) {
 		// not necessarily required as end_ind=npos does the same thing, but for clarity:
 		end_ind = object_content.length() - start_ind;
@@ -316,4 +316,128 @@ void print_progress(float progress, std::string label, bool verbose) {
     }
     std::cout << "] " << int(progress * 100.0) << "% " << label << "\r";
     std::cout.flush();
+}
+
+std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
+    // you want to generate a list of prefixes between earliest and latest
+    // find the first digit at which they differ, then do a list on lowest to highest there
+    // is this the absolute most efficient?  No, but at a certain point the network calls cost,
+    // and I think this is good enough.
+
+    std::vector<std::string> to_return;
+    std::stringstream e;
+    e << earliest;
+    std::stringstream l;
+    l << latest;
+
+    std::string e_str = e.str();
+    std::string l_str = l.str();
+
+    int i = 0;
+    for ( ; i < e_str.length(); i++) {
+        if (e_str[i] != l_str[i]) {
+            break;
+        }
+    }
+
+    // i is now the first spot of difference
+
+    int min = std::stoi(e_str.substr(i, 1));
+    int max = std::stoi(l_str.substr(i, 1));
+
+    for (int j = min; j <= max; j++) {
+        std::string prefix = e_str.substr(0, i);
+        prefix += std::to_string(j);
+        to_return.push_back(prefix);
+    }
+    return to_return;
+}
+
+std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix, time_t earliest, time_t latest) {
+    std::vector<std::string> to_return;
+    std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
+    std::string suffix(BUCKETS_SUFFIX);
+    for (auto&& object_metadata : client->ListObjects(trace_struct_bucket+suffix, gcs::Prefix(prefix))) {
+        if (!object_metadata) {
+            throw std::runtime_error(object_metadata.status().message());
+        }
+        // before we push back, should make sure that it's actually between the bounds
+        std::string name = object_metadata->name();
+        to_return.push_back(name);
+        std::vector<std::string> times = split_by_string(name, hyphen);
+        // we care about three of these:
+        // if we are neatly between earliest and latest, or if we overlap on one side
+        if (less_than(earliest, times[1]) && less_than(earliest, times[2])) {
+            // we're too far back, already indexed this, ignore
+            continue;
+        } else if (greater_than(latest, times[1]) && greater_than(latest, times[2])) {
+            // we're too far ahead;  we're still in the waiting period for this data
+            continue;
+        } else {
+            to_return.push_back(name);
+        }
+    }
+    return to_return;
+}
+
+std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest) {
+    std::vector<std::string> prefixes = generate_prefixes(earliest, latest);
+    std::vector<std::future<std::vector<std::string>>> object_names;
+    for (uint64_t i = 0; i < prefixes.size(); i++) {
+        for (int j = 0; j < 10; j++) {
+            for (int k=0; k < 10; k++) {
+                std::string new_prefix = std::to_string(j) + std::to_string(k) + "-" + prefixes[i];
+                object_names.push_back(
+                    std::async(std::launch::async, get_list_result, client, new_prefix, earliest, latest));
+            }
+        }
+    }
+    std::vector<std::string> to_return;
+    for (uint64_t m=0; m < object_names.size(); m++) {
+        auto names = object_names[m].get();
+        for (uint64_t n=0; n < names.size(); n++) {
+            // check that these are actually within range
+            std::vector<std::string> timestamps = split_by_string(names[n], hyphen);
+            std::stringstream stream;
+            stream << timestamps[1];
+            std::string str = stream.str();
+            time_t start_time = stol(str);
+
+            std::stringstream end_stream;
+            end_stream << timestamps[2];
+            std::string end_str = end_stream.str();
+            time_t end_time = stol(end_str);
+
+            if ((start_time >= earliest && end_time <= latest) ||
+                (start_time <= earliest && end_time >= earliest) ||
+                (start_time <= latest && end_time >= latest)
+            ) {
+                to_return.push_back(names[n]);
+            }
+        }
+    }
+    return to_return;
+}
+
+bool less_than(time_t first, std::string second) {
+    std::stringstream sec_stream;
+    sec_stream << second;
+    std::string sec_str = sec_stream.str();
+    time_t s = stol(sec_str);
+    return first < s;
+}
+
+bool greater_than(time_t first, std::string second) {
+    std::stringstream sec_stream;
+    sec_stream << second;
+    std::string sec_str = sec_stream.str();
+    time_t s = stol(sec_str);
+    return first > s;
+}
+
+time_t time_t_from_string(std::string str) {
+    std::stringstream stream;
+    stream << str;
+    std::string sec_str = stream.str();
+    return stol(sec_str);
 }
