@@ -49,28 +49,89 @@ std::vector<std::string> query(
         std::cout << std::endl;
     }
 
-    objname_to_matching_trace_ids intersection = intersect_index_results(
-        index_results, struct_results, earliest_last_updated, verbose);
-
-    fetched_data fetched = fetch_data(
-        struct_results,
-        intersection,
-        conditions,
-        client);
-
     if (verbose) {
-        std::cout << "fetched data" << std::endl;
-    }
-    auto filtered = filter_based_on_conditions(
-        intersection, struct_results, conditions, fetched, ret);
-
-    if (verbose) {
-        std::cout << "filtered based on conditions" << std::endl;
+        std::cout << "Index Results: " << index_results.size() << std::endl;
+        std::cout << "Struct Results: " << struct_results.trace_ids.size() << std::endl;
     }
 
-    ret_req_data spans_objects_by_bn_sn = fetch_return_data(filtered, ret, fetched, query_trace, client);
-    auto returned = get_return_value(filtered, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
-    return returned;
+    if (conditions.size()) {
+        auto intersection = intersect_index_results(
+            index_results, struct_results, earliest_last_updated, verbose);
+        
+        fetched_data fetched = fetch_data(
+            struct_results,
+            intersection,
+            conditions,
+            client);
+
+        if (verbose) {
+            std::cout << "fetched data" << std::endl;
+            std::cout << "Intersectipn size: " << intersection.size() << std::endl;
+        }
+
+        auto filtered = filter_based_on_conditions(
+            intersection, struct_results, conditions, fetched, ret);
+
+        if (verbose) {
+            std::cout << "Filtered size: " << std::get<0>(filtered).size() << std::endl;
+            std::cout << "filtered based on conditions" << std::endl;
+        }
+
+        ret_req_data spans_objects_by_bn_sn = fetch_return_data(filtered, ret, fetched, query_trace, client);
+        auto returned = get_return_value(filtered, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
+        return returned;
+    } else {
+        objname_to_matching_trace_ids morphed_struct_results = morph_struct_result_to_objname_to_matching_trace_ids(struct_results);
+        std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> current_result (std::make_tuple(
+            morphed_struct_results,
+            get_iso_map_to_span_id_info(struct_results, ret.node_index, client)));
+        fetched_data fetched;
+        ret_req_data spans_objects_by_bn_sn = fetch_return_data(current_result, ret, fetched, query_trace, client);
+        auto returned = get_return_value(current_result, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
+        return returned;
+    }
+}
+
+std::map<std::string, iso_to_span_id> get_iso_map_to_span_id_info(traces_by_structure struct_results, int return_node_index, gcs::Client* client) {
+    std::map<std::string, iso_to_span_id> res;
+
+    for (auto [k, v] : struct_results.object_name_to_trace_ids_of_interest) {
+        auto structural_object = read_object(TRACE_STRUCT_BUCKET, struct_results.object_names[k], client);
+        
+        for (auto trace_id_index: v) {
+            auto trace_id = struct_results.trace_ids[trace_id_index];
+            iso_to_span_id res_map;
+            auto trace = extract_trace_from_traces_object(trace_id, structural_object);
+
+            for (auto iso_map_index : struct_results.trace_id_to_isomap_indices[trace_id] ) {
+                std::map<int, std::string> node_ind_to_span_id_map;
+                auto return_service = get_service_name_for_node_index(struct_results, iso_map_index, return_node_index);
+                
+                for (auto line : split_by_string(trace, newline)) {
+                    if (line.find(return_service) != std::string::npos) {
+                        node_ind_to_span_id_map[return_node_index] = split_by_string(line, colon)[1];
+                    }
+                }
+
+                res_map[iso_map_index] = node_ind_to_span_id_map;
+            }
+
+            res[trace_id] = res_map;
+        }
+    }
+    return res;
+}
+
+objname_to_matching_trace_ids morph_struct_result_to_objname_to_matching_trace_ids(traces_by_structure struct_results) {
+    objname_to_matching_trace_ids res;
+    for (auto [k, v] : struct_results.object_name_to_trace_ids_of_interest) {
+        std::vector<std::string> trace_ids;
+        for (auto trace_id_ind : v) {
+            trace_ids.push_back(struct_results.trace_ids[trace_id_ind]);
+        }
+        res[struct_results.object_names[k]] = trace_ids;
+    }
+    return res;
 }
 
 ret_req_data fetch_return_data(
@@ -313,7 +374,7 @@ std::vector<std::string> get_return_value(
         std::string object = obj_to_trace_ids.first;
         for (uint64_t i=0; i < obj_to_trace_ids.second.size(); i++) {
             std::string trace_id = obj_to_trace_ids.second[i];
-
+            
             // for each trace id, there may be multiple isomaps
             for (auto & ii_ni_sp : std::get<1>(filtered)[trace_id]) {
                 std::string span_id_to_find = ii_ni_sp.second[ret.node_index];
