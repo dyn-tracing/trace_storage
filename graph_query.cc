@@ -54,42 +54,25 @@ std::vector<std::string> query(
         std::cout << "Struct Results: " << struct_results.trace_ids.size() << std::endl;
     }
 
-    if (conditions.size()) {
-        auto intersection = intersect_index_results(
+    auto intersection = intersect_index_results(
             index_results, struct_results, earliest_last_updated, verbose);
-        
-        fetched_data fetched = fetch_data(
-            struct_results,
-            intersection,
-            conditions,
-            client);
-
-        if (verbose) {
-            std::cout << "fetched data" << std::endl;
-            std::cout << "Intersectipn size: " << intersection.size() << std::endl;
-        }
-
-        auto filtered = filter_based_on_conditions(
-            intersection, struct_results, conditions, fetched, ret);
-
-        if (verbose) {
-            std::cout << "Filtered size: " << std::get<0>(filtered).size() << std::endl;
-            std::cout << "filtered based on conditions" << std::endl;
-        }
-
-        ret_req_data spans_objects_by_bn_sn = fetch_return_data(filtered, ret, fetched, query_trace, client);
-        auto returned = get_return_value(filtered, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
-        return returned;
+    
+    fetched_data fetched = fetch_data(
+        struct_results,
+        intersection,
+        conditions,
+        client);
+    
+    std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> current_result;
+    if (conditions.size()) {
+        current_result = filter_based_on_conditions(intersection, struct_results, conditions, fetched, ret);
     } else {
-        objname_to_matching_trace_ids morphed_struct_results = morph_struct_result_to_objname_to_matching_trace_ids(struct_results);
-        std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> current_result (std::make_tuple(
-            morphed_struct_results,
-            get_iso_map_to_span_id_info(struct_results, ret.node_index, client)));
-        fetched_data fetched;
-        ret_req_data spans_objects_by_bn_sn = fetch_return_data(current_result, ret, fetched, query_trace, client);
-        auto returned = get_return_value(current_result, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
-        return returned;
+        current_result = std::make_tuple(intersection, get_iso_map_to_span_id_info(struct_results, ret.node_index, client));
     }
+
+    ret_req_data spans_objects_by_bn_sn = fetch_return_data(current_result, ret, fetched, query_trace, client);
+    auto returned = get_return_value(current_result, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
+    return returned;
 }
 
 std::map<std::string, iso_to_span_id> get_iso_map_to_span_id_info(traces_by_structure struct_results, int return_node_index, gcs::Client* client) {
@@ -423,6 +406,10 @@ fetched_data fetch_data(
     gcs::Client* client
 ) {
     fetched_data response;
+
+    if (conditions.size() < 1) {
+        return response;
+    }
 
     std::unordered_map<
         std::string,
