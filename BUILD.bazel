@@ -111,6 +111,29 @@ cc_binary(
     ],
 )
 
+cc_library(
+    name = "count_lib",
+    srcs = [
+        "count_traces/count.cc",
+    ],
+    hdrs = ["count_traces/count.h"],
+    deps = [
+        "//:common",
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+    ]
+)
+
+cc_binary(
+    name = "count",
+    srcs = [
+        "count_traces/main.cc",
+    ],
+    deps = [
+        "//:count_lib",
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+    ],
+)
+
 cc_binary(
     name = "simple_graph_query",
     srcs = [
