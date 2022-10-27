@@ -101,7 +101,7 @@ bool does_condition_hold(const ot::Span* sp, const query_condition condition) {
  */
 
 bool does_latency_condition_hold(const ot::Span* sp, const query_condition condition) {
-    const long long latency = sp->end_time_unix_nano() - sp->start_time_unix_nano();
+    const __int64_t latency = sp->end_time_unix_nano() - sp->start_time_unix_nano();
 
     switch (condition.comp) {
         case Equal_to:

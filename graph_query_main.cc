@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
     condition1.comp = Greater_than;
     condition1.property_name = "duration";
     condition1.is_latency_condition = true;
-    
+
     conditions.push_back(condition1);
 
     // querying
