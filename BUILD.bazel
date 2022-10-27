@@ -128,11 +128,23 @@ cc_binary(
 )
 
 cc_library(
-    name = "count_lib",
+    name = "count_traces",
     srcs = [
-        "count_traces/count.cc",
+        "count/count_traces.cc",
     ],
-    hdrs = ["count_traces/count.h"],
+    hdrs = ["count/count_traces.h"],
+    deps = [
+        "//:common",
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+    ]
+)
+
+cc_library(
+    name = "count_objects",
+    srcs = [
+        "count/count_objects.cc",
+    ],
+    hdrs = ["count/count_objects.h"],
     deps = [
         "//:common",
         "@com_github_googleapis_google_cloud_cpp//:storage",
@@ -142,10 +154,11 @@ cc_library(
 cc_binary(
     name = "count",
     srcs = [
-        "count_traces/main.cc",
+        "count/main.cc",
     ],
     deps = [
-        "//:count_lib",
+        "//:count_objects",
+        "//:count_traces",
         "@com_github_googleapis_google_cloud_cpp//:storage",
     ],
 )
