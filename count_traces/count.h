@@ -9,4 +9,4 @@
 
 void count_spans_and_traces(gcs::Client* client);
 
-#endif
+#endif  // COUNT_TRACES_COUNT_H_
