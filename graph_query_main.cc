@@ -16,7 +16,6 @@ int main(int argc, char* argv[]) {
     // query conditions
     std::vector<query_condition> conditions;
 
-    /*
     query_condition condition1;
     condition1.node_index = 0;
     condition1.type = bytes_value;
@@ -28,7 +27,6 @@ int main(int argc, char* argv[]) {
     condition1.property_name = "trace-id";
 
     conditions.push_back(condition1);
-    */
 
     // querying
     auto client = gcs::Client();

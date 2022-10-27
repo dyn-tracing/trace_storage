@@ -106,7 +106,7 @@ traces_by_structure process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
             continue;
         }
 
-        std::string object_content = read_object(prefix_to_search,
+        std::string object_content = read_object(TRACE_STRUCT_BUCKET_PREFIX+std::string(BUCKETS_SUFFIX),
             batch_name, client);
         if (object_content == "") {
             continue;
