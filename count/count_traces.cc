@@ -1,9 +1,5 @@
-#include "count_traces/count.h"
-
-
-const std::string CORRECT_HASH = "35917098744";
-const std::string TRACE_BUCKET = "dyntraces-snicket4";
-
+#include "count/count_traces.h"
+#include "common.h"
 
 struct Counts {
     std::unordered_set<std::string> traces;
@@ -12,7 +8,7 @@ struct Counts {
 
 Counts get_counts_for_object(std::string object, gcs::Client* client) {
     Counts to_return;
-    auto reader = client->ReadObject(TRACE_BUCKET, object);
+    auto reader = client->ReadObject(TRACE_STRUCT_BUCKET, object);
     if (!reader) {
         std::cerr << "Error getting object " << reader.status().code() << std::endl;
     }
@@ -34,7 +30,7 @@ void count_spans_and_traces(gcs::Client* client) {
     std::unordered_set<std::string> traces;
     std::unordered_set<std::string> spans;
     std::vector<std::future<Counts>> counts_futures;
-    for (auto& object_metadata : client ->ListObjects(TRACE_BUCKET)) {
+    for (auto& object_metadata : client ->ListObjects(TRACE_STRUCT_BUCKET)) {
         if (!object_metadata) {
             std::cerr << "Error in getting object" << std::endl;              
             exit(1);
