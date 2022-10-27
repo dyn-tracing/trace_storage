@@ -18,13 +18,13 @@ int main(int argc, char* argv[]) {
 
     query_condition condition1;
     condition1.node_index = 0;
-    condition1.type = bytes_value;
+    condition1.type = int_value;
     get_value_func condition_1_union;
-    condition_1_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
     condition1.func = condition_1_union;
-    condition1.node_property_value = "7d6d78ef1de111a3a45eb33166865bcc";
-    condition1.comp = Equal_to;
-    condition1.property_name = "trace-id";
+    condition1.node_property_value = "100000000";
+    condition1.comp = Greater_than;
+    condition1.property_name = "duration";
+    condition1.is_latency_condition = true;
 
     conditions.push_back(condition1);
 
