@@ -16,19 +16,17 @@ int main(int argc, char* argv[]) {
     // query conditions
     std::vector<query_condition> conditions;
 
-    /*
     query_condition condition1;
     condition1.node_index = 0;
     condition1.type = bytes_value;
     get_value_func condition_1_union;
     condition_1_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
     condition1.func = condition_1_union;
-    condition1.node_property_value = "a18d24d4a46c0bc2c3d6697829301c63";
+    condition1.node_property_value = "7d6d78ef1de111a3a45eb33166865bcc";
     condition1.comp = Equal_to;
     condition1.property_name = "trace-id";
 
     conditions.push_back(condition1);
-    */
 
     // querying
     auto client = gcs::Client();
@@ -42,7 +40,7 @@ int main(int argc, char* argv[]) {
     ret.func = ret_union;
     boost::posix_time::ptime start, stop;
 	  start = boost::posix_time::microsec_clock::local_time();
-    auto res = query(query_trace, 1663255784, 1663255800, conditions, ret, false, &client);
+    auto res = query(query_trace, 1666822600, 1666822800, conditions, ret, true, &client);
     // auto res2 = get_traces_by_structure(query_trace, 1660239561, 1660239571, &client);
     stop = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration dur = stop - start;
