@@ -32,10 +32,10 @@ int main(int argc, char* argv[]) {
     auto client = gcs::Client();
 
     return_value ret;
-    ret.node_index = 0;
+    ret.node_index = 1;
     ret.type = bytes_value;
     get_value_func ret_union;
-    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
+    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::span_id;
 
     ret.func = ret_union;
     boost::posix_time::ptime start, stop;
