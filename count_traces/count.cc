@@ -1,8 +1,10 @@
 #include "count_traces/count.h"
 
+#include <unordered_set>
+#include <vector>
 
-const std::string CORRECT_HASH = "35917098744";
-const std::string TRACE_BUCKET = "dyntraces-snicket4";
+const char CORRECT_HASH[] = "35917098744";
+const char TRACE_BUCKET[] = "dyntraces-snicket4";
 
 
 struct Counts {
@@ -36,15 +38,14 @@ void count_spans_and_traces(gcs::Client* client) {
     std::vector<std::future<Counts>> counts_futures;
     for (auto& object_metadata : client ->ListObjects(TRACE_BUCKET)) {
         if (!object_metadata) {
-            std::cerr << "Error in getting object" << std::endl;              
+            std::cerr << "Error in getting object" << std::endl;
             exit(1);
         }
         counts_futures.push_back(std::async(
-            std::launch::async, get_counts_for_object, object_metadata->name(), client
-        ));
+            std::launch::async, get_counts_for_object, object_metadata->name(), client));
     }
     Counts summation;
-    for (int i=0; i<counts_futures.size(); i++) {
+    for (int64_t i=0; i < counts_futures.size(); i++) {
         if (i%20 == 0) {
             std::cout << "i " << i << std::endl;
         }
