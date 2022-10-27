@@ -29,7 +29,7 @@ class traces_by_structure {
 };
 
 struct trace_structure {
-    int num_nodes;
+    uint64_t num_nodes;
     std::unordered_map<int, std::string> node_names;
     std::multimap<int, int> edges;
 };

@@ -76,19 +76,62 @@ std::vector<std::string> query(
         conditions,
         client);
 
-    if (verbose) {
-        std::cout << "fetched data" << std::endl;
+    std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> current_result;
+    if (conditions.size()) {
+        current_result = filter_based_on_conditions(intersection, struct_results, conditions, fetched, ret);
+    } else {
+        current_result = std::make_tuple(
+            intersection, get_iso_map_to_span_id_info(struct_results, ret.node_index, client));
     }
     auto filtered = filter_based_on_conditions(
         intersection, struct_results.value(), conditions, fetched, ret);
 
-    if (verbose) {
-        std::cout << "filtered based on conditions" << std::endl;
-    }
-
-    ret_req_data spans_objects_by_bn_sn = fetch_return_data(filtered, ret, fetched, query_trace, client);
-    auto returned = get_return_value(filtered, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
+    ret_req_data spans_objects_by_bn_sn = fetch_return_data(current_result, ret, fetched, query_trace, client);
+    auto returned = get_return_value(current_result, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
     return returned;
+}
+
+std::map<std::string, iso_to_span_id> get_iso_map_to_span_id_info(
+    traces_by_structure struct_results, int return_node_index, gcs::Client* client) {
+    std::map<std::string, iso_to_span_id> res;
+
+    for (auto [k, v] : struct_results.object_name_to_trace_ids_of_interest) {
+        auto structural_object = read_object(TRACE_STRUCT_BUCKET, struct_results.object_names[k], client);
+
+        for (auto trace_id_index : v) {
+            auto trace_id = struct_results.trace_ids[trace_id_index];
+            iso_to_span_id res_map;
+            auto trace = extract_trace_from_traces_object(trace_id, structural_object);
+
+            for (auto iso_map_index : struct_results.trace_id_to_isomap_indices[trace_id]) {
+                std::map<int, std::string> node_ind_to_span_id_map;
+                auto return_service = get_service_name_for_node_index(struct_results, iso_map_index, return_node_index);
+
+                for (auto line : split_by_string(trace, newline)) {
+                    if (line.find(return_service) != std::string::npos) {
+                        node_ind_to_span_id_map[return_node_index] = split_by_string(line, colon)[1];
+                    }
+                }
+
+                res_map[iso_map_index] = node_ind_to_span_id_map;
+            }
+
+            res[trace_id] = res_map;
+        }
+    }
+    return res;
+}
+
+objname_to_matching_trace_ids morph_struct_result_to_objname_to_matching_trace_ids(traces_by_structure struct_results) {
+    objname_to_matching_trace_ids res;
+    for (auto [k, v] : struct_results.object_name_to_trace_ids_of_interest) {
+        std::vector<std::string> trace_ids;
+        for (auto trace_id_ind : v) {
+            trace_ids.push_back(struct_results.trace_ids[trace_id_ind]);
+        }
+        res[struct_results.object_names[k]] = trace_ids;
+    }
+    return res;
 }
 
 ret_req_data fetch_return_data(
@@ -146,8 +189,7 @@ StatusOr<std::tuple<index_type, time_t>> is_indexed(const query_condition *condi
             last_indexed = std::stoi(kv.second);
         }
         if (kv.first == "root") {
-            auto boundary_times = split_by_string(kv.second, hyphen);
-            last_indexed = std::stoi(boundary_times[0]);
+            last_indexed = std::stoi(split_by_string(kv.second, hyphen)[0]);
         }
     }
     if (bloom_index) {
@@ -177,7 +219,12 @@ StatusOr<objname_to_matching_trace_ids> get_traces_by_indexed_condition(
             return get_obj_name_to_trace_ids_map_from_folders_index(
             condition->property_name, condition->node_property_value, start_time, end_time, client);
         }
+        case none: break;
+        case not_found: break;
     }
+    // TODO(jessberg): Should never get a none or not found, so shouldn't get here.
+    objname_to_matching_trace_ids empty;
+    return empty;
 }
 
 std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> filter_based_on_conditions(
@@ -197,21 +244,21 @@ std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>
             std::ref(structural_results), std::ref(conditions), std::ref(fetched), ret));
     }
 
-    objname_to_matching_trace_ids res_otmti;
-    std::map<std::string, iso_to_span_id> itsi_map;
+    objname_to_matching_trace_ids obj_to_trace_ids;
+    std::map<std::string, iso_to_span_id> trace_id_to_maps;
 
     for_each(response_futures.begin(), response_futures.end(),
-		[&res_otmti, &itsi_map](
+		[&obj_to_trace_ids, &trace_id_to_maps](
             std::future<std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>>& fut) {
 			    std::tuple<
                     objname_to_matching_trace_ids,
                     std::map<std::string, iso_to_span_id>> response_tuple = fut.get();
 
-                res_otmti.insert(std::get<0>(response_tuple).begin(), std::get<0>(response_tuple).end());
-                itsi_map.insert(std::get<1>(response_tuple).begin(), std::get<1>(response_tuple).end());
+                obj_to_trace_ids.insert(std::get<0>(response_tuple).begin(), std::get<0>(response_tuple).end());
+                trace_id_to_maps.insert(std::get<1>(response_tuple).begin(), std::get<1>(response_tuple).end());
 	});
 
-    return {res_otmti, itsi_map};
+    return {obj_to_trace_ids, trace_id_to_maps};
 }
 
 std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> filter_based_on_conditions_batched(
@@ -302,8 +349,7 @@ std::string get_return_value_from_traces_data(
      for (int i=0; i < sp_size; i++) {
         const ot::Span *sp =
             &trace_data->resource_spans(0).scope_spans(0).spans(i);
-        auto span_id = sp->ot::Span::span_id();
-        if (is_same_hex_str(span_id, span_to_find)) {
+        if (is_same_hex_str(sp->ot::Span::span_id(), span_to_find)) {
             return get_value_as_string(sp, ret.func, ret.type);
         }
     }
@@ -378,11 +424,15 @@ std::vector<std::string> get_return_value(
  */
 fetched_data fetch_data(
     traces_by_structure& structs_result,
-    std::map<std::string, std::vector<std::string>>& object_name_to_trace_ids_of_interest,
+    objname_to_matching_trace_ids& object_name_to_trace_ids_of_interest,
     std::vector<query_condition> &conditions,
     gcs::Client* client
 ) {
     fetched_data response;
+
+    if (conditions.size() < 1) {
+        return response;
+    }
 
     std::unordered_map<
         std::string,
@@ -394,9 +444,9 @@ fetched_data fetch_data(
     std::string trace_structure_bucket_prefix(TRACE_STRUCT_BUCKET_PREFIX);
     std::string buckets_suffix(BUCKETS_SUFFIX);
 
-    for (auto& ontii_ele : object_name_to_trace_ids_of_interest) {
-        auto batch_name = ontii_ele.first;
-        auto trace_ids = ontii_ele.second;
+    for (auto& trace_id_map : object_name_to_trace_ids_of_interest) {
+        const std::string& batch_name = trace_id_map.first;
+        const std::vector<std::string>& trace_ids = trace_id_map.second;
         if (trace_ids.size() < 1) {
             continue;
         }
@@ -406,12 +456,13 @@ fetched_data fetch_data(
                 trace_structure_bucket_prefix+buckets_suffix, batch_name, client).value();
         }
 
-        auto iso_map_indices = structs_result.trace_id_to_isomap_indices[trace_ids[0]];
-        for (auto curr_condition : conditions) {
-            for (auto curr_iso_map_ind : iso_map_indices) {
-                auto trace_node_names_ind = structs_result.iso_map_to_trace_node_names[curr_iso_map_ind];
-                auto trace_node_index = structs_result.iso_maps[curr_iso_map_ind][curr_condition.node_index];
-                auto condition_service = structs_result.trace_node_names[trace_node_names_ind][trace_node_index];
+        std::vector<int>& iso_map_indices = structs_result.trace_id_to_isomap_indices[trace_ids[0]];
+        for (query_condition& curr_condition : conditions) {
+            for (int curr_iso_map_ind : iso_map_indices) {
+                const int trace_node_names_ind = structs_result.iso_map_to_trace_node_names[curr_iso_map_ind];
+                const int trace_node_index = structs_result.iso_maps[curr_iso_map_ind][curr_condition.node_index];
+                const std::string& condition_service =
+                    structs_result.trace_node_names[trace_node_names_ind][trace_node_index];
 
                 /**
                  * @brief while parallelizing, just make 
@@ -420,7 +471,7 @@ fetched_data fetch_data(
                  * spans_objects_by_bn_sn[batch_name][service_name_without_hash_id], so we dont wanna fetch same obj
                  * more than once.
                  */
-                auto service_name_without_hash_id = split_by_string(condition_service, ":")[0];
+                const std::string service_name_without_hash_id = split_by_string(condition_service, ":")[0];
                 if (response_futures[batch_name].find(service_name_without_hash_id) ==
                     response_futures[batch_name].end()
                 ) {
@@ -451,14 +502,14 @@ std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(
 ) {
     // isomap_index_to_node_index_to_span_id -> ii_to_ni_to_si
     std::vector<std::map<int, std::map<int, std::string>>> ii_to_ni_to_si_data_for_all_conditions;
-    for (int curr_cond_ind = 0; curr_cond_ind < conditions.size(); curr_cond_ind++) {
+    for (uint64_t curr_cond_ind = 0; curr_cond_ind < conditions.size(); curr_cond_ind++) {
         ii_to_ni_to_si_data_for_all_conditions.push_back(
             get_iso_maps_indices_for_which_trace_satifies_curr_condition(
                 trace_id, object_name, conditions, curr_cond_ind, evaluation_data, structural_results, ret));
     }
 
     std::map<int, std::map<int, std::string>> aggregate_result;
-    std::map<int, int> iso_map_to_satisfied_conditions_map;
+    std::map<int, uint64_t> iso_map_to_satisfied_conditions_map;
     for (auto vec_ele : ii_to_ni_to_si_data_for_all_conditions) {
         for (auto ele : vec_ele) {
             auto iso_map_index = ele.first;

@@ -1,6 +1,6 @@
 #include "get_traces_by_structure.h"
 #include "graph_query.h"
-#include "query_bloom_index.h"
+#include "indices/query_bloom_index.h"
 
 int main(int argc, char* argv[]) {
     // query trace structure
@@ -20,7 +20,6 @@ int main(int argc, char* argv[]) {
     condition1.node_index = 0;
     condition1.type = string_value;
     get_value_func condition_1_union;
-    condition_1_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
     condition1.func = condition_1_union;
     condition1.node_property_value = "server";
     condition1.comp = Equal_to;
@@ -32,10 +31,10 @@ int main(int argc, char* argv[]) {
     auto client = gcs::Client();
 
     return_value ret;
-    ret.node_index = 0;
+    ret.node_index = 1;
     ret.type = bytes_value;
     get_value_func ret_union;
-    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
+    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::span_id;
 
     ret.func = ret_union;
     boost::posix_time::ptime start, stop;

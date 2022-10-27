@@ -92,6 +92,10 @@ StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_
 
     std::string root_service_name = "";
 
+    // TODO(haseeb): Get rid of some of these sanity checks. Flow should be:
+    // (1) get 1 random exemplar from hash prefix. if no isomaps, exit.
+    // (2) if random exemplar matches, request object names using generate_prefixes function
+    // (3) in parallel, create object names to trace IDs map
     for (auto&& object_metadata : client->ListObjects(prefix_to_search, gcs::Prefix(prefix))) {
         if (!object_metadata) {
             std::cerr << object_metadata.status().message() << std::endl;
@@ -142,6 +146,7 @@ StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_
 
             if (root_service_name == "") {
                 root_service_name = get_root_service_name(trace);
+                std::cout << "no root service " << std::endl;
                 if (root_service_name == "") {
                     traces_by_structure empty_res;
                     return empty_res;
@@ -149,6 +154,7 @@ StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_
             }
 
             if (to_return.iso_maps.size() < 1) {
+                std::cout << "no isomaps" << std::endl;
                 return to_return;
             }
         }
@@ -185,7 +191,7 @@ StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_
 }
 
 std::string get_root_service_name(const std::string &trace) {
-    for (auto line : split_by_string(trace, newline)) {
+    for (const std::string& line : split_by_string(trace, newline)) {
         if (line.substr(0, 1) == ":") {
             return split_by_string(line, colon)[2];
         }
@@ -210,7 +216,7 @@ StatusOr<std::vector<std::string>> filter_trace_ids_based_on_query_timestamp_for
     std::map<std::string, std::pair<int, int>> trace_id_to_timestamp_map = get_timestamp_map_for_trace_ids(
         spans_data.value(), trace_ids);
 
-    for (auto& trace_id : trace_ids) {
+    for (const auto& trace_id : trace_ids) {
         std::pair<int, int> trace_timestamp = trace_id_to_timestamp_map[trace_id];
         if (is_object_within_timespan(trace_timestamp, start_time, end_time)) {
             response.push_back(trace_id);
@@ -280,7 +286,7 @@ trace_structure morph_trace_object_to_trace_structure(std::string &trace) {
     std::unordered_map<std::string, int> reverse_node_names;
     std::multimap<std::string, std::string> edges;
 
-    for (auto line : split_by_string(trace, newline)) {
+    for (std::string& line : split_by_string(trace, newline)) {
         if (line.substr(0, 10) == "Trace ID: ") {
             continue;
         }
@@ -321,7 +327,7 @@ trace_structure morph_trace_object_to_trace_structure(std::string &trace) {
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure &input_graph) {
     graph_type output_graph;
 
-    for (int i = 0; i < input_graph.num_nodes; i++) {
+    for (uint64_t i = 0; i < input_graph.num_nodes; i++) {
         boost::add_vertex(vertex_property(input_graph.node_names[i], i), output_graph);
     }
 

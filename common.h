@@ -11,6 +11,7 @@
 #include <vector>
 #include <future>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 
 #include "absl/status/statusor.h"
@@ -47,7 +48,7 @@ namespace ot = opentelemetry::proto::trace::v1;
 using ::google::cloud::StatusOr;
 using ::google::cloud::Status;
 
-typedef std::map<std::string, std::vector<std::string>> objname_to_matching_trace_ids;
+typedef std::unordered_map<std::string, std::vector<std::string>> objname_to_matching_trace_ids;
 
 enum index_type {
     bloom,
@@ -63,6 +64,9 @@ bool is_same_hex_str(const std::string &data, const std::string &compare);
 std::string strip_from_the_end(std::string object, char stripper);
 void replace_all(std::string& str, const std::string& from, const std::string& to);
 void print_progress(float progress, std::string label, bool verbose);
+bool less_than(time_t first, std::string second);
+bool greater_than(time_t first, std::string second);
+time_t time_t_from_string(std::string str);
 
 /// *********** string processing according to system conventions **********
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
@@ -76,6 +80,7 @@ std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_ma
     const std::map<std::string, std::string> &trace_id_to_root_service_map);
 std::string extract_any_trace(std::vector<std::string>& trace_ids, std::string& object_content);
 std::string extract_trace_from_traces_object(const std::string &trace_id, std::string& object_content);
+std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest);
 
 /// **************** GCS processing ********************************
 opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(

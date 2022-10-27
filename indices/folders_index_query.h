@@ -1,5 +1,5 @@
-#ifndef FOLDERS_INDEX_QUERY_H_
-#define FOLDERS_INDEX_QUERY_H_
+#ifndef INDICES_FOLDERS_INDEX_QUERY_H_
+#define INDICES_FOLDERS_INDEX_QUERY_H_
 
 #include <iostream>
 #include <unordered_map>
@@ -10,7 +10,7 @@
 #include <future>
 
 #include "common.h"
-#include "folders_index/trace_attributes.h"
+#include "make_folders_index/trace_attributes.h"
 #include "google/cloud/storage/client.h"
 
 namespace gcs = ::google::cloud::storage;
@@ -26,4 +26,4 @@ process_findex_object_and_retrieve_obj_name_to_trace_ids_map(
 );
 void print_folders_index_query_res(std::unordered_map<std::string, std::vector<std::string>> res);
 
-#endif  // FOLDERS_INDEX_QUERY_H_
+#endif  // INDICES_FOLDERS_INDEX_QUERY_H_

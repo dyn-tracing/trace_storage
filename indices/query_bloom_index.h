@@ -7,7 +7,7 @@
 #include <string>
 #include <tuple>
 #include <utility>
-#include "id_index/id_index.h"
+#include "make_sequence_bloom_tree/id_index.h"
 
 StatusOr<objname_to_matching_trace_ids> query_bloom_index_for_value(
     gcs::Client* client, std::string queried_value, std::string index_bucket, time_t start_time,

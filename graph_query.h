@@ -28,12 +28,12 @@
 #include <boost/graph/vf2_sub_graph_iso.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include "get_traces_by_structure.h"
-#include "folders_index_query.h"
-#include "query_bloom_index.h"
+#include "indices/folders_index_query.h"
+#include "indices/query_bloom_index.h"
 #include "common.h"
 
 
-typedef std::map<int, std::map<int, std::string>> iso_to_span_id;
+typedef std::map<int, std::map<int, std::string>> iso_to_span_id;   // iso_map_index to (node_id_index to span_id)
 std::vector<std::string> query(
     trace_structure query_trace, int start_time, int end_time,
     std::vector<query_condition> conditions, return_value ret, bool verbose, gcs::Client* client);
@@ -61,7 +61,7 @@ std::string get_service_name_for_node_index(
 );
 fetched_data fetch_data(
     traces_by_structure& structs_result,
-    std::map<std::string, std::vector<std::string>>& object_name_to_trace_ids_of_interest,
+    objname_to_matching_trace_ids& object_name_to_trace_ids_of_interest,
     std::vector<query_condition> &conditions,
     gcs::Client* client
 );
@@ -112,6 +112,10 @@ std::vector<std::string> get_return_value(
 objname_to_matching_trace_ids intersect_index_results(
     std::vector<objname_to_matching_trace_ids> &index_results,
     traces_by_structure &structural_results, time_t last_indexed, bool verbose);
+objname_to_matching_trace_ids morph_struct_result_to_objname_to_matching_trace_ids(
+    traces_by_structure struct_results);
+std::map<std::string, iso_to_span_id> get_iso_map_to_span_id_info(
+    traces_by_structure struct_results, int return_node_index, gcs::Client* client);
 
 int dummy_tests();
 
