@@ -70,7 +70,12 @@ bool is_same_hex_str(const std::string &data, const std::string &compare) {
 ot::TracesData read_object_and_parse_traces_data(
     const std::string &bucket, const std::string& object_name, gcs::Client* client
 ) {
-    auto data = read_object(bucket, object_name, client);
+    auto data_ = read_object(bucket, object_name, client);
+    if (!data_.ok()) {
+        exit(1);
+    }
+    auto data = data_.value();
+
     ot::TracesData trace_data;
     if (data == "") {
         return trace_data;
@@ -85,27 +90,12 @@ ot::TracesData read_object_and_parse_traces_data(
     return trace_data;
 }
 
-StatusOr<std::string> read_object2(const std::string &bucket, const std::string &object, gcs::Client* client) {
+StatusOr<std::string> read_object(const std::string &bucket, const std::string &object, gcs::Client* client) {
     auto reader = client->ReadObject(bucket, object);
     if (!reader) {
         std::cerr << "Error reading object " << bucket << "/" << object << " :" << reader.status() << "\n";
 
         return reader.status();
-    }
-
-    std::string object_content{std::istreambuf_iterator<char>{reader}, {}};
-    return object_content;
-}
-
-std::string read_object(const std::string &bucket, const std::string &object, gcs::Client* client) {
-    auto reader = client->ReadObject(bucket, object);
-    if (!reader) {
-        if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
-            return "";
-        }
-
-        std::cerr << "Error reading object " << bucket << "/" << object << " :" << reader.status() << "\n";
-        exit(1);
     }
 
     std::string object_content{std::istreambuf_iterator<char>{reader}, {}};
@@ -206,7 +196,7 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     for (auto const& elem : root_service_to_trace_ids_map) {
         std::map<std::string, std::pair<int, int>> trace_id_to_timestamp_map =
             get_timestamp_map_for_trace_ids(
-                read_object(elem.first + buckets_suffix, batch_name, client),
+                read_object(elem.first + buckets_suffix, batch_name, client).value(),
                 trace_ids);
 
         for (auto const& trace_id : elem.second) {

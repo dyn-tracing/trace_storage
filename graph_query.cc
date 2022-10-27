@@ -316,7 +316,7 @@ std::string retrieve_object_and_get_return_value_from_traces_data(
     std::string object_name, const std::string span_to_find,
     return_value ret, gcs::Client* client
 ) {
-    std::string contents = read_object(bucket_name, object_name, client);
+    std::string contents = read_object(bucket_name, object_name, client).value();
     ot::TracesData trace_data;
     trace_data.ParseFromString(contents);
     return get_return_value_from_traces_data(&trace_data, span_to_find, ret);
@@ -403,7 +403,7 @@ fetched_data fetch_data(
 
         if (response.structural_objects_by_bn.find(batch_name) == response.structural_objects_by_bn.end()) {
             response.structural_objects_by_bn[batch_name] = read_object(
-                trace_structure_bucket_prefix+buckets_suffix, batch_name, client);
+                trace_structure_bucket_prefix+buckets_suffix, batch_name, client).value();
         }
 
         auto iso_map_indices = structs_result.trace_id_to_isomap_indices[trace_ids[0]];

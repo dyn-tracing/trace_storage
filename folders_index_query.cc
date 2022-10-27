@@ -47,7 +47,7 @@ process_findex_object_and_retrieve_obj_name_to_trace_ids_map(
 ) {
 	std::unordered_map<std::string, std::vector<std::string>> response;
 
-	auto object_content = read_object2(findex_bucket_name, findex_obj_name, client);
+	auto object_content = read_object(findex_bucket_name, findex_obj_name, client);
 	if (!object_content.ok()) {
 		std::cerr << "Error in process_findex_object_and_retrieve_obj_name_to_trace_ids_map " << object_content.status().message() << std::endl;
 		return object_content.status();

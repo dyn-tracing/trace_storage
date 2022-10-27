@@ -116,7 +116,7 @@ StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_
             continue;
         }
 
-        auto object_content_or_status = read_object2(TRACE_STRUCT_BUCKET_PREFIX+std::string(BUCKETS_SUFFIX),
+        auto object_content_or_status = read_object(TRACE_STRUCT_BUCKET_PREFIX+std::string(BUCKETS_SUFFIX),
             batch_name, client);
         if (!object_content_or_status.ok()) {
             continue;
@@ -202,7 +202,7 @@ StatusOr<std::vector<std::string>> filter_trace_ids_based_on_query_timestamp_for
     gcs::Client* client) {
     std::vector<std::string> response;
 
-    auto spans_data = read_object2(root_service_name + std::string(BUCKETS_SUFFIX), batch_name, client);
+    auto spans_data = read_object(root_service_name + std::string(BUCKETS_SUFFIX), batch_name, client);
     if (!spans_data.ok()) {
         return spans_data.status();
     }
@@ -254,7 +254,7 @@ std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
 }
 
 StatusOr<std::vector<std::string>> get_trace_ids_from_trace_hashes_object(const std::string &object_name, gcs::Client* client) {
-    auto object_content = read_object2(
+    auto object_content = read_object(
         std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX),
         object_name, client);
     if (!object_content.ok()) {

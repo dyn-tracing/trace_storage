@@ -168,7 +168,7 @@ std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trac
 	std::string span_bucket_name, std::string object_name, std::string indexed_attribute, gcs::Client* client
 ) {
 	std::unordered_map<std::string, std::vector<std::string>> response;  // attr_val_to_vec_of_traceids
-	std::string raw_span_bucket_obj_content = read_object(span_bucket_name, object_name, client);
+	std::string raw_span_bucket_obj_content = read_object(span_bucket_name, object_name, client).value();
 	if (raw_span_bucket_obj_content.length() < 1) {
 		return response;
 	}

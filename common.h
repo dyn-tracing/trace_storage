@@ -80,8 +80,7 @@ std::string extract_trace_from_traces_object(const std::string &trace_id, std::s
 /// **************** GCS processing ********************************
 opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
     const std::string &bucket, const std::string &object_name, gcs::Client* client);
-std::string read_object(const std::string &bucket, const std::string &object, gcs::Client* client);
-StatusOr<std::string> read_object2(const std::string &bucket, const std::string &object, gcs::Client* client);
+StatusOr<std::string> read_object(const std::string &bucket, const std::string &object, gcs::Client* client);
 
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     const std::vector<std::string> &trace_ids,
