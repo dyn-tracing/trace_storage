@@ -41,6 +41,7 @@ struct query_condition {
 	std::string node_property_value;
 	property_comparison comp;
     std::string property_name;
+    bool is_latency_condition;
 };
 
 std::string get_value_as_string(const ot::Span* sp,
