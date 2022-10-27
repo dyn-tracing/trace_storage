@@ -227,7 +227,7 @@ objname_to_matching_trace_ids intersect_index_results(
     print_progress(0, "Intersecting results", verbose);
     std::map<std::tuple<std::string, std::string>, int> count;
 
-    // (1) increment per [batch name, trace ID] for each non-structural index 
+    // (1) increment per [batch name, trace ID] for each non-structural index
     for (uint64_t i=0; i < index_results.size(); i++) {
         print_progress(i/index_results.size(), "Intersecting results", verbose);
         for (auto const &obj_to_id : index_results[i]) {
