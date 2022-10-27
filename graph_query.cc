@@ -149,11 +149,14 @@ std::tuple<index_type, time_t> is_indexed(const query_condition *condition, gcs:
     replace_all(bucket_name, ".", "-");
     StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->GetBucketMetadata(bucket_name);
-    if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound) {
+    if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound ||
+        bucket_metadata.status().code() == ::google::cloud::StatusCode::kPermissionDenied) {
         return std::make_pair(none, 0);
     }
     if (!bucket_metadata) {
         std::cout << "in error within is_indexed" << std::endl << std::flush;
+        std::cout << "bucket name is " << bucket_name << std::endl;
+        std::cout << "status code is " << bucket_metadata.status().code() << std::endl;
         throw std::runtime_error(bucket_metadata.status().message());
     }
     bool bloom_index = false;
