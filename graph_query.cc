@@ -294,6 +294,8 @@ objname_to_matching_trace_ids intersect_index_results(
     // Premature optimization is of the devil and all that.
     print_progress(0, "Intersecting results", verbose);
     std::map<std::tuple<std::string, std::string>, int> count;
+
+    // (1) increment per [batch name, trace ID] for each non-structural index
     for (uint64_t i=0; i < index_results.size(); i++) {
         print_progress(i/index_results.size(), "Intersecting results", verbose);
         for (auto const &obj_to_id : index_results[i]) {
@@ -304,20 +306,16 @@ objname_to_matching_trace_ids intersect_index_results(
         }
     }
 
-    std::map<int, std::string> ind_to_trace_id;
-    std::map<int, std::string> ind_to_obj;
-    for (uint64_t i=0; i < structural_results.trace_ids.size(); i++) {
-        ind_to_trace_id[i] = structural_results.trace_ids[i];
-    }
-    for (uint64_t i=0; i < structural_results.object_names.size(); i++) {
-        ind_to_obj[i] = structural_results.object_names[i];
-    }
+    // (2) add 1 for the structural result being correct
     for (auto const &obj_to_id : structural_results.object_name_to_trace_ids_of_interest) {
-        std::string obj = ind_to_obj[obj_to_id.first];
+        std::string obj = structural_results.object_names[obj_to_id.first];
         for (uint64_t j=0; j < obj_to_id.second.size(); j++) {
-            count[std::make_tuple(obj, ind_to_trace_id[obj_to_id.second[j]])] += 1;
+            count[std::make_tuple(obj, structural_results.trace_ids[obj_to_id.second[j]])] += 1;
         }
     }
+
+    // (3) if we have satisfied all of the indices, include the [batch name, trace ID]
+    //     in what we return. otherwise, discard
 
     int goal_num = index_results.size() + 1;
     objname_to_matching_trace_ids to_return;
@@ -327,6 +325,7 @@ objname_to_matching_trace_ids intersect_index_results(
             auto trace_id = std::get<1>(pair.first);
             to_return[object].push_back(trace_id);
         } else {
+            // also include it if the indices haven't caught up to this timestamp
             auto timestamps = extract_batch_timestamps(object);
             if (std::get<0>(timestamps) > last_updated) {
                 auto trace_id = std::get<1>(pair.first);

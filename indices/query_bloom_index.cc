@@ -162,7 +162,7 @@ StatusOr<objname_to_matching_trace_ids> query_bloom_index_for_value(
         std::vector<std::future<StatusOr<bool>>> got_positive;
         std::vector<std::tuple<time_t, time_t>> got_positive_limits;
         for (uint64_t i=0; i < unvisited_nodes.size(); i++) {
-            auto visit = unvisited_nodes[i];
+            const std::tuple<time_t, time_t>& visit = unvisited_nodes[i];
             // process
             if (std::get<1>(visit)-std::get<0>(visit) == granularity) {
                 // hit a leaf
