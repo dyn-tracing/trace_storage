@@ -70,11 +70,14 @@ std::vector<std::string> query(
     objname_to_matching_trace_ids intersection = intersect_index_results(
         index_results, struct_results.value(), earliest_last_updated, verbose);
 
+    std::cout << "intersection size is " << intersection.size() << std::endl;
+
     std::vector<std::future<std::vector<std::string>>> results_futures;
     objname_to_matching_trace_ids partial_intersection;
     for (auto map : intersection) {
         partial_intersection[map.first] = map.second;
         if (partial_intersection.size() >= BRUTE_FORCE_BATCH_SIZE) {
+            std::cout << "partial intersection size is " << partial_intersection.size();
             results_futures.push_back(std::async(std::launch::async,
                 brute_force_search, partial_intersection, struct_results.value(),
                 conditions, ret, query_trace, 
@@ -82,6 +85,11 @@ std::vector<std::string> query(
             partial_intersection.clear();
         }
     }
+    std::cout << "partial intersection size is " << partial_intersection.size();
+    results_futures.push_back(std::async(std::launch::async,
+        brute_force_search, partial_intersection, struct_results.value(),
+        conditions, ret, query_trace, 
+        client));
     std::vector<std::string> to_return;
     for (int64_t i = 0; i < results_futures.size(); i++) {
         std::vector<std::string> partial_result = results_futures[i].get();
@@ -117,6 +125,7 @@ std::vector<std::string> brute_force_search(objname_to_matching_trace_ids inters
 
     ret_req_data spans_objects_by_bn_sn = fetch_return_data(current_result, ret, fetched, query_trace, client);
     auto returned = get_return_value(current_result, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
+    return returned;
 }
 
 std::map<std::string, iso_to_span_id> get_iso_map_to_span_id_info(
@@ -193,7 +202,8 @@ StatusOr<std::tuple<index_type, time_t>> is_indexed(const query_condition *condi
     replace_all(bucket_name, ".", "-");
     StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->GetBucketMetadata(bucket_name);
-    if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound) {
+    if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound ||
+        bucket_metadata.status().code() == ::google::cloud::StatusCode::kPermissionDenied) {
         std::tuple<index_type, time_t> res = std::make_pair(none, 0);
         return res;
     }
