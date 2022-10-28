@@ -80,7 +80,7 @@ std::vector<std::string> query(
             std::cout << "partial intersection size is " << partial_intersection.size();
             results_futures.push_back(std::async(std::launch::async,
                 brute_force_search, partial_intersection, struct_results.value(),
-                conditions, ret, query_trace, 
+                conditions, ret, query_trace,
                 client));
             partial_intersection.clear();
         }
@@ -88,7 +88,7 @@ std::vector<std::string> query(
     std::cout << "partial intersection size is " << partial_intersection.size();
     results_futures.push_back(std::async(std::launch::async,
         brute_force_search, partial_intersection, struct_results.value(),
-        conditions, ret, query_trace, 
+        conditions, ret, query_trace,
         client));
     std::vector<std::string> to_return;
     for (int64_t i = 0; i < results_futures.size(); i++) {

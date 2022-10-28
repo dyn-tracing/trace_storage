@@ -27,11 +27,7 @@ int64_t general_graph_query(bool verbose, gcs::Client* client) {
     condition1.is_latency_condition = true;
 
 
-    //conditions.push_back(condition1);
-
-    // querying
-    auto client = gcs::Client();
-
+    // conditions.push_back(condition1);
 
     return_value ret;
     ret.node_index = 1;
@@ -42,7 +38,7 @@ int64_t general_graph_query(bool verbose, gcs::Client* client) {
     ret.func = ret_union;
     boost::posix_time::ptime start, stop;
 	  start = boost::posix_time::microsec_clock::local_time();
-    auto res = query(query_trace, 1666822600, 1666822800, conditions, ret, true, &client);
+    auto res = query(query_trace, 1666822600, 1666822800, conditions, ret, true, client);
     stop = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration dur = stop - start;
 	int64_t milliseconds = dur.total_milliseconds();
@@ -67,10 +63,13 @@ int64_t simple_graph_query(bool verbose, gcs::Client* client) {
     get_value_func ret_union;
     ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
 
+    // query conditions
+    std::vector<query_condition> conditions;
+
     ret.func = ret_union;
     boost::posix_time::ptime start, stop;
 	  start = boost::posix_time::microsec_clock::local_time();
-    auto res = query(query_trace, 1666822600, 1666822800, conditions, ret, true, &client);
+    auto res = query(query_trace, 1666822600, 1666822800, conditions, ret, true, client);
     stop = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration dur = stop - start;
 	int64_t milliseconds = dur.total_milliseconds();
