@@ -78,10 +78,10 @@ std::vector<std::string> query(
 
     std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> current_result;
     if (conditions.size()) {
-        current_result = filter_based_on_conditions(intersection, struct_results, conditions, fetched, ret);
+        current_result = filter_based_on_conditions(intersection, struct_results.value(), conditions, fetched, ret);
     } else {
         current_result = std::make_tuple(
-            intersection, get_iso_map_to_span_id_info(struct_results, ret.node_index, client));
+            intersection, get_iso_map_to_span_id_info(struct_results.value(), ret.node_index, client));
     }
     auto filtered = filter_based_on_conditions(
         intersection, struct_results.value(), conditions, fetched, ret);
@@ -96,7 +96,8 @@ std::map<std::string, iso_to_span_id> get_iso_map_to_span_id_info(
     std::map<std::string, iso_to_span_id> res;
 
     for (auto [k, v] : struct_results.object_name_to_trace_ids_of_interest) {
-        auto structural_object = read_object(TRACE_STRUCT_BUCKET, struct_results.object_names[k], client);
+        auto structural_object_ = read_object(TRACE_STRUCT_BUCKET, struct_results.object_names[k], client);
+        auto structural_object = structural_object_.value();
 
         for (auto trace_id_index : v) {
             auto trace_id = struct_results.trace_ids[trace_id_index];

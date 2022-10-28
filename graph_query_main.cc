@@ -18,14 +18,15 @@ int main(int argc, char* argv[]) {
 
     query_condition condition1;
     condition1.node_index = 0;
-    condition1.type = string_value;
+    condition1.type = int_value;
     get_value_func condition_1_union;
     condition1.func = condition_1_union;
-    condition1.node_property_value = "server";
-    condition1.comp = Equal_to;
-    condition1.property_name = "span-kind";
+    condition1.node_property_value = "100000000";
+    condition1.comp = Greater_than;
+    condition1.property_name = "duration";
+    condition1.is_latency_condition = true;
 
-    conditions.push_back(condition1);
+    // conditions.push_back(condition1);
 
     // querying
     auto client = gcs::Client();
@@ -39,7 +40,7 @@ int main(int argc, char* argv[]) {
     ret.func = ret_union;
     boost::posix_time::ptime start, stop;
 	  start = boost::posix_time::microsec_clock::local_time();
-    auto res = query(query_trace, 1663255784, 1663255785, conditions, ret, true, &client);
+    auto res = query(query_trace, 1666822600, 1666822610, conditions, ret, true, &client);
     // auto res2 = get_traces_by_structure(query_trace, 1660239561, 1660239571, &client);
     stop = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration dur = stop - start;
