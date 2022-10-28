@@ -5,7 +5,7 @@ int main(int argc, char* argv[]) {
 
 	auto client = gcs::Client();
 
-	std::string indexed_attribute = "http.status_code";
+	std::string indexed_attribute = "span.kind";
 	create_index_bucket_if_not_present(indexed_attribute, &(client));
 	time_t last_updated = get_last_updated_for_bucket(get_bucket_name_for_attr(
 		indexed_attribute), &(client));

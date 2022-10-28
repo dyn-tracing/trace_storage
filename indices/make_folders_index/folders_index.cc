@@ -171,7 +171,7 @@ std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trac
 	std::string span_bucket_name, std::string object_name, std::string indexed_attribute, gcs::Client* client
 ) {
 	std::unordered_map<std::string, std::vector<std::string>> response;  // attr_val_to_vec_of_traceids
-	std::string raw_span_bucket_obj_content = read_object2(span_bucket_name, object_name, client);
+	std::string raw_span_bucket_obj_content = read_object(span_bucket_name, object_name, client).value();
 	if (raw_span_bucket_obj_content.length() < 1) {
 		return response;
 	}
@@ -403,21 +403,6 @@ std::string serialize_trace_ids(std::vector<std::string>& trace_ids) {
 	}
 
 	return response;
-}
-
-std::string read_object2(std::string bucket, std::string object, gcs::Client* client) {
-	auto reader = client->ReadObject(bucket, object);
-	if (!reader) {
-		if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
-			return "";
-		}
-
-		std::cerr << "Error reading object " << bucket << "/" << object << " :" << reader.status() << "\n";
-		exit(1);
-	}
-
-	std::string object_content{std::istreambuf_iterator<char>{reader}, {}};
-	return object_content;
 }
 
 void create_index_bucket_if_not_present(std::string indexed_attribute, gcs::Client* client) {
