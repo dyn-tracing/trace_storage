@@ -1,5 +1,5 @@
-#ifndef  COUNT_COUNT_OBJECTS_H_ // NOLINT
-#define  COUNT_COUNT_OBJECTS_H_ // NOLINT
+#ifndef  COUNT_COUNT_OBJECTS_H_
+#define  COUNT_COUNT_OBJECTS_H_
 
 #include <stdlib.h>
 #include <string>

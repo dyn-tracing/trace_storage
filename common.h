@@ -13,6 +13,8 @@
 #include <tuple>
 #include <unordered_map>
 #include <utility>
+
+#include "absl/status/statusor.h"
 #include "google/cloud/storage/client.h"
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
 #include <boost/algorithm/string.hpp>
@@ -43,6 +45,8 @@ constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a'
 
 namespace gcs = ::google::cloud::storage;
 namespace ot = opentelemetry::proto::trace::v1;
+using ::google::cloud::StatusOr;
+using ::google::cloud::Status;
 
 typedef std::unordered_map<std::string, std::vector<std::string>> objname_to_matching_trace_ids;
 
@@ -81,7 +85,7 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
 /// **************** GCS processing ********************************
 opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
     const std::string &bucket, const std::string &object_name, gcs::Client* client);
-std::string read_object(const std::string &bucket, const std::string &object, gcs::Client* client);
+StatusOr<std::string> read_object(const std::string &bucket, const std::string &object, gcs::Client* client);
 
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     const std::vector<std::string> &trace_ids,

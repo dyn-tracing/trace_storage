@@ -18,14 +18,19 @@ std::vector<std::string> query(
     // first, get all matches to indexed query conditions
     // note that structural is always indexed
 
-    std::future<traces_by_structure> struct_filter_obj = std::async(std::launch::async,
+    std::future<StatusOr<traces_by_structure>> struct_filter_obj = std::async(std::launch::async,
         get_traces_by_structure,
         query_trace, start_time, end_time, client);
 
     time_t earliest_last_updated = -1;
-    std::vector<std::future<objname_to_matching_trace_ids>> index_results_futures;
+    std::vector<std::future<StatusOr<objname_to_matching_trace_ids>>> index_results_futures;
     for (uint64_t i=0; i < conditions.size(); i++) {
-        auto indexed = is_indexed(&conditions[i], client);
+        auto indexed_or_status = is_indexed(&conditions[i], client);
+        if (!indexed_or_status.ok()) {
+            std::cerr << "Error in is_indexed:" << std::endl;
+            std::cerr << indexed_or_status.status().message() << std::endl;
+        }
+        auto indexed = indexed_or_status.value();
         index_type i_type = std::get<0>(indexed);
         if (i_type != none) {
             if (earliest_last_updated == -1 || std::get<1>(indexed) < earliest_last_updated) {
@@ -40,36 +45,46 @@ std::vector<std::string> query(
     std::vector<objname_to_matching_trace_ids> index_results;
     index_results.reserve(index_results_futures.size());
     for (uint64_t i=0; i < index_results_futures.size(); i++) {
-        index_results.push_back(index_results_futures[i].get());
+        auto res = index_results_futures[i].get();
+        if (!res.ok()) {
+            std::cerr << "yooo" << std::endl;
+            std::cerr << res.status().message() << std::endl;
+        } else {
+            index_results.push_back(res.value());
+        }
         print_progress((i+1.0)/(index_results_futures.size()+1.0), "Retrieving indices", verbose);
     }
+
     auto struct_results = struct_filter_obj.get();
+    if (!struct_results.ok()) {
+        std::cerr << "Error in struct_results:" << std::endl;
+        std::cerr << struct_results.status().message() << std::endl;
+        return {};
+    }
+
     print_progress(1, "Retrieving indices", verbose);
     if (verbose) {
         std::cout << std::endl;
     }
 
-    if (verbose) {
-        std::cout << "Index Results: " << index_results.size() << std::endl;
-        std::cout << "Struct Results: " << struct_results.trace_ids.size() << std::endl;
-    }
-
-    auto intersection = intersect_index_results(
-            index_results, struct_results, earliest_last_updated, verbose);
+    objname_to_matching_trace_ids intersection = intersect_index_results(
+        index_results, struct_results.value(), earliest_last_updated, verbose);
 
     fetched_data fetched = fetch_data(
-        struct_results,
+        struct_results.value(),
         intersection,
         conditions,
         client);
 
     std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> current_result;
     if (conditions.size()) {
-        current_result = filter_based_on_conditions(intersection, struct_results, conditions, fetched, ret);
+        current_result = filter_based_on_conditions(intersection, struct_results.value(), conditions, fetched, ret);
     } else {
         current_result = std::make_tuple(
-            intersection, get_iso_map_to_span_id_info(struct_results, ret.node_index, client));
+            intersection, get_iso_map_to_span_id_info(struct_results.value(), ret.node_index, client));
     }
+    auto filtered = filter_based_on_conditions(
+        intersection, struct_results.value(), conditions, fetched, ret);
 
     ret_req_data spans_objects_by_bn_sn = fetch_return_data(current_result, ret, fetched, query_trace, client);
     auto returned = get_return_value(current_result, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
@@ -81,7 +96,8 @@ std::map<std::string, iso_to_span_id> get_iso_map_to_span_id_info(
     std::map<std::string, iso_to_span_id> res;
 
     for (auto [k, v] : struct_results.object_name_to_trace_ids_of_interest) {
-        auto structural_object = read_object(TRACE_STRUCT_BUCKET, struct_results.object_names[k], client);
+        auto structural_object_ = read_object(TRACE_STRUCT_BUCKET, struct_results.object_names[k], client);
+        auto structural_object = structural_object_.value();
 
         for (auto trace_id_index : v) {
             auto trace_id = struct_results.trace_ids[trace_id_index];
@@ -144,21 +160,21 @@ ret_req_data fetch_return_data(
 
 
 // Returns index type and last updated
-std::tuple<index_type, time_t> is_indexed(const query_condition *condition, gcs::Client* client) {
+StatusOr<std::tuple<index_type, time_t>> is_indexed(const query_condition *condition, gcs::Client* client) {
     std::string bucket_name = condition->property_name;
     replace_all(bucket_name, ".", "-");
     StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->GetBucketMetadata(bucket_name);
-    if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound ||
-        bucket_metadata.status().code() == ::google::cloud::StatusCode::kPermissionDenied) {
-        return std::make_pair(none, 0);
+    if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound) {
+        std::tuple<index_type, time_t> res = std::make_pair(none, 0);
+        return res;
     }
-    if (!bucket_metadata) {
+
+    if (!bucket_metadata.ok()) {
         std::cout << "in error within is_indexed" << std::endl << std::flush;
-        std::cout << "bucket name is " << bucket_name << std::endl;
-        std::cout << "status code is " << bucket_metadata.status().code() << std::endl;
-        throw std::runtime_error(bucket_metadata.status().message());
+        return bucket_metadata.status();
     }
+
     bool bloom_index = false;
     bool folder_index = false;
     time_t last_indexed = 0;
@@ -178,15 +194,18 @@ std::tuple<index_type, time_t> is_indexed(const query_condition *condition, gcs:
         }
     }
     if (bloom_index) {
-       return std::make_pair(bloom, last_indexed);
+        std::tuple<index_type, time_t> res = std::make_pair(bloom, last_indexed);
+       return res;
     }
     if (folder_index) {
-        return std::make_pair(folder, last_indexed);
+        std::tuple<index_type, time_t> res = std::make_pair(folder, last_indexed);
+        return res;
     }
-    return std::make_pair(not_found, 0);
+    std::tuple<index_type, time_t> res = std::make_pair(not_found, 0);
+    return res;
 }
 
-objname_to_matching_trace_ids get_traces_by_indexed_condition(
+StatusOr<objname_to_matching_trace_ids> get_traces_by_indexed_condition(
     const int start_time, const int end_time, const query_condition *condition, const index_type ind_type,
     gcs::Client* client) {
     switch (ind_type) {
@@ -199,7 +218,7 @@ objname_to_matching_trace_ids get_traces_by_indexed_condition(
         }
         case folder: {
             return get_obj_name_to_trace_ids_map_from_folders_index(
-            condition->property_name, condition->node_property_value, start_time, end_time, client);
+            condition->property_name, condition->node_property_value, start_time, end_time, client).value();
         }
         case none: break;
         case not_found: break;
@@ -343,7 +362,7 @@ std::string retrieve_object_and_get_return_value_from_traces_data(
     std::string object_name, const std::string span_to_find,
     return_value ret, gcs::Client* client
 ) {
-    std::string contents = read_object(bucket_name, object_name, client);
+    std::string contents = read_object(bucket_name, object_name, client).value();
     ot::TracesData trace_data;
     trace_data.ParseFromString(contents);
     return get_return_value_from_traces_data(&trace_data, span_to_find, ret);
@@ -434,7 +453,7 @@ fetched_data fetch_data(
 
         if (response.structural_objects_by_bn.find(batch_name) == response.structural_objects_by_bn.end()) {
             response.structural_objects_by_bn[batch_name] = read_object(
-                trace_structure_bucket_prefix+buckets_suffix, batch_name, client);
+                trace_structure_bucket_prefix+buckets_suffix, batch_name, client).value();
         }
 
         std::vector<int>& iso_map_indices = structs_result.trace_id_to_isomap_indices[trace_ids[0]];

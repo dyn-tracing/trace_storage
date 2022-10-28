@@ -1,16 +1,16 @@
 #include "folders_index_query.h"
 
-objname_to_matching_trace_ids get_obj_name_to_trace_ids_map_from_folders_index(
+StatusOr<std::unordered_map<std::string, std::vector<std::string>>> get_obj_name_to_trace_ids_map_from_folders_index(
 	std::string attr_key, std::string attr_val, int start_time, int end_time, gcs::Client* client
 ) {
-	std::vector<std::future<std::unordered_map<std::string, std::vector<std::string>>>> response_futures;
+	std::vector<std::future<StatusOr<std::unordered_map<std::string, std::vector<std::string>>>>> response_futures;
 	std::string bucket_name = get_bucket_name_for_attr(attr_key);
 	std::string folder = get_folder_name_from_attr_value(attr_val) + "/";
 
 	for (auto&& object_metadata : client->ListObjects(bucket_name, gcs::Prefix(folder))) {
-		if (!object_metadata) {
+		if (!object_metadata.ok()) {
 			std::cerr << object_metadata.status().message() << std::endl;
-			exit(1);
+			return object_metadata.status();
 		}
 
         if (false == is_object_within_timespan(
@@ -24,28 +24,44 @@ objname_to_matching_trace_ids get_obj_name_to_trace_ids_map_from_folders_index(
 			object_metadata->name(), bucket_name, start_time, end_time, client));
 	}
 
-	objname_to_matching_trace_ids response;
-	for_each(response_futures.begin(), response_futures.end(),
-		[&response](std::future<std::unordered_map<std::string, std::vector<std::string>>>& fut) {
-			std::unordered_map<std::string, std::vector<std::string>> obj_name_to_trace_ids_map = fut.get();
-			for (auto& ele : obj_name_to_trace_ids_map) {
-				response[ele.first] = ele.second;
-			}
-	});
+	std::unordered_map<std::string, std::vector<std::string>> response;
+	for (int i = 0; i < response_futures.size(); i++) {
+		auto& fut = response_futures[i];
+		auto obj_name_to_trace_ids_map = fut.get();
+		if (!obj_name_to_trace_ids_map.ok()) {
+			std::cerr <<
+				"Error in get_obj_name_to_trace_ids_map_from_folders_index " <<
+				obj_name_to_trace_ids_map.status().message() << std::endl;
+			return obj_name_to_trace_ids_map.status();
+		}
+
+		for (auto& ele : obj_name_to_trace_ids_map.value()) {
+			response[ele.first] = ele.second;
+		}
+	}
 
 	return response;
 }
 
-std::unordered_map<std::string, std::vector<std::string>>
+StatusOr<std::unordered_map<std::string, std::vector<std::string>>>
 process_findex_object_and_retrieve_obj_name_to_trace_ids_map(
 	std::string findex_obj_name, std::string findex_bucket_name, int start_time, int end_time, gcs::Client* client
 ) {
 	std::unordered_map<std::string, std::vector<std::string>> response;
 
 	auto object_content = read_object(findex_bucket_name, findex_obj_name, client);
-	auto sections = split_by_string(object_content, "Timestamp: ");
+	if (!object_content.ok()) {
+		std::cerr <<
+			"Error in process_findex_object_and_retrieve_obj_name_to_trace_ids_map "
+			<< object_content.status().message() << std::endl;
+		return object_content.status();
+	}
+	auto sections = split_by_string(object_content.value(), "Timestamp: ");
 
 	for (auto& curr_section : sections) {
+		if (curr_section.size() == 0) {
+			continue;
+		}
 		auto lines = split_by_string(curr_section, newline);
 		auto obj_name = lines[0];
         if (false == is_object_within_timespan(extract_batch_timestamps(obj_name), start_time, end_time)) {

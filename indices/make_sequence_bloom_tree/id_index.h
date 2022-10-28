@@ -64,7 +64,7 @@ time_t create_index_bucket(gcs::Client* client, std::string index_bucket);
 int bubble_up_bloom_filter(gcs::Client* client, bloom_filter bf, std::string index_bucket);
 int update_index(gcs::Client* client, std::string property_name, time_t granularity,
     property_type prop_type, get_value_func val_func);
-void get_root_and_granularity(gcs::Client* client, std::tuple<time_t, time_t> &root,
+Status get_root_and_granularity(gcs::Client* client, std::tuple<time_t, time_t> &root,
     time_t &granularity, std::string ib);
 
 #endif  // MICROSERVICES_ENV_TRACE_STORAGE_ID_INDEX_ID_INDEX_H_ // NOLINT

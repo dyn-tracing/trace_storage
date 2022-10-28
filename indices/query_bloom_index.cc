@@ -10,7 +10,7 @@ std::vector<std::tuple<time_t, time_t>> get_children(
     return to_return;
 }
 
-std::vector<std::string> is_trace_id_in_leaf(
+StatusOr<std::vector<std::string>> is_trace_id_in_leaf(
     gcs::Client* client, const std::string traceID, const time_t start_time,
     const time_t end_time, const std::string index_bucket) {
     std::vector<std::string> to_return;
@@ -33,7 +33,7 @@ std::vector<std::string> is_trace_id_in_leaf(
     return to_return;
 }
 
-bool is_trace_id_in_nonterminal_node(
+StatusOr<bool> is_trace_id_in_nonterminal_node(
     gcs::Client* client, const std::string traceID, const time_t start_time,
     const time_t end_time, const std::string index_bucket
 ) {
@@ -45,6 +45,7 @@ bool is_trace_id_in_nonterminal_node(
     if (!reader) {
         std::cerr << "Error reading object: " << reader.status() << bloom_filter_name << "\n";
         throw std::runtime_error("Error reading node object");
+        return reader.status();
     }
     bloom_filter bf;
     bf.Deserialize(reader);
@@ -53,7 +54,7 @@ bool is_trace_id_in_nonterminal_node(
     return bf.contains(traceID_c_str, len);
 }
 
-objname_to_matching_trace_ids get_return_value_from_objnames(gcs::Client* client,
+StatusOr<objname_to_matching_trace_ids> get_return_value_from_objnames(gcs::Client* client,
     std::vector<std::string> object_names,
     std::string index_bucket, std::string queried_value) {
 
@@ -63,7 +64,7 @@ objname_to_matching_trace_ids get_return_value_from_objnames(gcs::Client* client
             auto reader = client->ReadObject(TRACE_STRUCT_BUCKET, object_names[i]);
             if (!reader) {
                 std::cerr << "Error reading object: " << reader.status() << object_names[i] << "\n";
-                throw std::runtime_error("Error reading node object");
+                return reader.status();
             }
             std::string contents{std::istreambuf_iterator<char>{reader}, {}};
             if (contents.find(queried_value) != std::string::npos) {
@@ -76,6 +77,7 @@ objname_to_matching_trace_ids get_return_value_from_objnames(gcs::Client* client
             if (!reader) {
                 std::cerr << "Error reading object: " << reader.status() << object_names[i] << "\n";
                 throw std::runtime_error("Error reading node object");
+                return reader.status();
             }
             std::string contents{std::istreambuf_iterator<char>{reader}, {}};
             std::size_t index = contents.find(queried_value);
@@ -91,6 +93,7 @@ objname_to_matching_trace_ids get_return_value_from_objnames(gcs::Client* client
             if (!reader) {
                 std::cerr << "Error reading object: " << reader.status() << object_names[i] << "\n";
                 throw std::runtime_error("Error reading node object");
+                return reader.status();
             }
             std::string contents{std::istreambuf_iterator<char>{reader}, {}};
             std::vector<std::string> lines = split_by_string(contents, newline);
@@ -136,24 +139,27 @@ std::tuple<time_t, time_t> get_nearest_node(std::tuple<time_t, time_t> root, tim
 // the Bloom filter index does not distinguish on a trace-by-trace level
 // trace ID queries and span ID are the exception;  those may be inferred with a single GET.
 // so it's actually more efficient for the index to return what may be a superset
-objname_to_matching_trace_ids query_bloom_index_for_value(
+StatusOr<objname_to_matching_trace_ids> query_bloom_index_for_value(
     gcs::Client* client, std::string queried_value, std::string index_bucket, const time_t start_time,
     const time_t end_time) {
     std::tuple<time_t, time_t> root;
     time_t granularity;
-    get_root_and_granularity(client, root, granularity, index_bucket);
+    auto status = get_root_and_granularity(client, root, granularity, index_bucket);
+    if (!status.ok()) {
+        return status;
+    }
 
     std::vector<std::tuple<time_t, time_t>> unvisited_nodes;
     unvisited_nodes.push_back(get_nearest_node(root, granularity, start_time, end_time));
 
     // this will contain lists of batches that have the trace ID according to their bloom filters
     // this is a vector and not a single value because bloom filters may give false positives
-    std::vector<std::future<std::vector<std::string>>> batches;
+    std::vector<std::future<StatusOr<std::vector<std::string>>>> batches;
 
     // the way to parallelize this is to do all unvisited_nodes in parallel
     while (unvisited_nodes.size() > 0) {
         std::vector<std::tuple<time_t, time_t>> new_unvisited;
-        std::vector<std::future<bool>> got_positive;
+        std::vector<std::future<StatusOr<bool>>> got_positive;
         std::vector<std::tuple<time_t, time_t>> got_positive_limits;
         for (uint64_t i=0; i < unvisited_nodes.size(); i++) {
             const std::tuple<time_t, time_t>& visit = unvisited_nodes[i];
@@ -170,9 +176,14 @@ objname_to_matching_trace_ids query_bloom_index_for_value(
             }
         }
         // now we need to see how many of the non-terminal nodes showed up positive
-        for (uint64_t i=0; i < got_positive.size(); i++) {
-            if (got_positive[i].get()) {
-                std::vector<std::tuple<time_t, time_t>> children = get_children(got_positive_limits[i], granularity);
+        for (int i=0; i < got_positive.size(); i++) {
+            auto tmp = got_positive[i].get();
+            if (!tmp.ok()) {
+                std::cerr << "Error in query_bloom_index_for_value " << tmp.status().message() << std::endl;
+                return tmp.status();
+            }
+            if (tmp.value()) {
+                auto children = get_children(got_positive_limits[i], granularity);
                 for (int j=0; j < children.size(); j++) {
                     new_unvisited.push_back(children[j]);
                 }
@@ -186,12 +197,21 @@ objname_to_matching_trace_ids query_bloom_index_for_value(
     // now figure out which of the batches actually have your trace ID
     // because false positives are a thing, this could potentially be more than one batch that shows up true
     std::vector<std::string> verified_batches;
-    for (uint64_t i=0; i < batches.size(); i++) {
-        std::vector<std::string> verified = batches[i].get();
-        for (uint64_t j=0; j < verified.size(); j++) {
-            verified_batches.push_back(verified[j]);
+    for (int i=0; i < batches.size(); i++) {
+        StatusOr<std::vector<std::string>> verified = batches[i].get();
+        if (!verified.ok()) {
+            std::cerr << "Error in query_bloom_index_for_value " << verified.status().message() << std::endl;
+            return verified.status();
+        }
+        for (int j=0; j < verified.value().size(); j++) {
+            verified_batches.push_back(verified.value()[j]);
         }
     }
 
-    return get_return_value_from_objnames(client, verified_batches, index_bucket, queried_value);
+    auto res = get_return_value_from_objnames(client, verified_batches, index_bucket, queried_value);
+    if (!res.ok()) {
+        std::cerr << "Errro in query_bloom_index_for_value " << res.status().message() << std::endl;
+        return res.status();
+    }
+    return res.value();
 }

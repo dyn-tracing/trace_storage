@@ -507,13 +507,14 @@ std::vector<struct BatchObjectNames> split_batches_by_leaf(
     return to_return;
 }
 
-void get_root_and_granularity(gcs::Client* client, std::tuple<time_t, time_t> &root,
+Status get_root_and_granularity(gcs::Client* client, std::tuple<time_t, time_t> &root,
     time_t &granularity, std::string ib) {
     // get root and granularity from labels
     StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->GetBucketMetadata(ib);
     if (!bucket_metadata) {
         throw std::runtime_error(bucket_metadata.status().message());
+        return bucket_metadata.status();
     }
     for (auto const& kv : bucket_metadata->labels()) {
         if (kv.first == "root") {
