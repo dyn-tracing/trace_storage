@@ -32,7 +32,7 @@
 #include "indices/query_bloom_index.h"
 #include "common.h"
 
-
+const int BRUTE_FORCE_BATCH_SIZE = 1000;
 typedef std::map<int, std::map<int, std::string>> iso_to_span_id;   // iso_map_index to (node_id_index to span_id)
 std::vector<std::string> query(
     trace_structure query_trace, int start_time, int end_time,
@@ -116,6 +116,13 @@ objname_to_matching_trace_ids morph_struct_result_to_objname_to_matching_trace_i
     traces_by_structure struct_results);
 std::map<std::string, iso_to_span_id> get_iso_map_to_span_id_info(
     traces_by_structure struct_results, int return_node_index, gcs::Client* client);
+
+std::vector<std::string> brute_force_search(objname_to_matching_trace_ids intersection,
+                                            traces_by_structure struct_results,
+                                            std::vector<query_condition> conditions,
+                                            return_value ret,
+                                            trace_structure query_trace,
+                                            gcs::Client* client);
 
 int dummy_tests();
 

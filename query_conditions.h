@@ -7,7 +7,7 @@
 
 enum property_comparison {
 	Equal_to,
-	Lesser_than,
+	Less_than,
 	Greater_than
 };
 
