@@ -1,6 +1,6 @@
 #include "folders_index_query.h"
 
-StatusOr<std::map<std::string, std::vector<std::string>>> get_obj_name_to_trace_ids_map_from_folders_index(
+StatusOr<std::unordered_map<std::string, std::vector<std::string>>> get_obj_name_to_trace_ids_map_from_folders_index(
 	std::string attr_key, std::string attr_val, int start_time, int end_time, gcs::Client* client
 ) {
 	std::vector<std::future<StatusOr<std::unordered_map<std::string, std::vector<std::string>>>>> response_futures;
@@ -24,7 +24,7 @@ StatusOr<std::map<std::string, std::vector<std::string>>> get_obj_name_to_trace_
 			object_metadata->name(), bucket_name, start_time, end_time, client));
 	}
 
-	std::map<std::string, std::vector<std::string>> response;
+	std::unordered_map<std::string, std::vector<std::string>> response;
 	for (int i = 0; i < response_futures.size(); i++) {
 		auto& fut = response_futures[i];
 		auto obj_name_to_trace_ids_map = fut.get();

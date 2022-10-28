@@ -217,7 +217,7 @@ StatusOr<objname_to_matching_trace_ids> get_traces_by_indexed_condition(
         }
         case folder: {
             return get_obj_name_to_trace_ids_map_from_folders_index(
-            condition->property_name, condition->node_property_value, start_time, end_time, client);
+            condition->property_name, condition->node_property_value, start_time, end_time, client).value();
         }
         case none: break;
         case not_found: break;

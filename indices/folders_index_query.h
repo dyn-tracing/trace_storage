@@ -17,7 +17,7 @@ namespace gcs = ::google::cloud::storage;
 using ::google::cloud::StatusOr;
 
 
-StatusOr<std::map<std::string, std::vector<std::string>>> get_obj_name_to_trace_ids_map_from_folders_index(
+StatusOr<std::unordered_map<std::string, std::vector<std::string>>> get_obj_name_to_trace_ids_map_from_folders_index(
 	std::string attr_key, std::string attr_val, int start_time, int end_time, gcs::Client* client
 );
 StatusOr<std::unordered_map<std::string, std::vector<std::string>>>
