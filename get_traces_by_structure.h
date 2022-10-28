@@ -125,6 +125,7 @@ StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_
     gcs::Client* client);
 trace_structure morph_trace_object_to_trace_structure(std::string &trace);
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure &input_graph);
-StatusOr<std::vector<std::string>> get_trace_ids_from_trace_hashes_object(const std::string &object_name, gcs::Client* client);
+StatusOr<std::vector<std::string>> get_trace_ids_from_trace_hashes_object(
+    const std::string &object_name, gcs::Client* client);
 void print_trace_structure(trace_structure trace);
 #endif  // BY_STRUCT_H_ // NOLINT

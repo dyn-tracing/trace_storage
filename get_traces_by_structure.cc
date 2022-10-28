@@ -2,7 +2,7 @@
 
 StatusOr<traces_by_structure> get_traces_by_structure(
     trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
-    
+
     std::vector<std::future<StatusOr<traces_by_structure>>> response_futures;
 
     std::string prefix_to_search = std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
@@ -15,7 +15,8 @@ StatusOr<traces_by_structure> get_traces_by_structure(
         auto result = *std::move(prefix);
         if (false == absl::holds_alternative<std::string>(result)) {
             std::cerr << "Error in getting prefixes" << std::endl;
-            return Status(google::cloud::StatusCode::kUnavailable, "error while moving prefix in get_traces_by_structure");
+            return Status(
+                google::cloud::StatusCode::kUnavailable, "error while moving prefix in get_traces_by_structure");
         }
 
         response_futures.push_back(std::async(
@@ -110,7 +111,7 @@ StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_
 
         auto response_trace_ids_or_status = get_trace_ids_from_trace_hashes_object(
             object_metadata->name(), client);
-        
+
         if (!response_trace_ids_or_status.ok()) {
             return response_trace_ids_or_status.status();
         }
@@ -259,7 +260,8 @@ std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
     return isomorphism_maps;
 }
 
-StatusOr<std::vector<std::string>> get_trace_ids_from_trace_hashes_object(const std::string &object_name, gcs::Client* client) {
+StatusOr<std::vector<std::string>> get_trace_ids_from_trace_hashes_object(
+    const std::string &object_name, gcs::Client* client) {
     auto object_content = read_object(
         std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX),
         object_name, client);

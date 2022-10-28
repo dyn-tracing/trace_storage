@@ -29,7 +29,9 @@ StatusOr<std::unordered_map<std::string, std::vector<std::string>>> get_obj_name
 		auto& fut = response_futures[i];
 		auto obj_name_to_trace_ids_map = fut.get();
 		if (!obj_name_to_trace_ids_map.ok()) {
-			std::cerr << "Error in get_obj_name_to_trace_ids_map_from_folders_index " << obj_name_to_trace_ids_map.status().message() << std::endl;
+			std::cerr << 
+				"Error in get_obj_name_to_trace_ids_map_from_folders_index " << 
+				obj_name_to_trace_ids_map.status().message() << std::endl;
 			return obj_name_to_trace_ids_map.status();
 		}
 
@@ -49,7 +51,9 @@ process_findex_object_and_retrieve_obj_name_to_trace_ids_map(
 
 	auto object_content = read_object(findex_bucket_name, findex_obj_name, client);
 	if (!object_content.ok()) {
-		std::cerr << "Error in process_findex_object_and_retrieve_obj_name_to_trace_ids_map " << object_content.status().message() << std::endl;
+		std::cerr << 
+			"Error in process_findex_object_and_retrieve_obj_name_to_trace_ids_map " 
+			<< object_content.status().message() << std::endl;
 		return object_content.status();
 	}
 	auto sections = split_by_string(object_content.value(), "Timestamp: ");

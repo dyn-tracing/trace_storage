@@ -9,4 +9,4 @@
 
 void count_spans_and_traces(gcs::Client* client);
 
-#endif  // MICROSERVICES_ENV_TRACE_STORAGE_COUNT_COUNT_TRACES_H_
+#endif  // MICROSERVICES_ENV_TRACE_STORAGE_COUNT_COUNT_TRACES_H_  // NOLINT
