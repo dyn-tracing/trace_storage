@@ -42,7 +42,7 @@ QueryData general_graph_query() {
     return query;
 }
 
-QueryData fourFanOut() {
+QueryData four_fan_out() {
     QueryData query;
     query.graph.num_nodes = 5;
     query.graph.node_names.insert(std::make_pair(0, "adservice"));
@@ -65,7 +65,7 @@ QueryData fourFanOut() {
     return query;
 }
 
-QueryData frontendSpanIDs() {
+QueryData frontend_span_ids() {
     QueryData query;
     query.graph.num_nodes = 2;
     query.graph.node_names.insert(std::make_pair(0, "frontend"));
@@ -81,7 +81,7 @@ QueryData frontendSpanIDs() {
     return query;
 }
 
-QueryData durationCondition() {
+QueryData duration_condition() {
     QueryData query;
     query.graph.num_nodes = 2;
     query.graph.node_names.insert(std::make_pair(0, "emailservice"));
@@ -111,7 +111,7 @@ QueryData durationCondition() {
     return query;
 }
 
-QueryData heightAtLeastFour() {
+QueryData height_at_least_four() {
     QueryData query;
     query.graph.num_nodes = 4;
     query.graph.node_names.insert(std::make_pair(0, "frontend"));
@@ -146,11 +146,11 @@ int64_t perform_query(QueryData query_data, bool verbose, time_t start_time, tim
 int main(int argc, char* argv[]) {
     auto client = gcs::Client();
 
-    // TODO: make this choice a command line argument
-    //QueryData data = fourFanOut(); // works
-    //QueryData data = frontendSpanIDs();
-    //QueryData data = durationCondition();
-    QueryData data = heightAtLeastFour();
+    // TODO(jessberg): make this choice a command line argument
+    // QueryData data = four_fan_out(); // works
+    // QueryData data = frontend_span_ids();
+    // QueryData data = duration_condition();
+    QueryData data = height_at_least_four();
     auto time_taken = perform_query(data, false, 1667231800, 1667231850, &client);
     std::cout << "Time Taken: " << time_taken << " ms" << std::endl;
     return 0;
