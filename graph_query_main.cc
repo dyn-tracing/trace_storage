@@ -111,25 +111,25 @@ QueryData durationCondition() {
     return query;
 }
 
-QueryData heightAtLeastFive() {
+QueryData heightAtLeastFour() {
     QueryData query;
-    query.graph.num_nodes = 5;
-    query.graph.node_names.insert(std::make_pair(0, "adservice"));
+    query.graph.num_nodes = 4;
+    query.graph.node_names.insert(std::make_pair(0, "frontend"));
     query.graph.node_names.insert(std::make_pair(1, ASTERISK_SERVICE));
     query.graph.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
     query.graph.node_names.insert(std::make_pair(3, ASTERISK_SERVICE));
-    query.graph.node_names.insert(std::make_pair(4, ASTERISK_SERVICE));
 
     query.graph.edges.insert(std::make_pair(0, 1));
     query.graph.edges.insert(std::make_pair(1, 2));
     query.graph.edges.insert(std::make_pair(2, 3));
-    query.graph.edges.insert(std::make_pair(3, 4));
 
     query.ret.node_index = 0;
     query.ret.type = bytes_value;
     get_value_func ret_union;
     ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
     query.ret.func = ret_union;
+
+    return query;
 }
 
 int64_t perform_query(QueryData query_data, bool verbose, time_t start_time, time_t end_time, gcs::Client* client) {
@@ -147,11 +147,11 @@ int main(int argc, char* argv[]) {
     auto client = gcs::Client();
 
     // TODO: make this choice a command line argument
-    QueryData data = fourFanOut();
+    //QueryData data = fourFanOut(); // works
     //QueryData data = frontendSpanIDs();
     //QueryData data = durationCondition();
-    //QueryData data = heightAtLeastFive();
-    auto time_taken = perform_query(data, false, 1666822600, 1666822800, &client);
+    QueryData data = heightAtLeastFour();
+    auto time_taken = perform_query(data, false, 1667231800, 1667231850, &client);
     std::cout << "Time Taken: " << time_taken << " ms" << std::endl;
     return 0;
 }
