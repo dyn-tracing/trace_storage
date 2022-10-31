@@ -147,7 +147,6 @@ StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_
 
             if (root_service_name == "") {
                 root_service_name = get_root_service_name(trace);
-                std::cout << "no root service " << std::endl;
                 if (root_service_name == "") {
                     traces_by_structure empty_res;
                     return empty_res;
