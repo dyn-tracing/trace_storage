@@ -473,8 +473,6 @@ fetched_data fetch_data_per_batch(
     gcs::Client* client
 ) {
     fetched_data response;
-
-
 }
 
 
@@ -510,9 +508,13 @@ fetched_data fetch_data(
             continue;
         }
 
-        if (response.batch_name_to_structural_object.find(batch_name) == response.batch_name_to_structural_object.end()) {
-            response.batch_name_to_structural_object[batch_name] = read_object(
-                trace_structure_bucket_prefix+buckets_suffix, batch_name, client).value();
+        if (response.batch_name_to_structural_object.find(batch_name) ==
+            response.batch_name_to_structural_object.end()) {
+            response.batch_name_to_structural_object[batch_name] =
+                read_object(
+                    trace_structure_bucket_prefix+buckets_suffix,
+                    batch_name,
+                    client).value();
         }
 
         std::vector<int>& iso_map_indices = structs_result.trace_id_to_isomap_indices[trace_ids[0]];
@@ -653,8 +655,9 @@ bool does_span_satisfy_condition(
     std::string &span_id, std::string &service_name,
     query_condition &condition, const std::string &batch_name, fetched_data& evaluation_data
 ) {
-    if (evaluation_data.batch_name_to_service_name_to_span_data.find(batch_name) == evaluation_data.batch_name_to_service_name_to_span_data.end()
-    || evaluation_data.batch_name_to_service_name_to_span_data[batch_name].find(
+    if (evaluation_data.batch_name_to_service_name_to_span_data.find(batch_name) ==
+        evaluation_data.batch_name_to_service_name_to_span_data.end()
+        || evaluation_data.batch_name_to_service_name_to_span_data[batch_name].find(
         service_name) == evaluation_data.batch_name_to_service_name_to_span_data[batch_name].end()) {
             std::cerr << "Error in does_span_satisfy_condition: Required data not found!" << std::endl;
             exit(1);

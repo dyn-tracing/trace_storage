@@ -49,7 +49,8 @@ struct fetched_data {
         std::string,
         std::unordered_map<
             std::string,
-            opentelemetry::proto::trace::v1::TracesData>> batch_name_to_service_name_to_span_data;  // [batch_name][service_name]
+            opentelemetry::proto::trace::v1::TracesData>>
+            batch_name_to_service_name_to_span_data;  // [batch_name][service_name]
 };
 
 std::string get_service_name_for_node_index(
