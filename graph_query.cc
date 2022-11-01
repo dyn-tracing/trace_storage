@@ -73,7 +73,7 @@ std::vector<std::string> query(
     std::cout << "intersection size is " << intersection.size() << std::endl;
 
     std::vector<std::future<std::vector<std::string>>> results_futures;
-    objname_to_matching_trace_ids partial_intersection;
+    results_futures.reserve(intersection.size());
     for (auto &map : intersection) {
         results_futures.push_back(std::async(std::launch::async,
                 brute_force_per_batch, map.first, map.second, struct_results.value(),
@@ -92,11 +92,11 @@ std::vector<std::string> query(
     return to_return;
 }
 
-std::vector<std::string> brute_force_per_batch(std::string batch_name,
+std::vector<std::string> brute_force_per_batch(const std::string batch_name,
                                                std::vector<std::string> trace_ids,
                                                traces_by_structure struct_results,
                                                std::vector<query_condition> conditions,
-                                               return_value ret,
+                                               const return_value ret,
                                                trace_structure query_trace,
                                                gcs::Client* client
                                                ) {
@@ -170,7 +170,7 @@ objname_to_matching_trace_ids morph_struct_result_to_objname_to_matching_trace_i
 
 ret_req_data fetch_return_data(
     const std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> &filtered,
-    return_value &ret, fetched_data &data, trace_structure &query_trace, std::string batch_name,
+    const return_value &ret, fetched_data &data, trace_structure &query_trace, const std::string batch_name,
     traces_by_structure struct_results,
     gcs::Client* client
 ) {
@@ -268,7 +268,7 @@ StatusOr<objname_to_matching_trace_ids> get_traces_by_indexed_condition(
 
 objname_to_matching_trace_ids intersect_index_results(
     std::vector<objname_to_matching_trace_ids> &index_results,
-    traces_by_structure &structural_results, time_t last_updated, bool verbose) {
+    traces_by_structure &structural_results, const time_t last_updated, const bool verbose) {
     // Easiest solution is just keep a count
     // Eventually we should parallelize this, but I'm not optimizing it
     // until we measure the rest of the code
@@ -324,7 +324,7 @@ objname_to_matching_trace_ids intersect_index_results(
 std::string get_return_value_from_traces_data(
     ot::TracesData *trace_data,
     const std::string span_to_find,
-    return_value ret
+    const return_value ret
 ) {
      int sp_size = trace_data->resource_spans(0).scope_spans(0).spans_size();
      for (int i=0; i < sp_size; i++) {
@@ -339,9 +339,9 @@ std::string get_return_value_from_traces_data(
 }
 
 std::string retrieve_object_and_get_return_value_from_traces_data(
-    std::string bucket_name,
-    std::string object_name, const std::string span_to_find,
-    return_value ret, gcs::Client* client
+    const std::string bucket_name,
+    const std::string object_name, const std::string span_to_find,
+    const return_value ret, gcs::Client* client
 ) {
     std::string contents = read_object(bucket_name, object_name, client).value();
     ot::TracesData trace_data;
@@ -351,7 +351,7 @@ std::string retrieve_object_and_get_return_value_from_traces_data(
 
 std::vector<std::string> get_return_value(
     std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> &filtered,
-    return_value &ret, fetched_data &data, trace_structure &query_trace,
+    const return_value &ret, fetched_data &data, trace_structure &query_trace,
     ret_req_data &return_data, traces_by_structure &struct_results, gcs::Client* client
 ) {
     std::vector<std::future<std::string>> return_values_fut;
@@ -400,11 +400,11 @@ std::vector<std::string> get_return_value(
 
 // Returns list of trace IDs that match conditions, and trace ID to iso to span ID mapping.
 std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> filter_batch_data_based_on_conditions(
-    std::vector<std::string>& trace_ids,
+    const std::vector<std::string>& trace_ids,
     traces_by_structure &structural_results,
     std::vector<query_condition> &conditions,
     struct fetched_data &fetched,
-    return_value ret
+    const return_value &ret
 ) {
     std::vector<std::string> to_return_traces;
     std::map<std::string, iso_to_span_id> trace_id_to_span_id_mappings;
@@ -424,7 +424,7 @@ std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> filt
 fetched_data fetch_data_per_batch(
     traces_by_structure& structs_result,
     std::string batch_name,
-    std::vector<std::string> trace_ids,
+    const std::vector<std::string> trace_ids,
     std::vector<query_condition> &conditions,
     gcs::Client* client
 ) {
@@ -474,7 +474,7 @@ fetched_data fetch_data_per_batch(
 std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(
     const std::string &trace_id,
     std::vector<query_condition> &conditions, fetched_data& evaluation_data,
-    traces_by_structure &structural_results, return_value& ret
+    traces_by_structure &structural_results, const return_value& ret
 ) {
     // isomap_index_to_node_index_to_span_id -> ii_to_ni_to_si
     std::vector<std::map<int, std::map<int, std::string>>> ii_to_ni_to_si_data_for_all_conditions;
@@ -525,7 +525,8 @@ std::string get_service_name_for_node_index(
 std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
     const std::string &trace_id,
     std::vector<query_condition>& conditions,
-    int curr_cond_ind, fetched_data& evaluation_data, traces_by_structure& structural_results, return_value& ret
+    int curr_cond_ind, fetched_data& evaluation_data,
+    traces_by_structure& structural_results, const return_value& ret
 ) {
     std::map<int, std::map<int, std::string>> response;
 
@@ -567,8 +568,8 @@ std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_s
 }
 
 bool does_span_satisfy_condition(
-    std::string &span_id, std::string &service_name,
-    query_condition &condition, fetched_data& evaluation_data
+    const std::string &span_id, const std::string &service_name,
+    const query_condition &condition, fetched_data& evaluation_data
 ) {
     ot::TracesData* trace_data = &(evaluation_data.service_name_to_span_data[service_name]);
 
