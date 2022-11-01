@@ -36,11 +36,10 @@ std::vector<std::string> query(
     std::vector<query_condition> conditions, return_value ret, bool verbose, gcs::Client* client);
 // ****************** conditions-related ********************************
 
+// Service name to span data for return.
 typedef std::unordered_map<
-        std::string,
-        std::unordered_map<
             std::string,
-            opentelemetry::proto::trace::v1::TracesData>> ret_req_data;
+            opentelemetry::proto::trace::v1::TracesData> ret_req_data;
 
 struct new_fetched_data {
     std::string structural_object;
@@ -108,8 +107,8 @@ ret_req_data fetch_return_data(
     return_value &ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client
 );
 std::vector<std::string> get_return_value(
-    std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
-    return_value &ret, fetched_data &data, trace_structure &query_trace,
+    std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> &filtered,
+    return_value &ret, new_fetched_data &data, trace_structure &query_trace,
     ret_req_data &spans_objects_by_bn_sn, gcs::Client* client
 );
 objname_to_matching_trace_ids intersect_index_results(

@@ -130,11 +130,12 @@ std::vector<std::string> brute_force_per_batch(std::string batch_name,
     if (ret.type == bytes_value) {
         return std::get<0>(filtered);
     }
-    /*
-    ret_req_data spans_objects_by_bn_sn = fetch_return_data(filtered, ret, fetched, query_trace, client);
-    auto returned = get_return_value(filtered, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
+    //ret_req_data spans_objects_by_bn_sn = fetch_return_data(filtered, ret, fetched, query_trace, client);
+    ret_req_data ret_data;
+    
+    auto returned = get_return_value(filtered, ret, fetched, query_trace, ret_data, client);
     return returned;
-    */
+    
 }
 
 std::map<std::string, iso_to_span_id> get_iso_map_to_span_id_info(
@@ -182,25 +183,26 @@ objname_to_matching_trace_ids morph_struct_result_to_objname_to_matching_trace_i
 }
 
 ret_req_data fetch_return_data(
-    const std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
-    return_value &ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client
+    const std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> &filtered,
+    return_value &ret, fetched_data &data, trace_structure &query_trace, std::string batch_name, gcs::Client* client
 ) {
     ret_req_data response;
+    /*
 
-    for (auto const &obj_to_trace_ids : std::get<0>(filtered)) {
-        std::string object = obj_to_trace_ids.first;
+    for (auto const &trace_id : std::get<0>(filtered)) {
         std::string service_name = query_trace.node_names[ret.node_index];
         if (
-            (data.batch_name_to_service_name_to_span_data[object].find(service_name) ==
-                data.batch_name_to_service_name_to_span_data[object].end())
+            (data.service_name_to_span_data.find(service_name) ==
+                data.service_name_to_span_data.end())
             &&
-            (response[object].find(service_name) ==
-                response[object].end())
+            (response.find(service_name) ==
+                response.end())
         ) {
-            response[object][service_name] = read_object_and_parse_traces_data(
-                service_name+BUCKETS_SUFFIX, object, client);
+            response[service_name] = read_object_and_parse_traces_data(
+                service_name+BUCKETS_SUFFIX, batch_name, client);
         }
     }
+    */
     return response;
 }
 
@@ -359,44 +361,41 @@ std::string retrieve_object_and_get_return_value_from_traces_data(
 }
 
 std::vector<std::string> get_return_value(
-    std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
-    return_value &ret, fetched_data &data, trace_structure &query_trace,
-    ret_req_data &spans_objects_by_bn_sn, gcs::Client* client
+    std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> &filtered,
+    return_value &ret, new_fetched_data &data, trace_structure &query_trace,
+    ret_req_data &return_data, gcs::Client* client
 ) {
     std::vector<std::future<std::string>> return_values_fut;
     std::unordered_set<std::string> span_ids;
+    
+    for (uint64_t i=0; i < std::get<0>(filtered).size(); i++) {
+        std::string trace_id = std::get<0>(filtered)[i];
 
-    for (auto const &obj_to_trace_ids : std::get<0>(filtered)) {
-        std::string object = obj_to_trace_ids.first;
-        for (uint64_t i=0; i < obj_to_trace_ids.second.size(); i++) {
-            std::string trace_id = obj_to_trace_ids.second[i];
+        // for each trace id, there may be multiple isomaps
+        for (auto & ii_ni_sp : std::get<1>(filtered)[trace_id]) {
+            std::string span_id_to_find = ii_ni_sp.second[ret.node_index];
+            if (span_ids.find(span_id_to_find) != span_ids.end()) {
+                continue;
+            } else {
+                span_ids.insert(span_id_to_find);
+            }
+            std::string service_name = query_trace.node_names[ret.node_index];
 
-            // for each trace id, there may be multiple isomaps
-            for (auto & ii_ni_sp : std::get<1>(filtered)[trace_id]) {
-                std::string span_id_to_find = ii_ni_sp.second[ret.node_index];
-                if (span_ids.find(span_id_to_find) != span_ids.end()) {
-                    continue;
-                } else {
-                    span_ids.insert(span_id_to_find);
-                }
-                std::string service_name = query_trace.node_names[ret.node_index];
-
-                if (data.batch_name_to_service_name_to_span_data[object].find(service_name) !=
-                    data.batch_name_to_service_name_to_span_data[object].end()) {
-                    ot::TracesData* trace_data =
-                        &data.batch_name_to_service_name_to_span_data[object][service_name];
-                    return_values_fut.push_back(std::async(std::launch::async, get_return_value_from_traces_data,
-                        trace_data, span_id_to_find, ret));
-                } else if (spans_objects_by_bn_sn[object].find(service_name) !=
-                    spans_objects_by_bn_sn[object].end()) {
-                    ot::TracesData* trace_data =
-                        &spans_objects_by_bn_sn[object][service_name];
-                    return_values_fut.push_back(std::async(std::launch::async, get_return_value_from_traces_data,
-                        trace_data, span_id_to_find, ret));
-                } else {
-                    std::cout << "wttd " << service_name << " " << object << std::endl;
-                    exit(1);
-                }
+            if (data.service_name_to_span_data.find(service_name) !=
+                data.service_name_to_span_data.end()) {
+                ot::TracesData* trace_data =
+                    &data.service_name_to_span_data[service_name];
+                return_values_fut.push_back(std::async(std::launch::async, get_return_value_from_traces_data,
+                    trace_data, span_id_to_find, ret));
+            } else if (return_data.find(service_name) !=
+                return_data.end()) {
+                ot::TracesData* trace_data =
+                    &return_data[service_name];
+                return_values_fut.push_back(std::async(std::launch::async, get_return_value_from_traces_data,
+                    trace_data, span_id_to_find, ret));
+            } else {
+                std::cout << "wttd " << service_name << " " << std::endl;
+                exit(1);
             }
         }
     }
