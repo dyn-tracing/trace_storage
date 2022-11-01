@@ -42,6 +42,11 @@ typedef std::unordered_map<
             std::string,
             opentelemetry::proto::trace::v1::TracesData>> ret_req_data;
 
+struct new_fetched_data {
+    std::string structural_object;
+    std::unordered_map<std::string, opentelemetry::proto::trace::v1::TracesData> service_name_to_span_data;
+};
+
 struct fetched_data {
     std::unordered_map<std::string, std::string> batch_name_to_structural_object;  // [batch_name]
 

@@ -465,14 +465,54 @@ std::vector<std::string> get_return_value(
 }
 
 
-fetched_data fetch_data_per_batch(
-    const traces_by_structure& structs_result,
+new_fetched_data fetch_data_per_batch(
+    traces_by_structure& structs_result,
     std::string batch_name,
     std::vector<std::string> trace_ids,
     std::vector<query_condition> &conditions,
     gcs::Client* client
 ) {
-    fetched_data response;
+    new_fetched_data data;
+    if (conditions.size() < 1 || trace_ids.size() < 1) {
+        return data;
+    }
+
+    std::string trace_structure_bucket_prefix(TRACE_STRUCT_BUCKET_PREFIX);
+    std::string buckets_suffix(BUCKETS_SUFFIX);
+
+    data.structural_object = read_object(
+                    trace_structure_bucket_prefix+buckets_suffix,
+                    batch_name,
+                    client).value();
+
+    std::unordered_map<std::string, std::future<ot::TracesData>> data_futures;
+
+    for (auto& trace_id : trace_ids) {
+        std::vector<int>& iso_map_indices = structs_result.trace_id_to_isomap_indices[trace_id];
+        for (query_condition& curr_condition : conditions) {
+            for (int curr_iso_map_ind : iso_map_indices) {
+                const int trace_node_names_ind = structs_result.iso_map_to_trace_node_names[curr_iso_map_ind];
+                const int trace_node_index = structs_result.iso_maps[curr_iso_map_ind][curr_condition.node_index];
+                const std::string& condition_service =
+                    structs_result.trace_node_names[trace_node_names_ind][trace_node_index];
+
+                // TODO: faster to just get first token?
+                const std::string service_name_without_hash_id = split_by_string(condition_service, ":")[0];
+                if (data_futures.find(service_name_without_hash_id) ==
+                    data_futures.end()
+                ) {
+                    data_futures[service_name_without_hash_id] = std::async(
+                        std::launch::async,
+                        read_object_and_parse_traces_data,
+                        service_name_without_hash_id+BUCKETS_SUFFIX, batch_name, client);
+                }
+            }
+        }
+    }
+    for (auto& service_name_to_span_data : data_futures) {
+        data.service_name_to_span_data[service_name_to_span_data.first] = service_name_to_span_data.second.get();
+    }
+    return data;
 }
 
 
