@@ -61,9 +61,10 @@ struct fetched_data {
 std::string get_service_name_for_node_index(
     traces_by_structure& structural_results, int iso_map_index, int node_index
 );
-fetched_data fetch_data(
+new_fetched_data fetch_data_per_batch(
     traces_by_structure& structs_result,
-    objname_to_matching_trace_ids& object_name_to_trace_ids_of_interest,
+    std::string batch_name,
+    std::vector<std::string> trace_ids,
     std::vector<query_condition> &conditions,
     gcs::Client* client
 );
@@ -71,11 +72,11 @@ fetched_data fetch_data(
 StatusOr<std::tuple<index_type, time_t>>  is_indexed(const query_condition *condition, gcs::Client* client);
 bool does_span_satisfy_condition(
     std::string &span_id, std::string &service_name,
-    query_condition &condition, const std::string &batch_name, fetched_data& evaluation_data
+    query_condition &condition, new_fetched_data& evaluation_data
 );
 std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
-    const std::string &trace_id, const std::string &batch_name, std::vector<query_condition>& conditions,
-    int curr_cond_ind, fetched_data& evaluation_data, traces_by_structure& structural_results, return_value &ret
+    const std::string &trace_id, std::vector<query_condition>& conditions,
+    int curr_cond_ind, new_fetched_data& evaluation_data, traces_by_structure& structural_results, return_value &ret
 );
 StatusOr<objname_to_matching_trace_ids> get_traces_by_indexed_condition(
     int start_time, int end_time, const query_condition *condition, const index_type ind_type, gcs::Client* client);
@@ -86,17 +87,17 @@ std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>>
     struct fetched_data &fetched,
     return_value &ret
 );
-std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> filter_based_on_conditions_batched(
-    objname_to_matching_trace_ids &intersection,
-    std::string object_name_to_process,
+std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> filter_batch_data_based_on_conditions(
+    std::vector<std::string>& trace_ids,
     traces_by_structure &structural_results,
     std::vector<query_condition> &conditions,
-    struct fetched_data &fetched,
+    struct new_fetched_data &fetched,
     return_value ret
 );
+
 std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(
-    const std::string& trace_id, const std::string& object_name,
-    std::vector<query_condition> &conditions, fetched_data& evaluation_data,
+    const std::string& trace_id,
+    std::vector<query_condition> &conditions, new_fetched_data& evaluation_data,
     traces_by_structure &structural_results, return_value& ret
 );
 
