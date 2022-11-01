@@ -189,8 +189,8 @@ ret_req_data fetch_return_data(
         std::string object = obj_to_trace_ids.first;
         std::string service_name = query_trace.node_names[ret.node_index];
         if (
-            (data.spans_objects_by_bn_sn[object].find(service_name) ==
-                data.spans_objects_by_bn_sn[object].end())
+            (data.batch_name_to_service_name_to_span_data[object].find(service_name) ==
+                data.batch_name_to_service_name_to_span_data[object].end())
             &&
             (response[object].find(service_name) ==
                 response[object].end())
@@ -436,10 +436,10 @@ std::vector<std::string> get_return_value(
                 }
                 std::string service_name = query_trace.node_names[ret.node_index];
 
-                if (data.spans_objects_by_bn_sn[object].find(service_name) !=
-                    data.spans_objects_by_bn_sn[object].end()) {
+                if (data.batch_name_to_service_name_to_span_data[object].find(service_name) !=
+                    data.batch_name_to_service_name_to_span_data[object].end()) {
                     ot::TracesData* trace_data =
-                        &data.spans_objects_by_bn_sn[object][service_name];
+                        &data.batch_name_to_service_name_to_span_data[object][service_name];
                     return_values_fut.push_back(std::async(std::launch::async, get_return_value_from_traces_data,
                         trace_data, span_id_to_find, ret));
                 } else if (spans_objects_by_bn_sn[object].find(service_name) !=
@@ -463,6 +463,18 @@ std::vector<std::string> get_return_value(
 
     return to_return;
 }
+
+
+fetched_data fetch_data_per_batch(
+    const traces_by_structure& structs_result,
+    std::string batch_name,
+    std::vector<std::string> trace_ids,
+    std::vector<query_condition> &conditions,
+    gcs::Client* client
+) {
+    fetched_data response;
+}
+
 
 /**
  * Fetches data that is required for evaluating conditions. 
@@ -496,9 +508,13 @@ fetched_data fetch_data(
             continue;
         }
 
-        if (response.structural_objects_by_bn.find(batch_name) == response.structural_objects_by_bn.end()) {
-            response.structural_objects_by_bn[batch_name] = read_object(
-                trace_structure_bucket_prefix+buckets_suffix, batch_name, client).value();
+        if (response.batch_name_to_structural_object.find(batch_name) ==
+            response.batch_name_to_structural_object.end()) {
+            response.batch_name_to_structural_object[batch_name] =
+                read_object(
+                    trace_structure_bucket_prefix+buckets_suffix,
+                    batch_name,
+                    client).value();
         }
 
         for (auto trace_id : trace_ids) {
@@ -535,7 +551,7 @@ fetched_data fetch_data(
         auto bn = first_kv.first;
         for (auto& second_kv : first_kv.second) {
             auto sn = second_kv.first;
-            response.spans_objects_by_bn_sn[bn][sn] = second_kv.second.get();
+            response.batch_name_to_service_name_to_span_data[bn][sn] = second_kv.second.get();
         }
     }
 
@@ -614,7 +630,7 @@ std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_s
             structural_results, curr_iso_map_ind, ret.node_index);
 
         std::string trace = extract_trace_from_traces_object(trace_id,
-            evaluation_data.structural_objects_by_bn[batch_name]);
+            evaluation_data.batch_name_to_structural_object[batch_name]);
 
         for (auto line : split_by_string(trace, newline)) {
             if (line.find(return_service) != std::string::npos) {
@@ -641,14 +657,15 @@ bool does_span_satisfy_condition(
     std::string &span_id, std::string &service_name,
     query_condition &condition, const std::string &batch_name, fetched_data& evaluation_data
 ) {
-    if (evaluation_data.spans_objects_by_bn_sn.find(batch_name) == evaluation_data.spans_objects_by_bn_sn.end()
-    || evaluation_data.spans_objects_by_bn_sn[batch_name].find(
-        service_name) == evaluation_data.spans_objects_by_bn_sn[batch_name].end()) {
+    if (evaluation_data.batch_name_to_service_name_to_span_data.find(batch_name) ==
+        evaluation_data.batch_name_to_service_name_to_span_data.end()
+        || evaluation_data.batch_name_to_service_name_to_span_data[batch_name].find(
+        service_name) == evaluation_data.batch_name_to_service_name_to_span_data[batch_name].end()) {
             std::cerr << "Error in does_span_satisfy_condition: Required data not found!" << std::endl;
             exit(1);
     }
 
-    ot::TracesData* trace_data = &(evaluation_data.spans_objects_by_bn_sn[batch_name][service_name]);
+    ot::TracesData* trace_data = &(evaluation_data.batch_name_to_service_name_to_span_data[batch_name][service_name]);
 
     const ot::Span* sp;
     for (int i=0; i < trace_data->resource_spans(0).scope_spans(0).spans_size(); i++) {
