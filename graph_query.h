@@ -121,12 +121,14 @@ objname_to_matching_trace_ids morph_struct_result_to_objname_to_matching_trace_i
 std::map<std::string, iso_to_span_id> get_iso_map_to_span_id_info(
     traces_by_structure struct_results, int return_node_index, gcs::Client* client);
 
-std::vector<std::string> brute_force_search(objname_to_matching_trace_ids intersection,
-                                            traces_by_structure struct_results,
-                                            std::vector<query_condition> conditions,
-                                            return_value ret,
-                                            trace_structure query_trace,
-                                            gcs::Client* client);
+std::vector<std::string> brute_force_per_batch(std::string batch_name,
+                                               std::vector<std::string> trace_ids,
+                                               traces_by_structure struct_results,
+                                               std::vector<query_condition> conditions,
+                                               return_value ret,
+                                               trace_structure query_trace,
+                                               gcs::Client* client
+                                               );
 
 int dummy_tests();
 
