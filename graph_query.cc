@@ -101,7 +101,7 @@ std::vector<std::string> brute_force_per_batch(std::string batch_name,
                                                trace_structure query_trace,
                                                gcs::Client* client
                                                ) {
-    new_fetched_data fetched = fetch_data_per_batch(
+    fetched_data fetched = fetch_data_per_batch(
         struct_results,
         batch_name,
         trace_ids,
@@ -172,7 +172,7 @@ objname_to_matching_trace_ids morph_struct_result_to_objname_to_matching_trace_i
 
 ret_req_data fetch_return_data(
     const std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> &filtered,
-    return_value &ret, new_fetched_data &data, trace_structure &query_trace, std::string batch_name,
+    return_value &ret, fetched_data &data, trace_structure &query_trace, std::string batch_name,
     traces_by_structure struct_results,
     gcs::Client* client
 ) {
@@ -353,7 +353,7 @@ std::string retrieve_object_and_get_return_value_from_traces_data(
 
 std::vector<std::string> get_return_value(
     std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> &filtered,
-    return_value &ret, new_fetched_data &data, trace_structure &query_trace,
+    return_value &ret, fetched_data &data, trace_structure &query_trace,
     ret_req_data &return_data, traces_by_structure &struct_results, gcs::Client* client
 ) {
     std::vector<std::future<std::string>> return_values_fut;
@@ -405,7 +405,7 @@ std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> filt
     std::vector<std::string>& trace_ids,
     traces_by_structure &structural_results,
     std::vector<query_condition> &conditions,
-    struct new_fetched_data &fetched,
+    struct fetched_data &fetched,
     return_value ret
 ) {
 
@@ -424,14 +424,14 @@ std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> filt
     return std::make_tuple(to_return_traces, trace_id_to_span_id_mappings);
 }
 
-new_fetched_data fetch_data_per_batch(
+fetched_data fetch_data_per_batch(
     traces_by_structure& structs_result,
     std::string batch_name,
     std::vector<std::string> trace_ids,
     std::vector<query_condition> &conditions,
     gcs::Client* client
 ) {
-    new_fetched_data data;
+    fetched_data data;
     if (conditions.size() < 1 || trace_ids.size() < 1) {
         return data;
     }
@@ -476,7 +476,7 @@ new_fetched_data fetch_data_per_batch(
 
 std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(
     const std::string &trace_id,
-    std::vector<query_condition> &conditions, new_fetched_data& evaluation_data,
+    std::vector<query_condition> &conditions, fetched_data& evaluation_data,
     traces_by_structure &structural_results, return_value& ret
 ) {
     // isomap_index_to_node_index_to_span_id -> ii_to_ni_to_si
@@ -528,7 +528,7 @@ std::string get_service_name_for_node_index(
 std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_satifies_curr_condition(
     const std::string &trace_id,
     std::vector<query_condition>& conditions,
-    int curr_cond_ind, new_fetched_data& evaluation_data, traces_by_structure& structural_results, return_value& ret
+    int curr_cond_ind, fetched_data& evaluation_data, traces_by_structure& structural_results, return_value& ret
 ) {
     std::map<int, std::map<int, std::string>> response;
 
@@ -571,7 +571,7 @@ std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_s
 
 bool does_span_satisfy_condition(
     std::string &span_id, std::string &service_name,
-    query_condition &condition, new_fetched_data& evaluation_data
+    query_condition &condition, fetched_data& evaluation_data
 ) {
     ot::TracesData* trace_data = &(evaluation_data.service_name_to_span_data[service_name]);
 
