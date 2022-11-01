@@ -529,7 +529,6 @@ fetched_data fetch_data(
                 }
             }
         }
-        
     }
 
     for (auto& first_kv : response_futures) {
