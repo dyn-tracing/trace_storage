@@ -73,7 +73,7 @@ std::vector<std::string> query(
     std::cout << "intersection size is " << intersection.size() << std::endl;
 
     std::vector<std::future<std::vector<std::string>>> results_futures;
-    objname_to_matching_trace_ids partial_intersection;
+    results_futures.reserve(intersection.size());
     for (auto &map : intersection) {
         results_futures.push_back(std::async(std::launch::async,
                 brute_force_per_batch, map.first, map.second, struct_results.value(),
@@ -92,11 +92,11 @@ std::vector<std::string> query(
     return to_return;
 }
 
-std::vector<std::string> brute_force_per_batch(std::string batch_name,
+std::vector<std::string> brute_force_per_batch(const std::string batch_name,
                                                std::vector<std::string> trace_ids,
                                                traces_by_structure struct_results,
                                                std::vector<query_condition> conditions,
-                                               return_value ret,
+                                               const return_value ret,
                                                trace_structure query_trace,
                                                gcs::Client* client
                                                ) {
