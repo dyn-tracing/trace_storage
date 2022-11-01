@@ -1,6 +1,3 @@
-// Copyright 2022 Haseeb LLC
-// @author: Muhammad Haseeb <mh6218@nyu.edu>
-
 /**
  * TODO: Some boost definitions (functions, classes, structs) that I overrode 
  * for extracting all the isomorphism maps, use camel casing and I have retained that
@@ -45,15 +42,14 @@ typedef std::unordered_map<
             std::string,
             opentelemetry::proto::trace::v1::TracesData>> ret_req_data;
 
-
 struct fetched_data {
-    std::unordered_map<std::string, std::string> structural_objects_by_bn;  // [batch_name]
+    std::unordered_map<std::string, std::string> batch_name_to_structural_object;  // [batch_name]
 
     std::unordered_map<
         std::string,
         std::unordered_map<
             std::string,
-            opentelemetry::proto::trace::v1::TracesData>> spans_objects_by_bn_sn;  // [batch_name][service_name]
+            opentelemetry::proto::trace::v1::TracesData>> batch_name_to_service_name_to_span_data;  // [batch_name][service_name]
 };
 
 std::string get_service_name_for_node_index(

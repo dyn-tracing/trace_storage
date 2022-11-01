@@ -151,7 +151,7 @@ int main(int argc, char* argv[]) {
     // QueryData data = frontend_span_ids();
     // QueryData data = duration_condition();
     QueryData data = height_at_least_four();
-    auto time_taken = perform_query(data, false, 1667231800, 1667231850, &client);
+    auto time_taken = perform_query(data, false, 1667248040, 1667248050, &client);
     std::cout << "Time Taken: " << time_taken << " ms" << std::endl;
     return 0;
 }
