@@ -168,9 +168,9 @@ int main(int argc, char* argv[]) {
     // TODO(jessberg): make this choice a command line argument
     // QueryData data = four_fan_out(); // works
     // QueryData data = frontend_span_ids();
-    // QueryData data = duration_condition();
+    QueryData data = duration_condition();
     // QueryData data = height_at_least_four();
-    QueryData data = canonical();
+    // QueryData data = canonical();
     auto time_taken = perform_query(data, false, 1667248040, 1667248050, &client);
     std::cout << "Time Taken: " << time_taken << " ms" << std::endl;
     return 0;

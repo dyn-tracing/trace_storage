@@ -14,6 +14,8 @@ std::vector<std::string> query(
         std::cerr << "num nodes does not match number of node names given;  aborting query";
         return empty;
     }
+    boost::posix_time::ptime start, stop;
+    start = boost::posix_time::microsec_clock::local_time();
 
     // first, get all matches to indexed query conditions
     // note that structural is always indexed
@@ -40,7 +42,12 @@ std::vector<std::string> query(
             start_time, end_time, &conditions[i], i_type, client));
         }
     }
-    print_progress(0, "Retrieving indices", verbose);
+    stop = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration dur = stop - start;
+    int64_t milliseconds = dur.total_milliseconds();
+    std::cout << "Set off indices: " << milliseconds << std::endl;
+    std::cout << "index results futures is " << index_results_futures.size() << std::endl;
+    print_progress(0, "Set indices", verbose);
 
     std::vector<objname_to_matching_trace_ids> index_results;
     index_results.reserve(index_results_futures.size());
@@ -56,11 +63,21 @@ std::vector<std::string> query(
     }
 
     auto struct_results = struct_filter_obj.get();
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop - start;
+    milliseconds = dur.total_milliseconds();
+    std::cout << "After get: " << milliseconds << std::endl;
+
     if (!struct_results.ok()) {
         std::cerr << "Error in struct_results:" << std::endl;
         std::cerr << struct_results.status().message() << std::endl;
         return {};
     }
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop - start;
+    milliseconds = dur.total_milliseconds();
+    std::cout << "Time to retrieve indices: " << milliseconds << std::endl;
+    start = stop;
 
     print_progress(1, "Retrieving indices", verbose);
     if (verbose) {
@@ -70,7 +87,11 @@ std::vector<std::string> query(
     objname_to_matching_trace_ids intersection = intersect_index_results(
         index_results, struct_results.value(), earliest_last_updated, verbose);
 
-    std::cout << "intersection size is " << intersection.size() << std::endl;
+        stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop - start;
+    milliseconds = dur.total_milliseconds();
+    std::cout << "Time to compute intersection: " << milliseconds << std::endl;
+    start = stop;
 
     std::vector<std::future<std::vector<std::string>>> results_futures;
     objname_to_matching_trace_ids partial_intersection;
@@ -88,6 +109,10 @@ std::vector<std::string> query(
                          partial_result.begin(),
                          partial_result.end());
     }
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop - start;
+    milliseconds = dur.total_milliseconds();
+    std::cout << "Time after intersection: " << milliseconds << std::endl;
 
     return to_return;
 }

@@ -3,6 +3,9 @@
 StatusOr<traces_by_structure> get_traces_by_structure(
     trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
 
+    boost::posix_time::ptime start, stop;
+    start = boost::posix_time::microsec_clock::local_time();
+
     std::vector<std::future<StatusOr<traces_by_structure>>> response_futures;
 
     std::string prefix_to_search = std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
@@ -23,6 +26,13 @@ StatusOr<traces_by_structure> get_traces_by_structure(
             std::launch::async, process_trace_hashes_prefix_and_retrieve_relevant_trace_ids,
             absl::get<std::string>(result), query_trace, start_time, end_time, client));
     }
+
+    stop = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration dur = stop - start;
+    int64_t milliseconds = dur.total_milliseconds();
+    std::cout << "Set off prefixes: " << milliseconds << std::endl;
+    start = stop;
+    std::cout << "response futures size " << response_futures.size() << std::endl;
 
     traces_by_structure response;
     for (int i = 0; i < response_futures.size(); i++) {
@@ -79,6 +89,10 @@ StatusOr<traces_by_structure> get_traces_by_structure(
             }
         }
     }
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop - start;
+    milliseconds = dur.total_milliseconds();
+    std::cout << "After setting off prefixes: " << milliseconds << std::endl;
 
     return response;
 }
