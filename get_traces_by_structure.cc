@@ -83,6 +83,8 @@ StatusOr<traces_by_structure> get_traces_by_structure(
     return response;
 }
 
+
+
 StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
     std::string prefix, trace_structure query_trace, int start_time, int end_time,
     gcs::Client* client
