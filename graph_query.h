@@ -103,13 +103,15 @@ std::map<int, std::map<int, std::string>> does_trace_satisfy_conditions(
 // ***************** query-related ******************************************
 
 ret_req_data fetch_return_data(
-    const std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> &filtered,
-    return_value &ret, fetched_data &data, trace_structure &query_trace, gcs::Client* client
+    const std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> &filtered,
+    return_value &ret, new_fetched_data &data, trace_structure &query_trace, std::string batch_name,
+    traces_by_structure struct_results,
+    gcs::Client* client
 );
 std::vector<std::string> get_return_value(
     std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> &filtered,
     return_value &ret, new_fetched_data &data, trace_structure &query_trace,
-    ret_req_data &spans_objects_by_bn_sn, gcs::Client* client
+    ret_req_data &return_data, traces_by_structure &struct_results, gcs::Client* client
 );
 objname_to_matching_trace_ids intersect_index_results(
     std::vector<objname_to_matching_trace_ids> &index_results,

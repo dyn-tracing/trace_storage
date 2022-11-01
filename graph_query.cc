@@ -130,10 +130,9 @@ std::vector<std::string> brute_force_per_batch(std::string batch_name,
     if (ret.type == bytes_value) {
         return std::get<0>(filtered);
     }
-    //ret_req_data spans_objects_by_bn_sn = fetch_return_data(filtered, ret, fetched, query_trace, client);
-    ret_req_data ret_data;
+    ret_req_data ret_data = fetch_return_data(filtered, ret, fetched, query_trace, batch_name, struct_results, client);
     
-    auto returned = get_return_value(filtered, ret, fetched, query_trace, ret_data, client);
+    auto returned = get_return_value(filtered, ret, fetched, query_trace, ret_data, struct_results, client);
     return returned;
     
 }
@@ -184,25 +183,28 @@ objname_to_matching_trace_ids morph_struct_result_to_objname_to_matching_trace_i
 
 ret_req_data fetch_return_data(
     const std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> &filtered,
-    return_value &ret, fetched_data &data, trace_structure &query_trace, std::string batch_name, gcs::Client* client
+    return_value &ret, new_fetched_data &data, trace_structure &query_trace, std::string batch_name,
+    traces_by_structure struct_results,
+    gcs::Client* client
 ) {
     ret_req_data response;
-    /*
 
     for (auto const &trace_id : std::get<0>(filtered)) {
-        std::string service_name = query_trace.node_names[ret.node_index];
-        if (
-            (data.service_name_to_span_data.find(service_name) ==
-                data.service_name_to_span_data.end())
-            &&
-            (response.find(service_name) ==
-                response.end())
-        ) {
-            response[service_name] = read_object_and_parse_traces_data(
-                service_name+BUCKETS_SUFFIX, batch_name, client);
+        auto relevant_iso_maps_indices = struct_results.trace_id_to_isomap_indices[trace_id];
+        for (auto iso_map_index : relevant_iso_maps_indices) {
+            std::string service_name = get_service_name_for_node_index(struct_results, iso_map_index, ret.node_index);
+            if (
+                (data.service_name_to_span_data.find(service_name) ==
+                    data.service_name_to_span_data.end())
+                &&
+                (response.find(service_name) ==
+                    response.end())
+            ) {
+                response[service_name] = read_object_and_parse_traces_data(
+                    service_name+BUCKETS_SUFFIX, batch_name, client);
+            }
         }
     }
-    */
     return response;
 }
 
@@ -363,7 +365,7 @@ std::string retrieve_object_and_get_return_value_from_traces_data(
 std::vector<std::string> get_return_value(
     std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> &filtered,
     return_value &ret, new_fetched_data &data, trace_structure &query_trace,
-    ret_req_data &return_data, gcs::Client* client
+    ret_req_data &return_data, traces_by_structure &struct_results, gcs::Client* client
 ) {
     std::vector<std::future<std::string>> return_values_fut;
     std::unordered_set<std::string> span_ids;
@@ -374,13 +376,14 @@ std::vector<std::string> get_return_value(
         // for each trace id, there may be multiple isomaps
         for (auto & ii_ni_sp : std::get<1>(filtered)[trace_id]) {
             std::string span_id_to_find = ii_ni_sp.second[ret.node_index];
-            if (span_ids.find(span_id_to_find) != span_ids.end()) {
-                continue;
-            } else {
-                span_ids.insert(span_id_to_find);
-            }
-            std::string service_name = query_trace.node_names[ret.node_index];
+            std::string service_name;
 
+            // Now we have the trace and span IDs that define the answer.
+            for (std::string& line : split_by_string(data.structural_object, newline)) {
+                if (line.find(span_id_to_find) != std::string::npos) {
+                    service_name = split_by_string(line, colon)[2];
+                }
+            }
             if (data.service_name_to_span_data.find(service_name) !=
                 data.service_name_to_span_data.end()) {
                 ot::TracesData* trace_data =
