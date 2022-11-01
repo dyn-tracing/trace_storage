@@ -113,18 +113,25 @@ std::vector<std::string> brute_force_search(objname_to_matching_trace_ids inters
         conditions,
         client);
 
-    std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> current_result;
+    std::tuple<objname_to_matching_trace_ids, std::map<std::string, iso_to_span_id>> filtered;
     if (conditions.size()) {
-        current_result = filter_based_on_conditions(intersection, struct_results, conditions, fetched, ret);
+        filtered = filter_based_on_conditions(intersection, struct_results, conditions, fetched, ret);
     } else {
-        current_result = std::make_tuple(
+        filtered = std::make_tuple(
             intersection, get_iso_map_to_span_id_info(struct_results, ret.node_index, client));
     }
-    auto filtered = filter_based_on_conditions(
-        intersection, struct_results, conditions, fetched, ret);
+    // just a small hack, should check for trace id return instead
+    if (ret.type == bytes_value) {
+        std::vector<std::string> res;
+        auto obj_to_traces = std::get<0>(filtered);
+        for (auto [obj, trace_ids] : obj_to_traces) {
+            res.insert(res.end(), trace_ids.begin(), trace_ids.end());
+        }
+        return res;
+    }
 
-    ret_req_data spans_objects_by_bn_sn = fetch_return_data(current_result, ret, fetched, query_trace, client);
-    auto returned = get_return_value(current_result, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
+    ret_req_data spans_objects_by_bn_sn = fetch_return_data(filtered, ret, fetched, query_trace, client);
+    auto returned = get_return_value(filtered, ret, fetched, query_trace, spans_objects_by_bn_sn, client);
     return returned;
 }
 

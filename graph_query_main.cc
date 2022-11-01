@@ -132,6 +132,25 @@ QueryData height_at_least_four() {
     return query;
 }
 
+QueryData canonical() {
+    QueryData query;
+    query.graph.num_nodes = 3;
+    query.graph.node_names.insert(std::make_pair(0, "frontend"));
+    query.graph.node_names.insert(std::make_pair(1, "adservice"));
+    query.graph.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
+
+    query.graph.edges.insert(std::make_pair(0, 1));
+    query.graph.edges.insert(std::make_pair(1, 2));
+
+    query.ret.node_index = 0;
+    query.ret.type = bytes_value;
+    get_value_func ret_union;
+    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
+    query.ret.func = ret_union;
+
+    return query;
+}
+
 int64_t perform_query(QueryData query_data, bool verbose, time_t start_time, time_t end_time, gcs::Client* client) {
     boost::posix_time::ptime start, stop;
           start = boost::posix_time::microsec_clock::local_time();
@@ -150,8 +169,9 @@ int main(int argc, char* argv[]) {
     // QueryData data = four_fan_out(); // works
     // QueryData data = frontend_span_ids();
     // QueryData data = duration_condition();
-    QueryData data = height_at_least_four();
-    auto time_taken = perform_query(data, false, 1667231800, 1667231850, &client);
+    // QueryData data = height_at_least_four();
+    QueryData data = canonical();
+    auto time_taken = perform_query(data, false, 1667248040, 1667248050, &client);
     std::cout << "Time Taken: " << time_taken << " ms" << std::endl;
     return 0;
 }
