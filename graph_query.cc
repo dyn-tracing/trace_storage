@@ -494,32 +494,35 @@ fetched_data fetch_data(
                 trace_structure_bucket_prefix+buckets_suffix, batch_name, client).value();
         }
 
-        std::vector<int>& iso_map_indices = structs_result.trace_id_to_isomap_indices[trace_ids[0]];
-        for (query_condition& curr_condition : conditions) {
-            for (int curr_iso_map_ind : iso_map_indices) {
-                const int trace_node_names_ind = structs_result.iso_map_to_trace_node_names[curr_iso_map_ind];
-                const int trace_node_index = structs_result.iso_maps[curr_iso_map_ind][curr_condition.node_index];
-                const std::string& condition_service =
-                    structs_result.trace_node_names[trace_node_names_ind][trace_node_index];
+        for (auto trace_id : trace_ids) {
+            std::vector<int>& iso_map_indices = structs_result.trace_id_to_isomap_indices[trace_id];
+            for (query_condition& curr_condition : conditions) {
+                for (int curr_iso_map_ind : iso_map_indices) {
+                    const int trace_node_names_ind = structs_result.iso_map_to_trace_node_names[curr_iso_map_ind];
+                    const int trace_node_index = structs_result.iso_maps[curr_iso_map_ind][curr_condition.node_index];
+                    const std::string& condition_service =
+                        structs_result.trace_node_names[trace_node_names_ind][trace_node_index];
 
-                /**
-                 * @brief while parallelizing, just make 
-                 * response.spans_objects_by_bn_sn[batch_name][service_name_without_hash_id] = true
-                 * sort of map first and then make asynchronous calls on em. cuz there can be duplicate calls to
-                 * spans_objects_by_bn_sn[batch_name][service_name_without_hash_id], so we dont wanna fetch same obj
-                 * more than once.
-                 */
-                const std::string service_name_without_hash_id = split_by_string(condition_service, ":")[0];
-                if (response_futures[batch_name].find(service_name_without_hash_id) ==
-                    response_futures[batch_name].end()
-                ) {
-                    response_futures[batch_name][service_name_without_hash_id] = std::async(
-                        std::launch::async,
-                        read_object_and_parse_traces_data,
-                        service_name_without_hash_id+BUCKETS_SUFFIX, batch_name, client);
+                    /**
+                     * @brief while parallelizing, just make 
+                     * response.spans_objects_by_bn_sn[batch_name][service_name_without_hash_id] = true
+                     * sort of map first and then make asynchronous calls on em. cuz there can be duplicate calls to
+                     * spans_objects_by_bn_sn[batch_name][service_name_without_hash_id], so we dont wanna fetch same obj
+                     * more than once.
+                     */
+                    const std::string service_name_without_hash_id = split_by_string(condition_service, ":")[0];
+                    if (response_futures[batch_name].find(service_name_without_hash_id) ==
+                        response_futures[batch_name].end()
+                    ) {
+                        response_futures[batch_name][service_name_without_hash_id] = std::async(
+                            std::launch::async,
+                            read_object_and_parse_traces_data,
+                            service_name_without_hash_id+BUCKETS_SUFFIX, batch_name, client);
+                    }
                 }
             }
         }
+        
     }
 
     for (auto& first_kv : response_futures) {
