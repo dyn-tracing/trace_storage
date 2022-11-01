@@ -116,8 +116,7 @@ std::vector<std::string> brute_force_per_batch(std::string batch_name,
                                                std::vector<query_condition> conditions,
                                                return_value ret,
                                                trace_structure query_trace,
-                                               gcs::Client* client
-                                               );
+                                               gcs::Client* client);
 
 int dummy_tests();
 
