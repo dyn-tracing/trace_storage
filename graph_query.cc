@@ -72,7 +72,6 @@ std::vector<std::string> query(
 
     std::cout << "intersection size is " << intersection.size() << std::endl;
 
-    
     std::vector<std::future<std::vector<std::string>>> results_futures;
     objname_to_matching_trace_ids partial_intersection;
     for (auto &map : intersection) {
@@ -121,7 +120,6 @@ std::vector<std::string> brute_force_per_batch(std::string batch_name,
         return std::get<0>(filtered);
     }
     ret_req_data ret_data = fetch_return_data(filtered, ret, fetched, query_trace, batch_name, struct_results, client);
-    
     auto returned = get_return_value(filtered, ret, fetched, query_trace, ret_data, struct_results, client);
     return returned;
 }
@@ -358,7 +356,7 @@ std::vector<std::string> get_return_value(
 ) {
     std::vector<std::future<std::string>> return_values_fut;
     std::unordered_set<std::string> span_ids;
-    
+
     for (uint64_t i=0; i < std::get<0>(filtered).size(); i++) {
         std::string trace_id = std::get<0>(filtered)[i];
 
@@ -408,7 +406,6 @@ std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> filt
     struct fetched_data &fetched,
     return_value ret
 ) {
-
     std::vector<std::string> to_return_traces;
     std::map<std::string, iso_to_span_id> trace_id_to_span_id_mappings;
 
@@ -455,7 +452,7 @@ fetched_data fetch_data_per_batch(
                 const std::string& condition_service =
                     structs_result.trace_node_names[trace_node_names_ind][trace_node_index];
 
-                // TODO: faster to just get first token?
+                // TODO(jessberg): faster to just get first token?
                 const std::string service_name_without_hash_id = split_by_string(condition_service, ":")[0];
                 if (data_futures.find(service_name_without_hash_id) ==
                     data_futures.end()
