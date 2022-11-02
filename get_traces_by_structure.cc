@@ -97,107 +97,145 @@ StatusOr<traces_by_structure> get_traces_by_structure(
     return response;
 }
 
+StatusOr<std::string> get_examplar_from_prefix(std::string prefix, gcs::Client* client) {
+    std::string prefix_to_search = std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
+    std::string object_name = "";
+
+    for (auto&& object_metadata : client->ListObjects(prefix_to_search, gcs::Prefix(prefix), gcs::MaxResults(1))) {
+        if (!object_metadata) {
+            std::cerr << object_metadata.status().message() << std::endl;
+            return object_metadata.status();
+        }
+        object_name =  object_metadata->name();
+
+        // MaxResults param just limits the size of the page, we do not need
+        // to iterate over more data, so break...
+        break;
+    }
+
+    auto response_trace_ids_or_status = get_trace_ids_from_trace_hashes_object(object_name, client);
+    if (!response_trace_ids_or_status.ok()) {
+        return response_trace_ids_or_status.status();
+    }
+
+    auto response_trace_ids = response_trace_ids_or_status.value();
+
+    std::string batch_name = extract_batch_name(object_name);
+    auto object_content_or_status = read_object(TRACE_STRUCT_BUCKET_PREFIX+std::string(BUCKETS_SUFFIX),
+        batch_name, client);
+    if (!object_content_or_status.ok()) {
+        return Status(google::cloud::StatusCode::kUnavailable, "could not get examplar");
+    }
+
+    auto object_content = object_content_or_status.value();
+    std::string trace = extract_any_trace(response_trace_ids, object_content);
+    return trace;
+}
+
+/**
+ * Checks examplar validity and sets isomaps and node_names in the passed by reference param to_return. 
+*/
+StatusOr<bool> check_examplar_validity(
+    std::string examplar, trace_structure query_trace, traces_by_structure& to_return) {
+    trace_structure candidate_trace = morph_trace_object_to_trace_structure(examplar);
+    auto iso_mappings = get_isomorphism_mappings(candidate_trace, query_trace);
+    if (iso_mappings.size() < 1) {
+        return false;
+    }
+
+    // Store Isomaps
+    to_return.iso_maps = iso_mappings;
+
+    // Store Node Names
+    std::vector<std::unordered_map<int, std::string>> nn;
+    nn.push_back(candidate_trace.node_names);
+    to_return.trace_node_names = nn;
+
+    return true;
+}
+
+Status get_traces_by_structure_data(
+    gcs::Client* client,
+    std::string prefix,
+    std::string batch_name,
+    std::string root_service_name,
+    time_t start_time, time_t end_time,
+    traces_by_structure& to_return
+) {
+    auto hashes_bucket_object_name = prefix + batch_name;
+
+    if (false == is_object_within_timespan(extract_batch_timestamps(batch_name), start_time, end_time)) {
+        return Status();
+    }
+
+    auto response_trace_ids_or_status = get_trace_ids_from_trace_hashes_object(hashes_bucket_object_name, client);
+
+    if (!response_trace_ids_or_status.ok()) {
+        return Status(
+            google::cloud::StatusCode::kUnavailable,
+            "error in get_traces_by_structure_data: get_trace_ids_from_trace_hashes_object");
+    }
+
+    auto response_trace_ids = response_trace_ids_or_status.value();
+    if (response_trace_ids.size() < 1) {
+        return Status();
+    }
+
+    auto trace_ids_to_append = response_trace_ids;
+
+    if (object_could_have_out_of_bound_traces(extract_batch_timestamps(batch_name), start_time, end_time)) {
+        auto trace_ids_to_append_or_status = filter_trace_ids_based_on_query_timestamp_for_given_root_service(
+            response_trace_ids, batch_name, start_time, end_time, root_service_name, client);
+        if (!trace_ids_to_append_or_status.ok()) {
+            return trace_ids_to_append_or_status.status();
+        }
+        trace_ids_to_append = trace_ids_to_append_or_status.value();
+    }
+
+    int trace_id_offset = to_return.trace_ids.size();
+    to_return.trace_ids.insert(to_return.trace_ids.end(),
+        trace_ids_to_append.begin(), trace_ids_to_append.end());
+
+    to_return.object_names.push_back(batch_name);
+    int batch_name_index = to_return.object_names.size()-1;
+    for (uint64_t i=trace_id_offset; i < to_return.trace_ids.size(); i++) {
+        for (uint64_t j=0; j < to_return.iso_maps.size(); j++) {
+            to_return.trace_id_to_isomap_indices[to_return.trace_ids[i]].push_back(j);
+        }
+        to_return.object_name_to_trace_ids_of_interest[batch_name_index].push_back(i);
+    }
+
+    return Status();
+}
+
 StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
     std::string prefix, trace_structure query_trace, int start_time, int end_time,
     gcs::Client* client
 ) {
     traces_by_structure to_return;
 
-    std::string prefix_to_search = std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
+    auto examplar_trace = get_examplar_from_prefix(prefix, client);
+    if (!examplar_trace.ok()) {
+        return examplar_trace.status();
+    }
 
-    std::string root_service_name = "";
+    auto valid = check_examplar_validity(examplar_trace.value(), query_trace, to_return);
+    if (!valid.ok()) {
+        return valid.status();
+    }
 
-    // TODO(haseeb): Get rid of some of these sanity checks. Flow should be:
-    // (1) get 1 random exemplar from hash prefix. if no isomaps, exit.
-    // (2) if random exemplar matches, request object names using generate_prefixes function
-    // (3) in parallel, create object names to trace IDs map
-    for (auto&& object_metadata : client->ListObjects(prefix_to_search, gcs::Prefix(prefix))) {
-        if (!object_metadata) {
-            std::cerr << object_metadata.status().message() << std::endl;
-            return object_metadata.status();
-        }
+    if (!valid.value()) {
+        return to_return;
+    }
 
-        std::string batch_name = extract_batch_name(object_metadata->name());
+    auto all_object_names = get_batches_between_timestamps(client, start_time, end_time);
+    auto root_service_name = get_root_service_name(examplar_trace.value());
+    for (auto batch_name : all_object_names) {
+        auto status = get_traces_by_structure_data(
+            client, prefix, batch_name, root_service_name, start_time, end_time, to_return);
 
-        if (false == is_object_within_timespan(extract_batch_timestamps(batch_name), start_time, end_time)) {
-            continue;
-        }
-
-        auto response_trace_ids_or_status = get_trace_ids_from_trace_hashes_object(
-            object_metadata->name(), client);
-
-        if (!response_trace_ids_or_status.ok()) {
-            return response_trace_ids_or_status.status();
-        }
-
-        auto response_trace_ids = response_trace_ids_or_status.value();
-        if (response_trace_ids.size() < 1) {
-            continue;
-        }
-
-        auto object_content_or_status = read_object(TRACE_STRUCT_BUCKET_PREFIX+std::string(BUCKETS_SUFFIX),
-            batch_name, client);
-        if (!object_content_or_status.ok()) {
-            continue;
-        }
-        auto object_content = object_content_or_status.value();
-
-        if (to_return.iso_maps.size() < 1) {
-            std::string trace = extract_any_trace(response_trace_ids, object_content);
-            if (trace == "") {
-                continue;
-            }
-
-            trace_structure candidate_trace = morph_trace_object_to_trace_structure(trace);
-            if (candidate_trace.num_nodes < 1) {
-                continue;
-            }
-
-            to_return.iso_maps = get_isomorphism_mappings(candidate_trace, query_trace);
-
-            std::vector<std::unordered_map<int, std::string>> nn;
-            nn.push_back(candidate_trace.node_names);
-            to_return.trace_node_names = nn;
-
-            if (root_service_name == "") {
-                root_service_name = get_root_service_name(trace);
-                if (root_service_name == "") {
-                    traces_by_structure empty_res;
-                    return empty_res;
-                }
-            }
-
-            if (to_return.iso_maps.size() < 1) {
-                std::cout << "no isomaps" << std::endl;
-                return to_return;
-            }
-        }
-
-        auto trace_ids_to_append = response_trace_ids;
-
-        if (object_could_have_out_of_bound_traces(extract_batch_timestamps(batch_name), start_time, end_time)) {
-            auto trace_ids_to_append_or_status = filter_trace_ids_based_on_query_timestamp_for_given_root_service(
-                response_trace_ids, batch_name, start_time, end_time, root_service_name, client);
-            if (!trace_ids_to_append_or_status.ok()) {
-                return trace_ids_to_append_or_status.status();
-            }
-            trace_ids_to_append = trace_ids_to_append_or_status.value();
-        }
-
-        int trace_id_offset = to_return.trace_ids.size();
-        to_return.trace_ids.insert(to_return.trace_ids.end(),
-            trace_ids_to_append.begin(), trace_ids_to_append.end());
-        if (trace_ids_to_append.size() < 1) {
-            continue;
-        }
-
-        to_return.object_names.push_back(batch_name);
-        int batch_name_index = to_return.object_names.size()-1;
-        for (uint64_t i=trace_id_offset; i < to_return.trace_ids.size(); i++) {
-            for (uint64_t j=0; j < to_return.iso_maps.size(); j++) {
-                to_return.trace_id_to_isomap_indices[to_return.trace_ids[i]].push_back(j);
-            }
-            to_return.object_name_to_trace_ids_of_interest[batch_name_index].push_back(i);
+        if (!status.ok()) {
+            return status;
         }
     }
 

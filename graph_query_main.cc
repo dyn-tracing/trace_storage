@@ -153,11 +153,16 @@ QueryData canonical() {
 
 int64_t perform_query(QueryData query_data, bool verbose, time_t start_time, time_t end_time, gcs::Client* client) {
     boost::posix_time::ptime start, stop;
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
     start = boost::posix_time::microsec_clock::local_time();
     auto res = query(query_data.graph, start_time, end_time, query_data.conditions, query_data.ret, verbose, client);
     stop = boost::posix_time::microsec_clock::local_time();
+
     boost::posix_time::time_duration dur = stop - start;
-        int64_t milliseconds = dur.total_milliseconds();
+    int64_t milliseconds = dur.total_milliseconds();
     std::cout << "Total results: " << res.size() << std::endl;
     return milliseconds;
 }
@@ -173,5 +178,27 @@ int main(int argc, char* argv[]) {
     // QueryData data = canonical();
     auto time_taken = perform_query(data, false, 1667248040, 1667248050, &client);
     std::cout << "Time Taken: " << time_taken << " ms" << std::endl;
+    int n = 1;
+    if (argc > 1) {
+        n = std::stoi(argv[1]);
+    }
+
+    std::vector<time_t> times(n, 0);
+    for (int i = 0; i < n; i++) {
+        QueryData data = canonical();
+        auto time_taken = perform_query(data, false, 1667248040, 1667248050, &client);
+        std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
+        times[i] = time_taken;
+    }
+
+    // Calculate Median
+    std::sort(times.begin(), times.end());
+    int mid_ind = times.size()/2;
+    if (0 == (times.size() % 2)) {
+        auto median = (times[mid_ind-1]+times[mid_ind])/2.0;
+        std::cout << "Median: " << median << std::endl;
+    } else {
+        std::cout << "Median: " << times[mid_ind] << std::endl;
+    }
     return 0;
 }
