@@ -153,10 +153,6 @@ QueryData canonical() {
 
 int64_t perform_query(QueryData query_data, bool verbose, time_t start_time, time_t end_time, gcs::Client* client) {
     boost::posix_time::ptime start, stop;
-<<<<<<< HEAD
-=======
-
->>>>>>> main
     start = boost::posix_time::microsec_clock::local_time();
     auto res = query(query_data.graph, start_time, end_time, query_data.conditions, query_data.ret, verbose, client);
     stop = boost::posix_time::microsec_clock::local_time();
