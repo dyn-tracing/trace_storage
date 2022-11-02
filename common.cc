@@ -93,8 +93,6 @@ ot::TracesData read_object_and_parse_traces_data(
 StatusOr<std::string> read_object(const std::string &bucket, const std::string &object, gcs::Client* client) {
     auto reader = client->ReadObject(bucket, object);
     if (!reader) {
-        std::cerr << "Error reading object " << bucket << "/" << object << " :" << reader.status() << "\n";
-
         return reader.status();
     }
 
