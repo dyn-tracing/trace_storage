@@ -303,6 +303,10 @@ StatusOr<std::vector<std::string>> get_trace_ids_from_trace_hashes_object(
         std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX),
         object_name, client);
     if (!object_content.ok()) {
+        if (object_content.status().code() == google::cloud::StatusCode::kNotFound) {
+            std::vector<std::string> res;
+            return res;
+        }
         return object_content.status();
     }
 

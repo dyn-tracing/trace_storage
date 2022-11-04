@@ -179,7 +179,7 @@ int main(int argc, char* argv[]) {
 
     std::vector<time_t> times(n, 0);
     for (int i = 0; i < n; i++) {
-        QueryData data = canonical();
+        QueryData data = four_fan_out();
         auto time_taken = perform_query(data, false, 1667248040, 1667248050, &client);
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;
