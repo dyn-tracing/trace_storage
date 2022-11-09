@@ -31,10 +31,26 @@ Node DeserializeNode(std::istream &is){
 }
 
 void Serialize(std::ostream &os, NodeSummary &sum){
-    // TODO
+    os.write((char *) &sum.start_time, sizeof(time_t));
+    os.write((char *) &sum.end_time, sizeof(time_t));
+    size_t size = sum.node_objects.size();
+    os.write((char *) &size, sizeof(size_t));
+    for (unsigned int i=0; i<size; i++) {
+        os.write((char *) &sum.node_objects[i], sizeof(int64_t));
+    }
 }
-NodeSummary DeserializeNodeSummary(std::istream &is, NodeSummary &sum){
-    // TODO
+
+NodeSummary DeserializeNodeSummary(std::istream &is) {
+    NodeSummary sum;
+    is.read((char *) &sum.start_time, sizeof(time_t));
+    is.read((char *) &sum.end_time, sizeof(time_t));
+    size_t size;
+    is.read((char *) &size, sizeof(size_t));
+    sum.node_objects.reserve(size);
+    for (unsigned int i=0; i<size; i++) {
+        is.read((char *) &sum.node_objects[i], sizeof(int64_t));
+    }
+    return sum;
 }
 
 Status update(std::string indexed_attribute, gcs::Client* client) {
