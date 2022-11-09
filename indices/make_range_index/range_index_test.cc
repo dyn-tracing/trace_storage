@@ -15,8 +15,7 @@ TEST(Serialization, TestSerializeNode) {
     std::stringstream stream;
     Serialize(node, stream);
 
-    Node node2;
-    Deserialize(node2, stream);
+    Node node2 = DeserializeNode(stream);
 
     EXPECT_EQ(node2, node);
 }
@@ -32,7 +31,6 @@ TEST(Serialization, TestSerializeNodeSummary) {
     std::stringstream stream;
     Serialize(ns, stream);
 
-    NodeSummary ns2;
-    Deserialize(ns2, stream;
+    NodeSummary ns2 = DeserializeNodeSummary(stream);
     EXPECT_EQ(ns2, ns);
 }

@@ -18,9 +18,9 @@ struct NodeSummary {
     std::vector<int64_t> node_objects;
 };
 
-inline void Serialize(std::ostream &os, Node &quant)  ;
-inline void Deserialize(std::istream &is, Node &quant)  ;
-inline void Serialize(std::ostream &os, NodeSummary &sum)  ;
-inline void Deserialize(std::istream &is, NodeSummary &sum)  ;
+void Serialize(std::ostream &os, Node &node);
+Node DeserializeNode(std::istream &is);
+void Serialize(std::ostream &os, NodeSummary &sum);
+NodeSummary DeserializeNodeSummary(std::istream &is);
 
 Status update(std::string indexed_attribute, gcs::Client* client);
