@@ -10,16 +10,7 @@ const int64_t  NUM_NODES_PER_SUMMARY = 20;
 struct IndexedData {
     std::string batch_name;
     std::string trace_id;
-    int64_t data;
-
-    void Serialize(std::ostream &os);
-    Status Deserialize(std::istream &is);
-};
-
-struct NodePieces {
-    int64_t start_value;
-    int64_t end_value;
-    std::vector<IndexedData> values;
+    std::string data;
 
     void Serialize(std::ostream &os);
     Status Deserialize(std::istream &is);
@@ -28,20 +19,13 @@ struct NodePieces {
 struct Node {
     time_t start_time;
     time_t end_time;
-    // Each piece should be roughly 1 GB.
-    std::vector<NodePieces> node_pieces;
+    std::vector<IndexedData> data;
 
     void Serialize(std::ostream &os);
     Status Deserialize(std::istream &is);
-};
 
-struct NodeID {
-    time_t start_time;
-    time_t end_time;
-    int64_t num_node_pieces;
-
-    void Serialize(std::ostream &os);
-    Status Deserialize(std::istream &is);
+    // Split into roughly 1 GB Nodes.
+    std::vector<Node> Split();
 };
 
 struct NodeSummary {

@@ -120,9 +120,16 @@ StatusOr<std::vector<RawData>> organize_data_into_nodes(
         if (!partial_data.ok()) {
             return partial_data;
         }
-        // for each piece of raw data, integrate into Nodes
+        // for each piece of raw data, integrate into Nodes, but all in one large NodePieces
         for (int64_t j = 0; j < partial_data->size(); j++) {
-            // TODO
+            RawData* cur_data = &partial_data->at(i);
+            time_t start_batch_time = cur_data->timestamp -
+                (cur_data->timestamp % TIME_RANGE_PER_NODE);
+            nodes[start_batch_time].data.push_back(IndexedData {
+                .batch_name = batches[cur_data->batch_index],
+                .trace_id = cur_data->trace_id,
+                .data = cur_data->data
+            });
         }
     }
 }
