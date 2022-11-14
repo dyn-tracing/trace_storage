@@ -53,6 +53,43 @@ NodeSummary DeserializeNodeSummary(std::istream &is) {
     return sum;
 }
 
+Status get_last_updated_and_granularity(
+    gcs::Client* client, time_t &granularity, time_t &last_updated,
+    std::string index_bucket
+) {
+    StatusOr<gcs::BucketMetadata> bucket_metadata =                             
+      client->GetBucketMetadata(index_bucket);                                            
+    if (!bucket_metadata) {
+        throw std::runtime_error(bucket_metadata.status().message());           
+        return bucket_metadata.status();                                        
+    }                                                                           
+    for (auto const& kv : bucket_metadata->labels()) {                          
+        if (kv.first == "last_updated") {
+            last_updated = time_t_from_string(kv.second);
+        }
+        if (kv.first == "granularity") {                                        
+            granularity = time_t_from_string(kv.second);                        
+        }                                                                       
+    }
+    return Status();
+}
+
 Status update(std::string indexed_attribute, gcs::Client* client) {
-    // TODO
+    std::string index_bucket = indexed_attribute + "-range-index";
+    replace_all(index_bucket, ".", "-");
+
+    // 1. Find granularity and last updated
+    time_t granularity, last_updated;
+    Status ret = get_last_updated_and_granularity(client, granularity, last_updated, index_bucket);
+    if (!ret.ok()) {
+        return ret;
+    }
+
+    // 2. Find all objects that have happened since last updated
+    time_t now;
+    time(&now);
+    std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, now);
+
+    // 3. Organize their data into summary and node objects
+    // 4. Send that information to GCS.
 }
