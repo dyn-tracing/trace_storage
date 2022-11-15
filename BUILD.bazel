@@ -192,6 +192,18 @@ cc_library(
 )
 
 cc_library(
+    name = "range_index_nodes_lib",
+    srcs = [
+        "indices/make_range_index/nodes.cc",
+    ],
+    hdrs = ["indices/make_range_index/nodes.h"],
+    deps = [
+        "//:common",
+    ],
+    visibility = ["//main:__pkg__"],
+)
+
+cc_library(
     name = "range_index_lib",
     srcs = [
         "indices/make_range_index/range_index.cc",
@@ -200,6 +212,7 @@ cc_library(
     deps = [
         "//:common",
         "//:conditions_lib",
+        "//:range_index_nodes_lib",
         "@com_github_googleapis_google_cloud_cpp//:storage",
         "@com_google_protobuf//:protobuf",
     ],
