@@ -1,5 +1,7 @@
-
 #include "range_index.h"
+
+#include <map>
+#include <string>
 
 void Node::Serialize(std::ostream &os) {
     os.write((char *) &start_time, sizeof(time_t));
@@ -102,7 +104,7 @@ StatusOr<std::vector<RawData>> retrieve_single_batch_data(
     return to_return;
 }
 
-StatusOr<std::vector<RawData>> organize_data_into_nodes(
+Status organize_data_into_nodes(
     const std::vector<std::string> &batches,
     const std::string attribute_to_index,
     std::map<time_t, Node> nodes,
@@ -118,7 +120,7 @@ StatusOr<std::vector<RawData>> organize_data_into_nodes(
     for (int64_t i=0; i < data_futures.size(); i++) {
         StatusOr<std::vector<RawData>> partial_data = data_futures[i].get();
         if (!partial_data.ok()) {
-            return partial_data;
+            return partial_data.status();
         }
         // for each piece of raw data, integrate into Nodes, but all in one large NodePieces
         for (int64_t j = 0; j < partial_data->size(); j++) {
@@ -132,6 +134,64 @@ StatusOr<std::vector<RawData>> organize_data_into_nodes(
             });
         }
     }
+    return Status();
+}
+
+Status update_summary_object(const std::map<time_t, Node> &nodes,
+                            const time_t start_time, gcs::Client* client) {
+    // TODO
+}
+
+Status create_summary_object(const std::map<time_t, Node> &nodes,
+                             const time_t start_time,
+                             gcs::Client* client) {
+    // TODO
+}
+
+Status create_partial_summary_object(const std::map<time_t, Node> &nodes,
+                                     const time_t start_time,
+                                     const time_t end_time,
+                                     gcs::Client* client) {
+    // TODO
+}
+
+Status send_index_to_gcs(const std::map<time_t, Node> &nodes,
+    const time_t last_updated,
+    const time_t now, gcs::Client* client) {
+    time_t summary_time = NUM_NODES_PER_SUMMARY * TIME_RANGE_PER_NODE;
+    time_t starting_summary_obj_time = last_updated;
+    Status ret;
+
+    // If we are updating an existing summary object...
+    if (last_updated % summary_time != 0) {
+        time_t start_time_incomplete_object = last_updated -
+            (last_updated % summary_time);
+        ret = update_summary_object(nodes, start_time_incomplete_object,
+            client);
+        if (!ret.ok()) {
+            return ret;
+        }
+        starting_summary_obj_time = start_time_incomplete_object + summary_time;
+    }
+
+    // For all summary objects that we are creating in full...
+    for (time_t i = starting_summary_obj_time;
+         i < now - (now % summary_time); i++) {
+        ret = create_summary_object(nodes, i, client);
+        if (!ret.ok()) {
+            return ret;
+        }
+    }
+
+    // For all incomplete summary objects we create...
+    if (now % summary_time != 0) {
+        ret = create_partial_summary_object(nodes, now - (now % summary_time),
+            now, client);
+        if (!ret.ok()) {
+            return ret;
+        }
+    }
+    return Status();
 }
 
 Status update(std::string indexed_attribute, gcs::Client* client) {
@@ -173,10 +233,8 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
         return data.status();
     }
 
-    // Organize. Make nodes for all timestamps
-    // From last_updated to now - other bits.
-    // Because we modded now to TIME_RANGE_PER_NODE, we know that it
-    // divides evenly
+    // Now, split all nodes that need to be split into 1 GB increments, and
+    // send to GCS.
 
-    // 4. Send that information to GCS.
+    return send_index_to_gcs(nodes, last_updated, now, client);
 }
