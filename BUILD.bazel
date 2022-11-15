@@ -254,10 +254,10 @@ cc_test(
     name = "make_range_index_test",
     size = "small",
     srcs = [
-            "indices/make_sequence_bloom_tree/id_index_test.cc",
+            "indices/make_range_index/nodes_test.cc",
          ],
     deps = [
-        "//:sequence_bloom_tree_lib",
+        "//:range_index_nodes_lib",
         "@com_google_googletest//:gtest_main",
     ],
 )
