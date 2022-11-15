@@ -32,7 +32,7 @@ struct NodeSummary {
     time_t start_time;
     time_t end_time;
     // Map from start time to the first value in that batch.
-    std::vector<std::tuple<time_t, std::string>> node_objects;
+    std::vector<std::pair<time_t, std::string>> node_objects;
 
     void Serialize(std::ostream &os);
     Status Deserialize(std::istream &is);
