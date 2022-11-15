@@ -137,27 +137,80 @@ Status organize_data_into_nodes(
     return Status();
 }
 
+Status write_node_to_storage(Node& node, std::string node_name,
+                            std::string bucket_name,
+                            gcs::Client* client) {
+    gcs::ObjectWriteStream stream = client->WriteObject(bucket_name, node_name);
+    node.Serialize(stream);
+    stream.Close();
+    StatusOr<gcs::ObjectMetadata> metadata = std::move(stream).metadata();
+    if (!metadata) {
+        throw std::runtime_error(metadata.status().message());
+    }
+    return Status();
+}
+
 Status update_summary_object(const std::map<time_t, Node> &nodes,
-                            const time_t start_time, gcs::Client* client) {
-    // TODO
+                            const time_t start_time,
+                            std::string index_bucket, gcs::Client* client) {
 }
 
 Status create_summary_object(const std::map<time_t, Node> &nodes,
-                             const time_t start_time,
+                             const time_t start_time, std::string index_bucket,
                              gcs::Client* client) {
-    // TODO
+    Status ret;
+    NodeSummary sum = {
+        .start_time = start_time,
+        .end_time = start_time + (TIME_RANGE_PER_NODE*NUM_NODES_PER_SUMMARY)
+    };
+    for (int64_t i=start_time; i<sum.end_time; i+=TIME_RANGE_PER_NODE) {
+        std::vector<Node> nodes_to_write = nodes.at(i).Split();
+
+        // For each node, their contents are sorted. Put
+        // pointers to them in the NodeSummary object, and put them in storage.
+        for (int64_t j=0; j<nodes_to_write.size(); j++) {
+            sum.node_objects.push_back(std::make_pair(
+                nodes_to_write[j].start_time,
+                nodes_to_write[j].data[0].data
+            ));
+            // Now, send that object to storage.
+            std::string node_name =
+                std::to_string(nodes_to_write[j].start_time) +
+                std::to_string(nodes_to_write[j].end_time) +
+                nodes_to_write[j].data[0].data;
+            ret = write_node_to_storage(nodes_to_write[j], node_name,
+                index_bucket, client);
+            if (!ret.ok()) {
+                return ret;
+            }
+        }
+    }
+
+    // Now, write the summary object.
+    gcs::ObjectWriteStream stream = client->WriteObject(index_bucket,
+        "summary-"+std::to_string(sum.start_time) +
+        std::to_string(sum.end_time));
+
+    sum.Serialize(stream);
+    stream.Close();
+    StatusOr<gcs::ObjectMetadata> metadata = std::move(stream).metadata();
+    if (!metadata) {
+        throw std::runtime_error(metadata.status().message());
+    }
+    return Status();
 }
 
 Status create_partial_summary_object(const std::map<time_t, Node> &nodes,
                                      const time_t start_time,
                                      const time_t end_time,
+                                     std::string index_bucket,
                                      gcs::Client* client) {
     // TODO
 }
 
 Status send_index_to_gcs(const std::map<time_t, Node> &nodes,
     const time_t last_updated,
-    const time_t now, gcs::Client* client) {
+    const time_t now, std::string index_bucket, gcs::Client* client) {
     time_t summary_time = NUM_NODES_PER_SUMMARY * TIME_RANGE_PER_NODE;
     time_t starting_summary_obj_time = last_updated;
     Status ret;
@@ -167,7 +220,7 @@ Status send_index_to_gcs(const std::map<time_t, Node> &nodes,
         time_t start_time_incomplete_object = last_updated -
             (last_updated % summary_time);
         ret = update_summary_object(nodes, start_time_incomplete_object,
-            client);
+            index_bucket, client);
         if (!ret.ok()) {
             return ret;
         }
@@ -177,7 +230,7 @@ Status send_index_to_gcs(const std::map<time_t, Node> &nodes,
     // For all summary objects that we are creating in full...
     for (time_t i = starting_summary_obj_time;
          i < now - (now % summary_time); i++) {
-        ret = create_summary_object(nodes, i, client);
+        ret = create_summary_object(nodes, i, index_bucket, client);
         if (!ret.ok()) {
             return ret;
         }
@@ -186,7 +239,7 @@ Status send_index_to_gcs(const std::map<time_t, Node> &nodes,
     // For all incomplete summary objects we create...
     if (now % summary_time != 0) {
         ret = create_partial_summary_object(nodes, now - (now % summary_time),
-            now, client);
+            now, index_bucket, client);
         if (!ret.ok()) {
             return ret;
         }
@@ -236,5 +289,5 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
     // Now, split all nodes that need to be split into 1 GB increments, and
     // send to GCS.
 
-    return send_index_to_gcs(nodes, last_updated, now, client);
+    return send_index_to_gcs(nodes, last_updated, now, index_bucket, client);
 }
