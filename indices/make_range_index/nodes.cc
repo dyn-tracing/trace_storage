@@ -8,7 +8,8 @@ void IndexedData::Serialize(std::ostream &os) {
     os.write(reinterpret_cast<char *>(&size_batch_name), sizeof(size_t));
     os.write(reinterpret_cast<char *>(&size_trace_id), sizeof(size_t));
     os.write(reinterpret_cast<char *>(&size_data), sizeof(size_t));
-    os.write(reinterpret_cast<const char *>(batch_name.c_str()), size_batch_name);
+    os.write(reinterpret_cast<const char *>(batch_name.c_str()),
+             size_batch_name);
     os.write(reinterpret_cast<const char *>(trace_id.c_str()), size_trace_id);
     os.write(reinterpret_cast<const char *>(data.c_str()), size_data);
 }
@@ -57,10 +58,15 @@ Status Node::Deserialize(std::istream &is) {
 }
 
 std::vector<Node> Node::Split() const {
-
+    std::vector<Node> to_return;
+    Node building = {
+        .start_time = start_time,
+        .end_time = end_time
+    };
+    // TODO
 }
 
-void NodeSummary::Serialize(std::ostream &os){
+void NodeSummary::Serialize(std::ostream &os) {
     os.write(reinterpret_cast<char *>(&start_time), sizeof(time_t));
     os.write(reinterpret_cast<char *>(&end_time), sizeof(time_t));
     size_t num_node_objects = node_objects.size();
@@ -89,8 +95,6 @@ Status NodeSummary::Deserialize(std::istream &is) {
         std::string str = read_str(is, str_size);
         node_objects.push_back(std::make_pair(t, str));
     }
-    return Status();
-
     return Status();
 }
 

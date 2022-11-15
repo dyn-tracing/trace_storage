@@ -2,6 +2,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 
 Status get_last_updated_and_granularity(
     gcs::Client* client, time_t &granularity, time_t &last_updated,
@@ -73,8 +74,7 @@ StatusOr<std::vector<RawData>> retrieve_single_batch_data(
                         .timestamp = timestamp,
                         .trace_id = trace_id,
                         .data = curr_attr_val,
-                    }
-                );
+                    });
             }
         }
     }
@@ -154,11 +154,10 @@ Status update_summary_object(const std::map<time_t, Node> &nodes,
 
         // For each node, their contents are sorted. Put
         // pointers to them in the NodeSummary object, and put them in storage.
-        for (int64_t j=0; j<nodes_to_write.size(); j++) {
+        for (int64_t j=0; j < nodes_to_write.size(); j++) {
             sum.node_objects.push_back(std::make_pair(
                 nodes_to_write[j].start_time,
-                nodes_to_write[j].data[0].data
-            ));
+                nodes_to_write[j].data[0].data));
             // Now, send that object to storage.
             std::string node_name =
                 std::to_string(nodes_to_write[j].start_time) +
@@ -189,11 +188,10 @@ Status create_summary_object(const std::map<time_t, Node> &nodes,
 
         // For each node, their contents are sorted. Put
         // pointers to them in the NodeSummary object, and put them in storage.
-        for (int64_t j=0; j<nodes_to_write.size(); j++) {
+        for (int64_t j=0; j < nodes_to_write.size(); j++) {
             sum.node_objects.push_back(std::make_pair(
                 nodes_to_write[j].start_time,
-                nodes_to_write[j].data[0].data
-            ));
+                nodes_to_write[j].data[0].data));
             // Now, send that object to storage.
             std::string node_name =
                 std::to_string(nodes_to_write[j].start_time) +

@@ -1,3 +1,10 @@
+#ifndef  MICROSERVICES_ENV_TRACE_STORAGE_INDICES_MAKE_RANGE_INDEX_NODES_H_
+#define  MICROSERVICES_ENV_TRACE_STORAGE_INDICES_MAKE_RANGE_INDEX_NODES_H_
+
+#include <string>
+#include <vector>
+#include <utility>
+
 #include "common.h"
 
 struct IndexedData {
@@ -45,3 +52,5 @@ struct NodeSummary {
     void Serialize(std::ostream &os);
     Status Deserialize(std::istream &is);
 };
+
+#endif  // MICROSERVICES_ENV_TRACE_STORAGE_INDICES_MAKE_RANGE_INDEX_NODES_H_
