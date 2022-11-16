@@ -7,6 +7,7 @@
 
 #include "common.h"
 
+const int64_t NUM_BYTES_IN_GIGABYTE = 1073741824;
 struct IndexedData {
     std::string batch_name;
     std::string trace_id;

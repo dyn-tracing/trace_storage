@@ -57,13 +57,27 @@ Status Node::Deserialize(std::istream &is) {
     return Status();
 }
 
+int64_t count_bytes_of_data(IndexedData d) {
+    return d.batch_name.size() + d.trace_id.size() + d.data.size();
+}
+
 std::vector<Node> Node::Split() const {
     std::vector<Node> to_return;
     Node building = {
         .start_time = start_time,
         .end_time = end_time
     };
-    // TODO
+    int64_t byte_count = sizeof(time_t)*3;
+    for (int64_t i=0; i < data.size(); i++) {
+        building.data.push_back(data[i]);
+        byte_count += count_bytes_of_data(data[i]);
+        if (byte_count > NUM_BYTES_IN_GIGABYTE) {
+            to_return.push_back(building);
+            byte_count = sizeof(time_t)*3;
+            building = Node {.start_time = start_time, .end_time = end_time};
+        }
+    }
+    return to_return;
 }
 
 void NodeSummary::Serialize(std::ostream &os) {
