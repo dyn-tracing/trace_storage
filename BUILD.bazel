@@ -334,6 +334,22 @@ cc_binary(
 )
 
 cc_library(
+    name = "query_range_index",
+    srcs = [
+        "indices/query_range_index.cc",
+    ],
+    hdrs = ["indices/query_range_index.h"],
+    deps = [
+        "//:common",
+        "//:range_index_nodes_lib",
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+    ],
+    visibility = ["//main:__pkg__"],
+)
+
+cc_library(
     name = "query_bloom_index",
     srcs = [
         "indices/query_bloom_index.cc",
