@@ -26,9 +26,20 @@ Status get_last_updated_and_time_range_per_node_and_nodes_per_summary(
 
 std::vector<std::string> calculate_summaries_to_retrieve(
     time_t start_time, time_t end_time, time_t last_updated,
-    time_t time_range_per_node, time_t nodes_per_summary) {
+    time_t time_range_per_node, int64_t nodes_per_summary) {
 
+    time_t time_per_summary = time_range_per_node * nodes_per_summary;
 
+    time_t start_summary = start_time - (start_time % time_per_summary);
+    time_t end_summary = end_time - (end_time % time_per_summary);
+
+    std::vector<std::string> to_return;
+    for (time_t block = start_summary; block <= end_summary; block += time_per_summary) {
+        to_return.push_back(std::to_string(block) +
+                            "-" +
+                            std::to_string(block+time_per_summary));
+    }
+    return to_return;
 }
 
 objname_to_matching_trace_ids get_traces_matching_query(
