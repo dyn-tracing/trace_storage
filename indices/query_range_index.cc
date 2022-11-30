@@ -1,4 +1,7 @@
 #include <stdlib.h>
+#include <string>
+#include <vector>
+#include <utility>
 
 #include "query_range_index.h"
 #include "make_range_index/nodes.h"
