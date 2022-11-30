@@ -29,9 +29,9 @@ const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
 const char PROJECT_ID[] = "dynamic-tracing";
 const char BUCKETS_LOCATION[] = "us-central1";
 
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket4";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket4";
-const char BUCKETS_SUFFIX[] = "-snicket4";
+const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket-throughput";
+const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket-throughput";
+const char BUCKETS_SUFFIX[] = "-snicket-throughput";
 
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
 const int TRACE_ID_LENGTH = 32;
@@ -96,5 +96,10 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     gcs::Client* client);
 
 std::vector<std::string> get_spans_buckets_names(gcs::Client* client);
+
+/// **************** Other ********************************
+void merge_objname_to_trace_ids(objname_to_matching_trace_ids &original,
+                                objname_to_matching_trace_ids &to_empty);
+
 
 #endif  // COMMON_H_ // NOLINT

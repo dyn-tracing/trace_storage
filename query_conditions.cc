@@ -97,7 +97,7 @@ bool does_condition_hold(const ot::Span* sp, const query_condition condition) {
 /**
  * TODO: There got to be a concise way to do all this stuff.. directly getting function name
  * from `condition` and invoking that using `reflection` maybe???
- * 
+ *
  */
 
 bool does_latency_condition_hold(const ot::Span* sp, const query_condition condition) {
@@ -149,4 +149,17 @@ bool does_end_time_condition_hold(const ot::Span* sp, const query_condition cond
     }
 
     return false;
+}
+
+bool does_value_satisfy_condition(std::string value, query_condition condition) {
+    switch (condition.comp) {
+        case Equal_to:
+            return value == condition.node_property_value;
+        case Less_than:
+            return value < condition.node_property_value;
+        case Greater_than:
+            return value > condition.node_property_value;
+        default:
+            return false;
+    }
 }

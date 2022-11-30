@@ -441,3 +441,17 @@ time_t time_t_from_string(std::string str) {
     std::string sec_str = stream.str();
     return stol(sec_str);
 }
+
+void merge_objname_to_trace_ids(objname_to_matching_trace_ids &original,
+                                objname_to_matching_trace_ids &to_empty) {
+    for (auto && map : to_empty) {
+        std::string batch_name = map.first;
+        std::vector<std::string> trace_ids = map.second;
+        if (original.find(batch_name) == original.end()) {
+            original[batch_name] = trace_ids;
+        } else {
+            original[batch_name].insert(original[batch_name].end(),
+                                        trace_ids.begin(), trace_ids.end());
+        }
+    }
+}

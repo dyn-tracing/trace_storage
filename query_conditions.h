@@ -51,5 +51,6 @@ bool does_condition_hold(const ot::Span* sp, query_condition condition);
 bool does_latency_condition_hold(const ot::Span* sp, query_condition condition);
 bool does_start_time_condition_hold(const ot::Span* sp, query_condition condition);
 bool does_end_time_condition_hold(const ot::Span* sp, query_condition condition);
+bool does_value_satisfy_condition(std::string value, query_condition condition);
 
 #endif  // QUERY_CONDITIONS_H_ // NOLINT

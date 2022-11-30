@@ -341,6 +341,7 @@ cc_library(
     hdrs = ["indices/query_range_index.h"],
     deps = [
         "//:common",
+        "//:conditions_lib",
         "//:range_index_nodes_lib",
         "@com_github_googleapis_google_cloud_cpp//:storage",
         "@com_google_protobuf//:protobuf",
