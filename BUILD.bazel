@@ -237,6 +237,21 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "make_range",
+    srcs = [
+        "indices/make_range_index/main.cc",
+    ],
+    deps = [
+        "//:range_index_lib",
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:regex",
+        "@boost//:algorithm",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+    ],
+)
+
 
 cc_test(
     name = "make_bloom_index_test",

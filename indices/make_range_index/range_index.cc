@@ -14,8 +14,10 @@ StatusOr<time_t> create_index_bucket(gcs::Client* client, std::string index_buck
 
     if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kAborted) {
       // means we've already created the bucket
+      std::cout << "hello, already created bucket" << std::endl;
       for (auto const & kv : bucket_metadata->labels()) {
           if (kv.first == "last_updated") {
+            std::cout << "found time which is " << kv.second << std::endl;
               return time_t_from_string(kv.second);
           }
       }
@@ -25,12 +27,14 @@ StatusOr<time_t> create_index_bucket(gcs::Client* client, std::string index_buck
         return bucket_metadata.status();
     }
 
+    std::cout << "now trying to patch" << std::endl;
     // set bucket type
     StatusOr<gcs::BucketMetadata> updated_metadata = client->PatchBucket(
       index_bucket,
       gcs::BucketMetadataPatchBuilder().SetLabel("bucket_type", "range_index"));
 
     if (!updated_metadata) {
+      std::cerr << "failed to patch metadata for bucket_type" << std::endl;
       throw std::runtime_error(updated_metadata.status().message());
     }
     updated_metadata = client->PatchBucket(
@@ -39,6 +43,7 @@ StatusOr<time_t> create_index_bucket(gcs::Client* client, std::string index_buck
         std::to_string(TIME_RANGE_PER_NODE)));
 
     if (!updated_metadata) {
+      std::cerr << "failed to patch metadata for time_range_per_node" << std::endl;
       throw std::runtime_error(updated_metadata.status().message());
     }
     updated_metadata = client->PatchBucket(
@@ -47,19 +52,39 @@ StatusOr<time_t> create_index_bucket(gcs::Client* client, std::string index_buck
         std::to_string(NUM_NODES_PER_SUMMARY)));
 
     if (!updated_metadata) {
+      std::cerr << "failed to patch metadata for nodes_per_summary" << std::endl;
       throw std::runtime_error(updated_metadata.status().message());
     }
+    std::cout << "returning 0" << std::endl;
     return 0;
 }
 
-StatusOr<std::vector<RawData>> retrieve_single_batch_data(
+std::vector<RawData> retrieve_single_batch_single_bucket_data(
     const std::vector<std::string> batches,
     const int64_t batch_index,
+    const std::string bucket_name,
     const std::string attribute_to_index,
     gcs::Client* client) {
+
     std::vector<RawData> to_return;
-    ot::TracesData trace_data = read_object_and_parse_traces_data(
-        TRACE_STRUCT_BUCKET, batches[batch_index], client);
+
+    StatusOr<std::string> raw_trace_data = read_object(bucket_name, batches[batch_index], client);
+    if (raw_trace_data.status().code() == ::google::cloud::StatusCode::kNotFound) {
+        return to_return;
+    }
+    if (!raw_trace_data.ok()) {
+        std::cerr << "raw trace data was not retrieved properly because "
+            << raw_trace_data.status().message() << std::endl;
+    }
+    if (raw_trace_data.value().length() < 1) { return to_return; }
+
+    ot::TracesData trace_data;
+    bool ret = trace_data.ParseFromString(raw_trace_data.value());
+    if (ret == false) {
+        std::cerr << "failed to parse trace data" << std::endl;
+        return to_return;
+    }
+
     const opentelemetry::proto::trace::v1::Span* sp;
 
     for (int i=0;
@@ -89,9 +114,11 @@ StatusOr<std::vector<RawData>> retrieve_single_batch_data(
                 curr_attr_val = std::to_string(val->double_value());
                 break;
             default:
+                /*
                 return Status(
                     ::google::cloud::StatusCode::kUnavailable,
                     "could not translate attribute");
+                */
                 break;
             }
             if (attribute_to_index == curr_attr_key) {
@@ -108,11 +135,38 @@ StatusOr<std::vector<RawData>> retrieve_single_batch_data(
     return to_return;
 }
 
+StatusOr<std::vector<RawData>> retrieve_single_batch_data(
+    const std::vector<std::string> batches,
+    const int64_t batch_index,
+    const std::string attribute_to_index,
+    gcs::Client* client) {
+    std::vector<RawData> to_return;
+    std::vector<std::string> span_buckets_names = get_spans_buckets_names(client);
+    std::vector<std::future<std::vector<RawData>>> raw_data_futures;
+
+    for (int64_t i=0; i < span_buckets_names.size(); i++) {
+        raw_data_futures.push_back(std::async(std::launch::async,
+            retrieve_single_batch_single_bucket_data,
+            batches, batch_index, span_buckets_names[i],
+            attribute_to_index, client));
+    }
+
+    for (int64_t i=0; i < raw_data_futures.size(); i++) {
+        std::vector<RawData> data = raw_data_futures[i].get();
+        to_return.insert(to_return.end(), data.begin(), data.end());
+    }
+
+    return to_return;
+}
+
 Status organize_data_into_nodes(
     const std::vector<std::string> &batches,
     const std::string attribute_to_index,
     std::map<time_t, Node> nodes,
     gcs::Client* client) {
+
+    std::cout << "len of batches is " << batches.size() << std::endl;
+    std::cout << "first batch is " << batches[0] << std::endl;
     std::vector<std::future<StatusOr<std::vector<RawData>>>> data_futures;
     data_futures.reserve(batches.size());
     for (int64_t i=0; i < batches.size(); i++) {
@@ -121,12 +175,17 @@ Status organize_data_into_nodes(
             batches, i, attribute_to_index, client));
     }
 
+    std::cout << "done setting off data futures " << std::endl;
+    std::cout << " len data futures is " << data_futures.size() << std::endl;
+
     for (int64_t i=0; i < data_futures.size(); i++) {
         StatusOr<std::vector<RawData>> partial_data = data_futures[i].get();
         if (!partial_data.ok()) {
+            std::cerr << "partial data failed" << std::endl;
             return partial_data.status();
         }
         // for each piece of raw data, integrate into Nodes, but all in one large NodePieces
+        std::cout << "integrating" << std::endl;
         for (int64_t j = 0; j < partial_data->size(); j++) {
             RawData* cur_data = &partial_data->at(i);
             time_t start_batch_time = cur_data->timestamp -
@@ -302,10 +361,16 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
     time_t last_updated;
     Status ret;
     StatusOr<time_t> last_updated_or = create_index_bucket(client, index_bucket);
+    std::cout << "definitely last updated done" << std::endl;
     if (!last_updated_or.ok()) {
         return last_updated_or.status();
     }
     last_updated = last_updated_or.value();
+    std::cout << "last updated is " << last_updated << std::endl << std::flush;
+    if (last_updated == 0) {
+        last_updated = get_lowest_time_val(client);
+        last_updated = last_updated - (last_updated % TIME_RANGE_PER_NODE);
+    }
 
     // 2. Create nodes to be added.
     std::map<time_t, Node> nodes;
@@ -325,14 +390,20 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
     std::vector<std::string> batches = get_batches_between_timestamps(
         client, last_updated, now);
 
+    std::cout << "len batches is " << batches.size() << std::endl;
+
     // 3. Organize their data into summary and node objects
     //    To do so, we need to know (1) batch name, (2) timestamp,
     //    (3) trace ID, (4) data
     StatusOr<std::vector<RawData>> data = organize_data_into_nodes(
         batches, indexed_attribute, nodes, client);
     if (!data.ok()) {
+        std::cerr << "Could not organize data into nodes" << std::endl;
         return data.status();
     }
+
+    std::cout << "organized data into nodes" << std::endl;
+    std::cout << "len raw data is " << data.value().size() << std::endl;
 
     // Now, split all nodes that need to be split into 1 GB increments, and
     // send to GCS.
@@ -341,6 +412,7 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
     if (!ret.ok()) {
         return ret;
     }
+    std::cout << "sent index to gcs" << std::endl;
 
     // Now update last_updated, since we just updated the index.
     StatusOr<gcs::BucketMetadata> updated_metadata = client->PatchBucket(
@@ -349,5 +421,6 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
     if (!updated_metadata.ok()) {
         return updated_metadata.status();
     }
+    std::cout << "updated metadata" << std::endl;
     return Status();
 }

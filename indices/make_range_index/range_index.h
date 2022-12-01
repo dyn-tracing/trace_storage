@@ -7,7 +7,7 @@
 #include "nodes.h"
 
 
-const int64_t TIME_RANGE_PER_NODE = 10;
+const int64_t TIME_RANGE_PER_NODE = 100;
 const int64_t  NUM_NODES_PER_SUMMARY = 20;
 
 struct RawData {
