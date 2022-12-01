@@ -4,25 +4,52 @@
 #include <string>
 #include <utility>
 
-Status get_last_updated_and_granularity(
-    gcs::Client* client, time_t &granularity, time_t &last_updated,
-    std::string index_bucket
-) {
-    StatusOr<gcs::BucketMetadata> bucket_metadata =
-      client->GetBucketMetadata(index_bucket);
-    if (!bucket_metadata) {
-        throw std::runtime_error(bucket_metadata.status().message());
+StatusOr<time_t> create_index_bucket(gcs::Client* client, std::string index_bucket) {
+    google::cloud::StatusOr<gcs::BucketMetadata> bucket_metadata =
+      client->CreateBucketForProject(
+          index_bucket, PROJECT_ID,
+          gcs::BucketMetadata()
+              .set_location(BUCKETS_LOCATION)
+              .set_storage_class(gcs::storage_class::Regional()));
+
+    if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kAborted) {
+      // means we've already created the bucket
+      for (auto const & kv : bucket_metadata->labels()) {
+          if (kv.first == "last_updated") {
+              return time_t_from_string(kv.second);
+          }
+      }
+    } else if (!bucket_metadata) {
+        std::cerr << "Error creating bucket " << index_bucket
+              << ", status=" << bucket_metadata.status() << "\n";
         return bucket_metadata.status();
     }
-    for (auto const& kv : bucket_metadata->labels()) {
-        if (kv.first == "last_updated") {
-            last_updated = time_t_from_string(kv.second);
-        }
-        if (kv.first == "granularity") {
-            granularity = time_t_from_string(kv.second);
-        }
+
+    // set bucket type
+    StatusOr<gcs::BucketMetadata> updated_metadata = client->PatchBucket(
+      index_bucket,
+      gcs::BucketMetadataPatchBuilder().SetLabel("bucket_type", "range_index"));
+
+    if (!updated_metadata) {
+      throw std::runtime_error(updated_metadata.status().message());
     }
-    return Status();
+    updated_metadata = client->PatchBucket(
+      index_bucket,
+      gcs::BucketMetadataPatchBuilder().SetLabel("time_range_per_node",
+        std::to_string(TIME_RANGE_PER_NODE)));
+
+    if (!updated_metadata) {
+      throw std::runtime_error(updated_metadata.status().message());
+    }
+    updated_metadata = client->PatchBucket(
+      index_bucket,
+      gcs::BucketMetadataPatchBuilder().SetLabel("nodes_per_summary",
+        std::to_string(NUM_NODES_PER_SUMMARY)));
+
+    if (!updated_metadata) {
+      throw std::runtime_error(updated_metadata.status().message());
+    }
+    return 0;
 }
 
 StatusOr<std::vector<RawData>> retrieve_single_batch_data(
@@ -272,12 +299,13 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
     replace_all(index_bucket, ".", "-");
 
     // 1. Find granularity and last updated
-    time_t granularity, last_updated;
-    Status ret = get_last_updated_and_granularity(
-        client, granularity, last_updated, index_bucket);
-    if (!ret.ok()) {
-        return ret;
+    time_t last_updated;
+    Status ret;
+    StatusOr<time_t> last_updated_or = create_index_bucket(client, index_bucket);
+    if (!last_updated_or.ok()) {
+        return last_updated_or.status();
     }
+    last_updated = last_updated_or.value();
 
     // 2. Create nodes to be added.
     std::map<time_t, Node> nodes;
