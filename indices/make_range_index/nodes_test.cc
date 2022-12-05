@@ -56,7 +56,7 @@ TEST(Serialization, TestSplitBig) {
     Node node;
     node.start_time = 5;
     node.end_time = 10;
-    for (int64_t i=0; i < 1000000; i++) { // TODO: this isn't enough
+    for (int64_t i=0; i < 1000000; i++) {  // TODO(jessberg): this isn't enough
         node.data.push_back(IndexedData {
             .batch_name = "12-34-56",
             .trace_id = "12345",
