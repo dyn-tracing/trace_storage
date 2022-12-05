@@ -92,43 +92,55 @@ std::vector<RawData> retrieve_single_batch_single_bucket_data(
         i++) {
         sp = &(trace_data.resource_spans(0).scope_spans(0).spans(i));
         std::string trace_id = hex_str(sp->trace_id(), sp->trace_id().length());
-        time_t timestamp = sp->start_time_unix_nano();
-        const opentelemetry::proto::common::v1::KeyValue* attribute;
-        for (int j=0; j < sp->attributes_size(); j++) {
-            attribute =  &(sp->attributes(j));
-            const opentelemetry::proto::common::v1::AnyValue* val =
-                &(attribute->value());
-            auto curr_attr_key = attribute->key();
-            std::string curr_attr_val = "";
-            switch (val->value_case()) {
-            case 1:
-                curr_attr_val = val->string_value();
-                break;
-            case 2:
-                curr_attr_val = val->bool_value() ? "true" : "false";
-                break;
-            case 3:
-                curr_attr_val = std::to_string(val->int_value());
-                break;
-            case 4:
-                curr_attr_val = std::to_string(val->double_value());
-                break;
-            default:
-                /*
-                return Status(
-                    ::google::cloud::StatusCode::kUnavailable,
-                    "could not translate attribute");
-                */
-                break;
-            }
-            if (attribute_to_index == curr_attr_key) {
-                to_return.push_back(
-                    RawData {
-                        .batch_index = batch_index,
-                        .timestamp = timestamp,
-                        .trace_id = trace_id,
-                        .data = curr_attr_val,
-                    });
+        // dividing into seconds
+        time_t timestamp = sp->start_time_unix_nano() / 1000000000;
+        if (attribute_to_index.compare("latency") == 0) {
+            to_return.push_back(
+                RawData {
+                    .batch_index = batch_index,
+                    .timestamp = timestamp,
+                    .trace_id = trace_id,
+                    .data = std::to_string(sp->end_time_unix_nano() - sp->start_time_unix_nano()),
+                });
+        } else {
+            const opentelemetry::proto::common::v1::KeyValue* attribute;
+            for (int j=0; j < sp->attributes_size(); j++) {
+                attribute =  &(sp->attributes(j));
+                const opentelemetry::proto::common::v1::AnyValue* val =
+                    &(attribute->value());
+                auto curr_attr_key = attribute->key();
+                std::string curr_attr_val = "";
+                switch (val->value_case()) {
+                case 1:
+                    curr_attr_val = val->string_value();
+                    break;
+                case 2:
+                    curr_attr_val = val->bool_value() ? "true" : "false";
+                    break;
+                case 3:
+                    curr_attr_val = std::to_string(val->int_value());
+                    break;
+                case 4:
+                    curr_attr_val = std::to_string(val->double_value());
+                    break;
+                default:
+                    /*
+                    return Status(
+                        ::google::cloud::StatusCode::kUnavailable,
+                        "could not translate attribute");
+                    */
+                    break;
+                }
+                if (attribute_to_index == curr_attr_key) {
+                    to_return.push_back(
+                        RawData {
+                            .batch_index = batch_index,
+                            .timestamp = timestamp,
+                            .trace_id = trace_id,
+                            .data = curr_attr_val,
+                        });
+                    std::cout << "added raw data" << std::endl;
+                }
             }
         }
     }
@@ -155,6 +167,7 @@ StatusOr<std::vector<RawData>> retrieve_single_batch_data(
         std::vector<RawData> data = raw_data_futures[i].get();
         to_return.insert(to_return.end(), data.begin(), data.end());
     }
+    std::cout << "returning single batch which has " << to_return.size() << " pieces of data." << std::endl;
 
     return to_return;
 }
@@ -162,11 +175,9 @@ StatusOr<std::vector<RawData>> retrieve_single_batch_data(
 Status organize_data_into_nodes(
     const std::vector<std::string> &batches,
     const std::string attribute_to_index,
-    std::map<time_t, Node> nodes,
+    std::map<time_t, Node>* nodes,
     gcs::Client* client) {
 
-    std::cout << "len of batches is " << batches.size() << std::endl;
-    std::cout << "first batch is " << batches[0] << std::endl;
     std::vector<std::future<StatusOr<std::vector<RawData>>>> data_futures;
     data_futures.reserve(batches.size());
     for (int64_t i=0; i < batches.size(); i++) {
@@ -175,8 +186,7 @@ Status organize_data_into_nodes(
             batches, i, attribute_to_index, client));
     }
 
-    std::cout << "done setting off data futures " << std::endl;
-    std::cout << " len data futures is " << data_futures.size() << std::endl;
+    time_t has_contents = 0;
 
     for (int64_t i=0; i < data_futures.size(); i++) {
         StatusOr<std::vector<RawData>> partial_data = data_futures[i].get();
@@ -185,12 +195,15 @@ Status organize_data_into_nodes(
             return partial_data.status();
         }
         // for each piece of raw data, integrate into Nodes, but all in one large NodePieces
-        std::cout << "integrating" << std::endl;
+        std::cout << "partial data has size " << partial_data->size() << std::endl;
         for (int64_t j = 0; j < partial_data->size(); j++) {
-            RawData* cur_data = &partial_data->at(i);
+            RawData* cur_data = &partial_data->at(j);
             time_t start_batch_time = cur_data->timestamp -
                 (cur_data->timestamp % TIME_RANGE_PER_NODE);
-            nodes[start_batch_time].data.push_back(IndexedData {
+            bool contains = nodes->find(start_batch_time) == nodes->end();
+            //std::cout << "adding data at " << start_batch_time << std::endl;
+            has_contents = start_batch_time;
+            nodes->at(start_batch_time).data.push_back(IndexedData {
                 .batch_name = batches[cur_data->batch_index],
                 .trace_id = cur_data->trace_id,
                 .data = cur_data->data
@@ -203,6 +216,7 @@ Status organize_data_into_nodes(
 Status write_node_to_storage(Node& node, std::string node_name,
                             std::string bucket_name,
                             gcs::Client* client) {
+    std::cout << "writing node " << node_name << std::endl;
     gcs::ObjectWriteStream stream = client->WriteObject(bucket_name, node_name);
     node.Serialize(stream);
     stream.Close();
@@ -217,7 +231,7 @@ Status update_summary_object(const std::map<time_t, Node> &nodes,
                             const time_t start_time, const time_t end_time,
                             std::string index_bucket, gcs::Client* client) {
     std::string summary_object_name = "summary-" +
-        std::to_string(start_time) +
+        std::to_string(start_time) + "-" +
         std::to_string(start_time+(TIME_RANGE_PER_NODE*NUM_NODES_PER_SUMMARY));
 
     // first, read object
@@ -271,29 +285,32 @@ Status create_summary_object(const std::map<time_t, Node> &nodes,
     };
     for (int64_t i=start_time; i < end_time; i+=TIME_RANGE_PER_NODE) {
         std::vector<Node> nodes_to_write = nodes.at(i).Split();
-
         // For each node, their contents are sorted. Put
         // pointers to them in the NodeSummary object, and put them in storage.
         for (int64_t j=0; j < nodes_to_write.size(); j++) {
-            sum.node_objects.push_back(std::make_pair(
-                nodes_to_write[j].start_time,
-                nodes_to_write[j].data[0].data));
-            // Now, send that object to storage.
-            std::string node_name =
-                std::to_string(nodes_to_write[j].start_time) +
-                std::to_string(nodes_to_write[j].end_time) +
-                nodes_to_write[j].data[0].data;
-            ret = write_node_to_storage(nodes_to_write[j], node_name,
-                index_bucket, client);
-            if (!ret.ok()) {
-                return ret;
+            std::cout << "j is " << j << std::endl;
+            if (nodes_to_write[j].data.size() > 0) {
+                sum.node_objects.push_back(std::make_pair(
+                    nodes_to_write[j].start_time,
+                    nodes_to_write[j].data[0].data));
+                // Now, send that object to storage.
+                std::string node_name =
+                    std::to_string(nodes_to_write[j].start_time) + "-" +
+                    std::to_string(nodes_to_write[j].end_time) + "-" +
+                    nodes_to_write[j].data[0].data;
+                ret = write_node_to_storage(nodes_to_write[j], node_name,
+                    index_bucket, client);
+                if (!ret.ok()) {
+                    std::cerr << "could not write node to storage" << std::endl;
+                    return ret;
+                }
             }
         }
     }
 
     // Now, write the summary object.
     gcs::ObjectWriteStream stream = client->WriteObject(index_bucket,
-        "summary-"+std::to_string(sum.start_time) +
+        "summary-"+std::to_string(sum.start_time) + "-" +
         std::to_string(sum.end_time));
 
     sum.Serialize(stream);
@@ -314,6 +331,7 @@ Status send_index_to_gcs(const std::map<time_t, Node> &nodes,
 
     // If we are updating an existing summary object...
     if (last_updated % summary_time != 0) {
+        std::cout << "we are updating an existing summary object" << std::endl;
         time_t start_time_incomplete_object = last_updated -
             (last_updated % summary_time);
 
@@ -334,9 +352,9 @@ Status send_index_to_gcs(const std::map<time_t, Node> &nodes,
 
     // For all summary objects that we are creating in full...
     for (time_t i = starting_summary_obj_time;
-         i < now - (now % summary_time); i++) {
+         i < now - (now % summary_time); i+=summary_time) {
         ret = create_summary_object(nodes, i,
-            TIME_RANGE_PER_NODE*NUM_NODES_PER_SUMMARY, index_bucket, client);
+            i+summary_time, index_bucket, client);
         if (!ret.ok()) {
             return ret;
         }
@@ -369,7 +387,8 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
     std::cout << "last updated is " << last_updated << std::endl << std::flush;
     if (last_updated == 0) {
         last_updated = get_lowest_time_val(client);
-        last_updated = last_updated - (last_updated % TIME_RANGE_PER_NODE);
+        last_updated = last_updated -
+            (last_updated % (TIME_RANGE_PER_NODE * NUM_NODES_PER_SUMMARY));
     }
 
     // 2. Create nodes to be added.
@@ -377,6 +396,9 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
     time_t now;
     time(&now);
     now = now - (now % TIME_RANGE_PER_NODE);
+    // set now to more realistic value TODO: get rid of this
+    now = last_updated + 1000;
+    std::cout << "last updated is " << last_updated << " and now is " << now << std::endl;
 
     for (time_t i = last_updated; i < now; i += TIME_RANGE_PER_NODE) {
        nodes[i] = Node{
@@ -395,15 +417,16 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
     // 3. Organize their data into summary and node objects
     //    To do so, we need to know (1) batch name, (2) timestamp,
     //    (3) trace ID, (4) data
-    StatusOr<std::vector<RawData>> data = organize_data_into_nodes(
-        batches, indexed_attribute, nodes, client);
-    if (!data.ok()) {
+    ret = organize_data_into_nodes(batches, indexed_attribute, &nodes, client);
+    if (!ret.ok()) {
         std::cerr << "Could not organize data into nodes" << std::endl;
-        return data.status();
+        return ret;
     }
 
     std::cout << "organized data into nodes" << std::endl;
-    std::cout << "len raw data is " << data.value().size() << std::endl;
+    for (auto &node : nodes) {
+        std::cout << "node has data of size " << std::get<1>(node).data.size() << std::endl;
+    }
 
     // Now, split all nodes that need to be split into 1 GB increments, and
     // send to GCS.

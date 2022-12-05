@@ -24,7 +24,6 @@ TEST(Serialization, TestSerializeNode) {
 
     EXPECT_EQ(node2, node);
 }
-
 TEST(Serialization, TestSerializeNodeSummary) {
     NodeSummary ns;
     ns.start_time = 1;
@@ -38,4 +37,32 @@ TEST(Serialization, TestSerializeNodeSummary) {
     NodeSummary ns2;
     ns2.Deserialize(stream);
     EXPECT_EQ(ns2, ns);
+}
+
+TEST(Serialization, TestSplitSmall) {
+    Node node;
+    node.start_time = 5;
+    node.end_time = 10;
+    node.data.push_back(IndexedData {
+        .batch_name = "12-34-56",
+        .trace_id = "12345",
+        .data = "abc"
+    });
+    std::vector<Node> nodes = node.Split();
+    EXPECT_EQ(nodes.size(), 1);
+}
+
+TEST(Serialization, TestSplitBig) {
+    Node node;
+    node.start_time = 5;
+    node.end_time = 10;
+    for (int64_t i=0; i < 1000000; i++) { // TODO: this isn't enough
+        node.data.push_back(IndexedData {
+            .batch_name = "12-34-56",
+            .trace_id = "12345",
+            .data = "abc"
+        });
+    }
+    std::vector<Node> nodes = node.Split();
+    EXPECT_GE(nodes.size(), 1);
 }

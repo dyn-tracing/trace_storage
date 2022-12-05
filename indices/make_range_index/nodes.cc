@@ -77,6 +77,7 @@ std::vector<Node> Node::Split() const {
             building = Node {.start_time = start_time, .end_time = end_time};
         }
     }
+    to_return.push_back(building);
     return to_return;
 }
 
@@ -89,7 +90,7 @@ void NodeSummary::Serialize(std::ostream &os) {
         os.write(reinterpret_cast<char *>(&std::get<0>(node_objects[i])),
                  sizeof(time_t));
         size_t len_str = std::get<1>(node_objects[i]).size();
-        os.write(reinterpret_cast<char *>(len_str), sizeof(size_t));
+        os.write(reinterpret_cast<char *>(&len_str), sizeof(size_t)); // THIS IS PROBLEMATIC??
         os.write(reinterpret_cast<const char *>
                 (std::get<1>(node_objects[i]).c_str()),
                 len_str);

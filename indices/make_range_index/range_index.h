@@ -8,7 +8,7 @@
 
 
 const int64_t TIME_RANGE_PER_NODE = 100;
-const int64_t  NUM_NODES_PER_SUMMARY = 20;
+const int64_t  NUM_NODES_PER_SUMMARY = 5;
 
 struct RawData {
     int64_t batch_index;
