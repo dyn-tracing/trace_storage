@@ -14,10 +14,8 @@ StatusOr<time_t> create_index_bucket(gcs::Client* client, std::string index_buck
 
     if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kAborted) {
       // means we've already created the bucket
-      std::cout << "hello, already created bucket" << std::endl;
       for (auto const & kv : bucket_metadata->labels()) {
           if (kv.first == "last_updated") {
-            std::cout << "found time which is " << kv.second << std::endl;
               return time_t_from_string(kv.second);
           }
       }
@@ -27,7 +25,6 @@ StatusOr<time_t> create_index_bucket(gcs::Client* client, std::string index_buck
         return bucket_metadata.status();
     }
 
-    std::cout << "now trying to patch" << std::endl;
     // set bucket type
     StatusOr<gcs::BucketMetadata> updated_metadata = client->PatchBucket(
       index_bucket,
@@ -55,7 +52,6 @@ StatusOr<time_t> create_index_bucket(gcs::Client* client, std::string index_buck
       std::cerr << "failed to patch metadata for nodes_per_summary" << std::endl;
       throw std::runtime_error(updated_metadata.status().message());
     }
-    std::cout << "returning 0" << std::endl;
     return 0;
 }
 
@@ -139,7 +135,6 @@ std::vector<RawData> retrieve_single_batch_single_bucket_data(
                             .trace_id = trace_id,
                             .data = curr_attr_val,
                         });
-                    std::cout << "added raw data" << std::endl;
                 }
             }
         }
@@ -167,7 +162,6 @@ StatusOr<std::vector<RawData>> retrieve_single_batch_data(
         std::vector<RawData> data = raw_data_futures[i].get();
         to_return.insert(to_return.end(), data.begin(), data.end());
     }
-    std::cout << "returning single batch which has " << to_return.size() << " pieces of data." << std::endl;
 
     return to_return;
 }
@@ -195,13 +189,10 @@ Status organize_data_into_nodes(
             return partial_data.status();
         }
         // for each piece of raw data, integrate into Nodes, but all in one large NodePieces
-        std::cout << "partial data has size " << partial_data->size() << std::endl;
         for (int64_t j = 0; j < partial_data->size(); j++) {
             RawData* cur_data = &partial_data->at(j);
             time_t start_batch_time = cur_data->timestamp -
                 (cur_data->timestamp % TIME_RANGE_PER_NODE);
-            bool contains = nodes->find(start_batch_time) == nodes->end();
-            //std::cout << "adding data at " << start_batch_time << std::endl;
             has_contents = start_batch_time;
             nodes->at(start_batch_time).data.push_back(IndexedData {
                 .batch_name = batches[cur_data->batch_index],
@@ -216,7 +207,6 @@ Status organize_data_into_nodes(
 Status write_node_to_storage(Node& node, std::string node_name,
                             std::string bucket_name,
                             gcs::Client* client) {
-    std::cout << "writing node " << node_name << std::endl;
     gcs::ObjectWriteStream stream = client->WriteObject(bucket_name, node_name);
     node.Serialize(stream);
     stream.Close();
@@ -288,7 +278,6 @@ Status create_summary_object(const std::map<time_t, Node> &nodes,
         // For each node, their contents are sorted. Put
         // pointers to them in the NodeSummary object, and put them in storage.
         for (int64_t j=0; j < nodes_to_write.size(); j++) {
-            std::cout << "j is " << j << std::endl;
             if (nodes_to_write[j].data.size() > 0) {
                 sum.node_objects.push_back(std::make_pair(
                     nodes_to_write[j].start_time,
@@ -331,7 +320,6 @@ Status send_index_to_gcs(const std::map<time_t, Node> &nodes,
 
     // If we are updating an existing summary object...
     if (last_updated % summary_time != 0) {
-        std::cout << "we are updating an existing summary object" << std::endl;
         time_t start_time_incomplete_object = last_updated -
             (last_updated % summary_time);
 
@@ -379,12 +367,10 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
     time_t last_updated;
     Status ret;
     StatusOr<time_t> last_updated_or = create_index_bucket(client, index_bucket);
-    std::cout << "definitely last updated done" << std::endl;
     if (!last_updated_or.ok()) {
         return last_updated_or.status();
     }
     last_updated = last_updated_or.value();
-    std::cout << "last updated is " << last_updated << std::endl << std::flush;
     if (last_updated == 0) {
         last_updated = get_lowest_time_val(client);
         last_updated = last_updated -
@@ -398,7 +384,6 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
     now = now - (now % TIME_RANGE_PER_NODE);
     // set now to more realistic value TODO: get rid of this
     now = last_updated + 1000;
-    std::cout << "last updated is " << last_updated << " and now is " << now << std::endl;
 
     for (time_t i = last_updated; i < now; i += TIME_RANGE_PER_NODE) {
        nodes[i] = Node{
@@ -412,7 +397,6 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
     std::vector<std::string> batches = get_batches_between_timestamps(
         client, last_updated, now);
 
-    std::cout << "len batches is " << batches.size() << std::endl;
 
     // 3. Organize their data into summary and node objects
     //    To do so, we need to know (1) batch name, (2) timestamp,
@@ -423,11 +407,6 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
         return ret;
     }
 
-    std::cout << "organized data into nodes" << std::endl;
-    for (auto &node : nodes) {
-        std::cout << "node has data of size " << std::get<1>(node).data.size() << std::endl;
-    }
-
     // Now, split all nodes that need to be split into 1 GB increments, and
     // send to GCS.
     ret = send_index_to_gcs(nodes, last_updated, now, index_bucket,
@@ -435,7 +414,6 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
     if (!ret.ok()) {
         return ret;
     }
-    std::cout << "sent index to gcs" << std::endl;
 
     // Now update last_updated, since we just updated the index.
     StatusOr<gcs::BucketMetadata> updated_metadata = client->PatchBucket(
@@ -444,6 +422,5 @@ Status update(std::string indexed_attribute, gcs::Client* client) {
     if (!updated_metadata.ok()) {
         return updated_metadata.status();
     }
-    std::cout << "updated metadata" << std::endl;
     return Status();
 }

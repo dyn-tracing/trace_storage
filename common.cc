@@ -477,8 +477,6 @@ time_t get_lowest_time_val(gcs::Client* client) {
                 auto split = split_by_string(object_name, hyphen);
                 time_t low = time_t_from_string(split[1]);
                 if (low < lowest_val) {
-                    std::cout << "changing lowest val to " << low << std::endl;
-                    std::cout << " on account of the object " << object_name << std::endl;
                     lowest_val = low;
                 }
                 // we break because we don't want to read all values, just first one
@@ -486,6 +484,5 @@ time_t get_lowest_time_val(gcs::Client* client) {
             }
         }
     }
-    std::cout << "returning lowest val as " << lowest_val << std::endl;
     return lowest_val;
 }
