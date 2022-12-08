@@ -5,12 +5,12 @@
 
 /**
  * There is no guarrantee that a bucket with this
- * name will exist. Thats up to you. 
+ * name will exist. Thats up to you.
  */
 std::string get_bucket_name_for_attr(std::string indexed_attribute) {
 	std::string bucket_name = indexed_attribute;
 	replace_all(bucket_name, ".", "-");
-	return "index-" + bucket_name;
+	return "index-" + bucket_name + BUCKETS_SUFFIX;
 }
 
 /**
