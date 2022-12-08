@@ -32,10 +32,15 @@ std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
         std::string trace_id = hex_str(sp->trace_id(), sp->trace_id().length());
 
         // getting timestamps and converting from nanosecond precision to seconds precision
-        int start_time = std::stoi(std::to_string(sp->start_time_unix_nano()).substr(0, 10));
-        int end_time = std::stoi(std::to_string(sp->end_time_unix_nano()).substr(0, 10));
+        try {
+            int start_time = std::stoi(std::to_string(sp->start_time_unix_nano()).substr(0, 10));
+            int end_time = std::stoi(std::to_string(sp->end_time_unix_nano()).substr(0, 10));
 
-        response.insert(std::make_pair(trace_id, std::make_pair(start_time, end_time)));
+            response.insert(std::make_pair(trace_id, std::make_pair(start_time, end_time)));
+        } catch (...) {
+            std::cerr << "..." << std::endl;
+        }
+        
     }
 
     return response;
@@ -323,8 +328,13 @@ std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
     // find the first digit at which they differ, then do a list on lowest to highest there
     // is this the absolute most efficient?  No, but at a certain point the network calls cost,
     // and I think this is good enough.
-
     std::vector<std::string> to_return;
+    if (earliest == latest) {
+        to_return.push_back(std::to_string(earliest));
+        return to_return;
+    }
+
+    
     std::stringstream e;
     e << earliest;
     std::stringstream l;
@@ -344,6 +354,7 @@ std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
 
     int min = std::stoi(e_str.substr(i, 1));
     int max = std::stoi(l_str.substr(i, 1));
+
 
     for (int j = min; j <= max; j++) {
         std::string prefix = e_str.substr(0, i);
@@ -381,6 +392,7 @@ std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix
 }
 
 std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest) {
+    std::cout << "Here 20" << std::endl;
     std::vector<std::string> prefixes = generate_prefixes(earliest, latest);
     std::vector<std::future<std::vector<std::string>>> object_names;
     for (uint64_t i = 0; i < prefixes.size(); i++) {
@@ -392,6 +404,7 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
             }
         }
     }
+    std::cout << "Here 21" << std::endl;
     std::vector<std::string> to_return;
     for (uint64_t m=0; m < object_names.size(); m++) {
         auto names = object_names[m].get();
@@ -416,6 +429,7 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
             }
         }
     }
+    std::cout << "Here 22" << std::endl;
     return to_return;
 }
 
