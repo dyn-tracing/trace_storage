@@ -124,8 +124,6 @@ StatusOr<std::string> get_examplar_from_prefix(std::string prefix, gcs::Client* 
 StatusOr<bool> check_examplar_validity(
     std::string examplar, trace_structure query_trace, traces_by_structure& to_return) {
     trace_structure candidate_trace = morph_trace_object_to_trace_structure(examplar);
-    print_trace_structure(candidate_trace);
-    print_trace_structure(query_trace);
 
     auto iso_mappings = get_isomorphism_mappings(candidate_trace, query_trace);
     if (iso_mappings.size() < 1) {

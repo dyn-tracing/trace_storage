@@ -56,7 +56,6 @@ std::vector<std::string> query(
     }
 
     auto struct_results = struct_filter_obj.get();
-    std::cout << struct_results.value().trace_ids.size() << std::endl;
     if (!struct_results.ok()) {
         std::cerr << "Error in struct_results:" << std::endl;
         std::cerr << struct_results.status().message() << std::endl;

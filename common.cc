@@ -374,7 +374,6 @@ std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix
         }
         // before we push back, should make sure that it's actually between the bounds
         std::string name = object_metadata->name();
-        to_return.push_back(name);
         std::vector<std::string> times = split_by_string(name, hyphen);
         // we care about three of these:
         // if we are neatly between earliest and latest, or if we overlap on one side
