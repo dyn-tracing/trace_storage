@@ -392,7 +392,6 @@ std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix
 }
 
 std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest) {
-    std::cout << "Here 20" << std::endl;
     std::vector<std::string> prefixes = generate_prefixes(earliest, latest);
     std::vector<std::future<std::vector<std::string>>> object_names;
     for (uint64_t i = 0; i < prefixes.size(); i++) {
@@ -404,7 +403,6 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
             }
         }
     }
-    std::cout << "Here 21" << std::endl;
     std::vector<std::string> to_return;
     for (uint64_t m=0; m < object_names.size(); m++) {
         auto names = object_names[m].get();
@@ -429,7 +427,6 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
             }
         }
     }
-    std::cout << "Here 22" << std::endl;
     return to_return;
 }
 

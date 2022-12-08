@@ -134,14 +134,11 @@ StatusOr<bool> check_examplar_validity(
 
     // Store Isomaps
     to_return.iso_maps = iso_mappings;
-    std::cout << "Here14" << std::endl;
 
     // Store Node Names
     std::vector<std::unordered_map<int, std::string>> nn;
     nn.push_back(candidate_trace.node_names);
     to_return.trace_node_names = nn;
-
-    std::cout << "Here15" << std::endl;
 
     return true;
 }
@@ -154,7 +151,6 @@ Status get_traces_by_structure_data(
     time_t start_time, time_t end_time,
     traces_by_structure& to_return
 ) {
-    std::cout << "Here" << std::endl;
     auto hashes_bucket_object_name = prefix + batch_name;
 
     if (false == is_object_within_timespan(extract_batch_timestamps(batch_name), start_time, end_time)) {
@@ -209,7 +205,6 @@ StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_
 
     auto examplar_trace = get_examplar_from_prefix(prefix, client);
     if (!examplar_trace.ok()) {
-        std::cout << "Here1" << std::endl;
         return examplar_trace.status();
     }
 
