@@ -132,15 +132,23 @@ QueryData height_at_least_four() {
     return query;
 }
 
+//     Trace ID: 0b133b8b15919239000625000eb91900:
+// :a6ee0a929e4c5268:WolverineSpunPearl:12829124769
+// a6ee0a929e4c5268:b00739b48110ed5f:BatPrincessPerfume:2650519354
+// a6ee0a929e4c5268:eb9c0f4cf3fa3cf3:BatPrincessPerfume:2650519354
+// a6ee0a929e4c5268:b90ae5ed03c8b2c3:WolverineSpunPearl:2461092713
+// a6ee0a929e4c5268:3b379ccbadf6aae0:(?):2112282468
+// a6ee0a929e4c5268:a908b04ceaf4f1ec:CrabYellow:493618264
+
 QueryData canonical() {
     QueryData query;
     query.graph.num_nodes = 3;
-    query.graph.node_names.insert(std::make_pair(0, "frontend"));
-    query.graph.node_names.insert(std::make_pair(1, "adservice"));
-    query.graph.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
+    query.graph.node_names.insert(std::make_pair(0, "WolverineSpunPearl"));
+    query.graph.node_names.insert(std::make_pair(1, "BatPrincessPerfume"));
+    query.graph.node_names.insert(std::make_pair(2, "BatPrincessPerfume"));
 
     query.graph.edges.insert(std::make_pair(0, 1));
-    query.graph.edges.insert(std::make_pair(1, 2));
+    query.graph.edges.insert(std::make_pair(0, 2));
 
     query.ret.node_index = 0;
     query.ret.type = bytes_value;
@@ -179,8 +187,8 @@ int main(int argc, char* argv[]) {
 
     std::vector<time_t> times(n, 0);
     for (int i = 0; i < n; i++) {
-        QueryData data = four_fan_out();
-        auto time_taken = perform_query(data, false, 1667248040, 1667248050, &client);
+        QueryData data = canonical();
+        auto time_taken = perform_query(data, false, 1670727276, 1670794634, &client);
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;
     }
