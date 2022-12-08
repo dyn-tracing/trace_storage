@@ -348,8 +348,19 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "range_index_query",
+    srcs = [
+        "indices/range_index_query_main.cc",
+    ],
+    deps = [
+        "//:query_range_index_lib",
+        "//:common",
+    ],
+)
+
 cc_library(
-    name = "query_range_index",
+    name = "query_range_index_lib",
     srcs = [
         "indices/query_range_index.cc",
     ],

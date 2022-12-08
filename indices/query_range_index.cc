@@ -10,8 +10,8 @@
 
 
 Status get_last_updated_and_time_range_per_node_and_nodes_per_summary(
-    gcs::Client* client, time_t last_updated, time_t time_range_per_node,
-    int64_t nodes_per_summary, std::string index_bucket) {
+    gcs::Client* client, time_t *last_updated, time_t *time_range_per_node,
+    int64_t *nodes_per_summary, std::string index_bucket) {
     StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->GetBucketMetadata(index_bucket);
     if (!bucket_metadata) {
@@ -20,13 +20,17 @@ Status get_last_updated_and_time_range_per_node_and_nodes_per_summary(
     }
     for (auto const& kv : bucket_metadata->labels()) {
         if (kv.first == "last_updated") {
-            last_updated = time_t_from_string(kv.second);
+            std::cout << "last updated kv.second is " << kv.second << std::endl;
+            *last_updated = time_t_from_string(kv.second);
+            std::cout << "last updated is " << last_updated << std::endl;
         }
         if (kv.first == "time_range_per_node") {
-            time_range_per_node = time_t_from_string(kv.second);
+            std::cout << "time range kv.second is " << kv.second << std::endl;
+            *time_range_per_node = time_t_from_string(kv.second);
+            std::cout << "time range per node is " << time_range_per_node << std::endl;
         }
         if (kv.first == "nodes_per_summary") {
-            nodes_per_summary = strtoll(kv.second.c_str(), NULL, 10);
+            *nodes_per_summary = strtoll(kv.second.c_str(), NULL, 10);
         }
     }
     return Status();
@@ -38,9 +42,13 @@ std::vector<std::string> calculate_summaries_to_retrieve(
 
     time_t time_per_summary = time_range_per_node * nodes_per_summary;
 
+    std::cout << "time per summary is " << time_per_summary << std::endl;
+    std::cout << "time range per node is " << time_range_per_node << std::endl;
+    std::cout << "start time is " << start_time << std::endl;
     time_t start_summary = start_time - (start_time % time_per_summary);
     time_t end_summary = end_time - (end_time % time_per_summary);
 
+    std::cout << "before loop" << std::endl;
     std::vector<std::string> to_return;
     for (time_t block = start_summary; block <= end_summary; block += time_per_summary) {
         to_return.push_back(std::to_string(block) +
@@ -59,7 +67,7 @@ objname_to_matching_trace_ids get_traces_matching_query_in_node(
 
     auto reader = client->ReadObject(index_bucket, node_name);
     if (!reader) {
-        std::cout << "Unable to retrieve summary object." << std::endl;
+        std::cerr << "Unable to retrieve summary object called " << node_name << std::endl;
         return to_return;
     }
     Node node;
@@ -92,7 +100,7 @@ objname_to_matching_trace_ids get_traces_matching_query(
     // First, retrieve the summary object.
     auto reader = client->ReadObject(index_bucket, summary_name);
     if (!reader) {
-        std::cout << "Unable to retrieve summary object." << std::endl;
+        std::cout << "Unable to retrieve summary object: " << summary_name << "in get_traces_matching_query" << std::endl;
         return to_return;
     }
     NodeSummary ns;
@@ -130,21 +138,26 @@ StatusOr<objname_to_matching_trace_ids> query_range_index_for_value(
     int64_t nodes_per_summary = 0;
 
     Status ret = get_last_updated_and_time_range_per_node_and_nodes_per_summary(
-        client, last_updated, time_range_per_node, nodes_per_summary, index_bucket);
+        client, &last_updated, &time_range_per_node, &nodes_per_summary, index_bucket);
     if (!ret.ok()) {
         return ret;
     }
+    std::cout << "main: nodes per summary is " << nodes_per_summary << std::endl;
+    std::cout << "main: time range per node is " << time_range_per_node << std::endl;
+    std::cout << "got values" << std::endl;
 
     // Using the index and start_time and end_time, figure out the summary
     // objects to retrieve
     std::vector<std::string> summaries = calculate_summaries_to_retrieve(
         start_time, end_time, last_updated, time_range_per_node, nodes_per_summary);
 
+    std::cout << "len of summaries is " << summaries.size() << std::endl;
+
     // Now retrieve and calculate which actual objects to retrieve
     std::vector<std::future<objname_to_matching_trace_ids>> traces_matching_query;
     for (int64_t i=0; i < summaries.size(); i++) {
         traces_matching_query.push_back(std::async(std::launch::async, get_traces_matching_query,
-            client, summaries[i], start_time, end_time, last_updated, condition, index_bucket,
+            client, "summary-" + summaries[i], start_time, end_time, last_updated, condition, index_bucket,
             time_range_per_node));
     }
 
@@ -153,5 +166,6 @@ StatusOr<objname_to_matching_trace_ids> query_range_index_for_value(
         objname_to_matching_trace_ids small_batch = traces_matching_query[i].get();
         merge_objname_to_trace_ids(to_return, small_batch);
     }
+
     return to_return;
 }
