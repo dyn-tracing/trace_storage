@@ -32,10 +32,15 @@ std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
         std::string trace_id = hex_str(sp->trace_id(), sp->trace_id().length());
 
         // getting timestamps and converting from nanosecond precision to seconds precision
-        int start_time = std::stoi(std::to_string(sp->start_time_unix_nano()).substr(0, 10));
-        int end_time = std::stoi(std::to_string(sp->end_time_unix_nano()).substr(0, 10));
+        try {
+            int start_time = std::stoi(std::to_string(sp->start_time_unix_nano()).substr(0, 10));
+            int end_time = std::stoi(std::to_string(sp->end_time_unix_nano()).substr(0, 10));
 
-        response.insert(std::make_pair(trace_id, std::make_pair(start_time, end_time)));
+            response.insert(std::make_pair(trace_id, std::make_pair(start_time, end_time)));
+        } catch (...) {
+            std::cerr << "..." << std::endl;
+        }
+        
     }
     return response;
 }
@@ -325,8 +330,13 @@ std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
     // find the first digit at which they differ, then do a list on lowest to highest there
     // is this the absolute most efficient?  No, but at a certain point the network calls cost,
     // and I think this is good enough.
-
     std::vector<std::string> to_return;
+    if (earliest == latest) {
+        to_return.push_back(std::to_string(earliest));
+        return to_return;
+    }
+
+    
     std::stringstream e;
     e << earliest;
     std::stringstream l;
@@ -347,6 +357,7 @@ std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
     int min = std::stoi(e_str.substr(i, 1));
     int max = std::stoi(l_str.substr(i, 1));
 
+
     for (int j = min; j <= max; j++) {
         std::string prefix = e_str.substr(0, i);
         prefix += std::to_string(j);
@@ -365,7 +376,6 @@ std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix
         }
         // before we push back, should make sure that it's actually between the bounds
         std::string name = object_metadata->name();
-        to_return.push_back(name);
         std::vector<std::string> times = split_by_string(name, hyphen);
         // we care about three of these:
         // if we are neatly between earliest and latest, or if we overlap on one side

@@ -125,6 +125,7 @@ StatusOr<std::string> get_examplar_from_prefix(std::string prefix, gcs::Client* 
 StatusOr<bool> check_examplar_validity(
     std::string examplar, trace_structure query_trace, traces_by_structure& to_return) {
     trace_structure candidate_trace = morph_trace_object_to_trace_structure(examplar);
+
     auto iso_mappings = get_isomorphism_mappings(candidate_trace, query_trace);
     if (iso_mappings.size() < 1) {
         return false;
@@ -275,6 +276,7 @@ StatusOr<std::vector<std::string>> filter_trace_ids_based_on_query_timestamp_for
  */
 std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
     trace_structure &candidate_trace, trace_structure &query_trace) {
+    
     graph_type candidate_graph = morph_trace_structure_to_boost_graph_type(candidate_trace);
     graph_type query_graph = morph_trace_structure_to_boost_graph_type(query_trace);
 
@@ -293,7 +295,6 @@ std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
         callback,
         boost::vertex_order_by_mult(query_graph),
         boost::vertices_equivalent(vertex_comp));
-
     return isomorphism_maps;
 }
 
@@ -340,7 +341,7 @@ trace_structure morph_trace_object_to_trace_structure(std::string &trace) {
             return response;
         }
 
-        span_to_service.insert(std::make_pair(span_info[1], span_info[2]+":"+span_info[3]));
+        span_to_service.insert(std::make_pair(span_info[1], span_info[1]+":"+span_info[2]+":"+span_info[3]));
 
         if (span_info[0].length() > 0) {
             edges.insert(std::make_pair(span_info[0], span_info[1]));
@@ -363,6 +364,11 @@ trace_structure morph_trace_object_to_trace_structure(std::string &trace) {
             reverse_node_names[span_to_service[elem.first]],
             reverse_node_names[span_to_service[elem.second]]));
     }
+
+    for (auto [k, v]: response.node_names) {
+        response.node_names[k] = split_by_string(v, colon)[1];
+    }
+
     return response;
 }
 
