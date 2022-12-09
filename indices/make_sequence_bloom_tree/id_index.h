@@ -1,6 +1,6 @@
 // Everything related to creating the trace ID index
-#ifndef  MICROSERVICES_ENV_TRACE_STORAGE_INDICES_MAKE_SEQUENCE_BLOOM_TREE_ID_INDEX_H_
-#define  MICROSERVICES_ENV_TRACE_STORAGE_INDICES_MAKE_SEQUENCE_BLOOM_TREE_ID_INDEX_H_
+#ifndef  INDICES_MAKE_SEQUENCE_BLOOM_TREE_ID_INDEX_H_
+#define  INDICES_MAKE_SEQUENCE_BLOOM_TREE_ID_INDEX_H_
 
 #include <stdlib.h>
 #include <math.h>
@@ -67,4 +67,4 @@ int update_index(gcs::Client* client, std::string property_name, time_t granular
 Status get_root_and_granularity(gcs::Client* client, std::tuple<time_t, time_t> &root,
     time_t &granularity, std::string ib);
 
-#endif  // MICROSERVICES_ENV_TRACE_STORAGE_INDICES_MAKE_SEQUENCE_BLOOM_TREE_ID_INDEX_H_
+#endif  // INDICES_MAKE_SEQUENCE_BLOOM_TREE_ID_INDEX_H_

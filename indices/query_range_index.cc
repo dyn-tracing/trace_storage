@@ -100,7 +100,8 @@ objname_to_matching_trace_ids get_traces_matching_query(
     // First, retrieve the summary object.
     auto reader = client->ReadObject(index_bucket, summary_name);
     if (!reader) {
-        std::cout << "Unable to retrieve summary object: " << summary_name << "in get_traces_matching_query" << std::endl;
+        std::cout << "Unable to retrieve summary object: " << summary_name <<
+            "in get_traces_matching_query" << std::endl;
         return to_return;
     }
     NodeSummary ns;
@@ -111,7 +112,7 @@ objname_to_matching_trace_ids get_traces_matching_query(
     std::vector<std::future<objname_to_matching_trace_ids>> future_traces;
     for (int64_t i = 0; i < ns.node_objects.size(); i++) {
         // Do we want to look at this node's data?
-        // TODO: is this right?
+        // TODO(jessberg): is this right?
         time_t node_start_time = std::get<0>(ns.node_objects[i]);
         std::string data = std::get<1>(ns.node_objects[i]);
         if (does_value_satisfy_condition(data, condition)) {

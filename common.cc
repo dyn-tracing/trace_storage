@@ -290,7 +290,8 @@ std::vector<std::string> get_spans_buckets_names(gcs::Client* client) {
         }
 
         for (auto const& kv : bucket_metadata->labels()) {
-            if (kv.first == BUCKET_TYPE_LABEL_KEY && kv.second == BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS && bucket_metadata->name().find(BUCKETS_SUFFIX) != std::string::npos) {
+            if (kv.first == BUCKET_TYPE_LABEL_KEY && kv.second == BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS &&
+                bucket_metadata->name().find(BUCKETS_SUFFIX) != std::string::npos) {
                 response.push_back(bucket_metadata->name());
             }
         }

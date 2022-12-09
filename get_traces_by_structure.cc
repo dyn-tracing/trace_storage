@@ -196,8 +196,8 @@ Status get_traces_by_structure_data(
 }
 
 StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
-    std::string prefix, trace_structure query_trace, int start_time, int end_time, const std::vector<std::string>& all_object_names,
-    gcs::Client* client
+    std::string prefix, trace_structure query_trace, int start_time, int end_time,
+    const std::vector<std::string>& all_object_names, gcs::Client* client
 ) {
     traces_by_structure to_return;
 

@@ -121,8 +121,8 @@ StatusOr<std::vector<std::string>> filter_trace_ids_based_on_query_timestamp_for
 std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
     trace_structure &candidate_trace, trace_structure &query_trace);
 StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
-    std::string prefix, trace_structure query_trace, int start_time, int end_time, const std::vector<std::string>& all_object_names,
-    gcs::Client* client);
+    std::string prefix, trace_structure query_trace, int start_time, int end_time,
+    const std::vector<std::string>& all_object_names, gcs::Client* client);
 trace_structure morph_trace_object_to_trace_structure(std::string &trace);
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure &input_graph);
 StatusOr<std::vector<std::string>> get_trace_ids_from_trace_hashes_object(
