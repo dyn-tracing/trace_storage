@@ -528,35 +528,7 @@ Status get_root_and_granularity(gcs::Client* client, std::tuple<time_t, time_t> 
             granularity = time_t_from_string(kv.second);
         }
     }
-}
-
-time_t get_lowest_time_val(gcs::Client* client) {
-    std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
-    std::string suffix(BUCKETS_SUFFIX);
-    std::string bucket_name = trace_struct_bucket+suffix;
-    time_t now;
-    time(&now);
-    time_t lowest_val = now;
-    for (int i=0; i < 10; i++) {
-        for (int j=0; j < 10; j++) {
-            std::string prefix = std::to_string(i) + std::to_string(j);
-            for (auto&& object_metadata :
-                client->ListObjects(bucket_name, gcs::Prefix(prefix))) {
-                if (!object_metadata) {
-                    throw std::runtime_error(object_metadata.status().message());
-                }
-                std::string object_name = object_metadata->name();
-                auto split = split_by_string(object_name, hyphen);
-                time_t low = time_t_from_string(split[1]);
-                if (low < lowest_val) {
-                    lowest_val = low;
-                }
-                // we break because we don't want to read all values, just first one
-                break;
-            }
-        }
-    }
-    return lowest_val;
+    return Status();
 }
 
 int update_index(gcs::Client* client, std::string property_name, time_t granularity,

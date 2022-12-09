@@ -81,6 +81,7 @@ std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_ma
 std::string extract_any_trace(std::vector<std::string>& trace_ids, std::string& object_content);
 std::string extract_trace_from_traces_object(const std::string &trace_id, std::string& object_content);
 std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest);
+time_t get_lowest_time_val(gcs::Client* client);
 
 /// **************** GCS processing ********************************
 opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
@@ -96,5 +97,10 @@ std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     gcs::Client* client);
 
 std::vector<std::string> get_spans_buckets_names(gcs::Client* client);
+
+/// **************** Other ********************************
+void merge_objname_to_trace_ids(objname_to_matching_trace_ids &original,
+                                objname_to_matching_trace_ids &to_empty);
+
 
 #endif  // COMMON_H_ // NOLINT

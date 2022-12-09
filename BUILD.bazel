@@ -191,6 +191,34 @@ cc_library(
     visibility = ["//main:__pkg__"],
 )
 
+cc_library(
+    name = "range_index_nodes_lib",
+    srcs = [
+        "indices/make_range_index/nodes.cc",
+    ],
+    hdrs = ["indices/make_range_index/nodes.h"],
+    deps = [
+        "//:common",
+    ],
+    visibility = ["//main:__pkg__"],
+)
+
+cc_library(
+    name = "range_index_lib",
+    srcs = [
+        "indices/make_range_index/range_index.cc",
+    ],
+    hdrs = ["indices/make_range_index/range_index.h"],
+    deps = [
+        "//:common",
+        "//:conditions_lib",
+        "//:range_index_nodes_lib",
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@com_google_protobuf//:protobuf",
+    ],
+    visibility = ["//main:__pkg__"],
+)
+
 
 cc_binary(
     name = "make_sequence_bloom_tree",
@@ -209,6 +237,21 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "make_range",
+    srcs = [
+        "indices/make_range_index/main.cc",
+    ],
+    deps = [
+        "//:range_index_lib",
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@boost//:regex",
+        "@boost//:algorithm",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+    ],
+)
+
 
 cc_test(
     name = "make_bloom_index_test",
@@ -218,6 +261,18 @@ cc_test(
          ],
     deps = [
         "//:sequence_bloom_tree_lib",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "make_range_index_test",
+    size = "small",
+    srcs = [
+            "indices/make_range_index/nodes_test.cc",
+         ],
+    deps = [
+        "//:range_index_nodes_lib",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -291,6 +346,34 @@ cc_binary(
         "//:folders_index_query_lib",
         "//:common",
     ],
+)
+
+cc_binary(
+    name = "range_index_query",
+    srcs = [
+        "indices/range_index_query_main.cc",
+    ],
+    deps = [
+        "//:query_range_index_lib",
+        "//:common",
+    ],
+)
+
+cc_library(
+    name = "query_range_index_lib",
+    srcs = [
+        "indices/query_range_index.cc",
+    ],
+    hdrs = ["indices/query_range_index.h"],
+    deps = [
+        "//:common",
+        "//:conditions_lib",
+        "//:range_index_nodes_lib",
+        "@com_github_googleapis_google_cloud_cpp//:storage",
+        "@com_google_protobuf//:protobuf",
+        "@com_github_opentelemetry_proto//:trace_service_proto_cc",
+    ],
+    visibility = ["//main:__pkg__"],
 )
 
 cc_library(

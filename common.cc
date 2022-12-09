@@ -40,9 +40,7 @@ std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
         } catch (...) {
             std::cerr << "..." << std::endl;
         }
-        
     }
-
     return response;
 }
 
@@ -77,6 +75,7 @@ ot::TracesData read_object_and_parse_traces_data(
 ) {
     auto data_ = read_object(bucket, object_name, client);
     if (!data_.ok()) {
+        std::cout << "data is not okay because " << data_.status().message() << std::endl;
         exit(1);
     }
     auto data = data_.value();
@@ -89,6 +88,7 @@ ot::TracesData read_object_and_parse_traces_data(
     bool ret = trace_data.ParseFromString(data);
     if (!ret) {
         std::cerr << "Error in read_object_and_parse_traces_data:ParseFromString" << std::endl;
+        std::cerr << "while reading object " << object_name << std::endl;
         exit(1);
     }
 
@@ -293,7 +293,8 @@ std::vector<std::string> get_spans_buckets_names(gcs::Client* client) {
         }
 
         for (auto const& kv : bucket_metadata->labels()) {
-            if (kv.first == BUCKET_TYPE_LABEL_KEY && kv.second == BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS) {
+            if (kv.first == BUCKET_TYPE_LABEL_KEY && kv.second == BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS &&
+                bucket_metadata->name().find(BUCKETS_SUFFIX) != std::string::npos) {
                 response.push_back(bucket_metadata->name());
             }
         }
@@ -334,7 +335,6 @@ std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
         return to_return;
     }
 
-    
     std::stringstream e;
     e << earliest;
     std::stringstream l;
@@ -450,4 +450,47 @@ time_t time_t_from_string(std::string str) {
     stream << str;
     std::string sec_str = stream.str();
     return stol(sec_str);
+}
+
+void merge_objname_to_trace_ids(objname_to_matching_trace_ids &original,
+                                objname_to_matching_trace_ids &to_empty) {
+    for (auto && map : to_empty) {
+        std::string batch_name = map.first;
+        std::vector<std::string> trace_ids = map.second;
+        if (original.find(batch_name) == original.end()) {
+            original[batch_name] = trace_ids;
+        } else {
+            original[batch_name].insert(original[batch_name].end(),
+                                        trace_ids.begin(), trace_ids.end());
+        }
+    }
+}
+
+time_t get_lowest_time_val(gcs::Client* client) {
+    std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
+    std::string suffix(BUCKETS_SUFFIX);
+    std::string bucket_name = trace_struct_bucket+suffix;
+    time_t now;
+    time(&now);
+    time_t lowest_val = now;
+    for (int i=0; i < 10; i++) {
+        for (int j=0; j < 10; j++) {
+            std::string prefix = std::to_string(i) + std::to_string(j);
+            for (auto&& object_metadata :
+                client->ListObjects(bucket_name, gcs::Prefix(prefix))) {
+                if (!object_metadata) {
+                    throw std::runtime_error(object_metadata.status().message());
+                }
+                std::string object_name = object_metadata->name();
+                auto split = split_by_string(object_name, hyphen);
+                time_t low = time_t_from_string(split[1]);
+                if (low < lowest_val) {
+                    lowest_val = low;
+                }
+                // we break because we don't want to read all values, just first one
+                break;
+            }
+        }
+    }
+    return lowest_val;
 }

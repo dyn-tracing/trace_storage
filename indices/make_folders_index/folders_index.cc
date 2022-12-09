@@ -49,7 +49,6 @@ void update_index_batched(gcs::Client* client, time_t last_updated, std::string 
 			get_attr_to_trace_ids_map, object_name, indexed_attribute,
 			std::ref(span_buckets_names), client)));
 	}
-
 	index_batch current_index_batch = index_batch();
 	for (uint64_t i = 0; i < response_futures.size(); i++) {
 		auto object_name = response_futures[i].first;
@@ -82,13 +81,12 @@ int get_total_of_trace_ids(std::unordered_map<std::string, std::vector<std::stri
 std::vector<std::string> get_all_attr_values(index_batch& current_index_batch) {
 	std::vector<std::string> response;
 	for (auto& pair_of_time_and_map : current_index_batch.trace_ids_with_timestamps) {
-		for (auto& map_ele : pair_of_time_and_map.second) {
+        for (auto& map_ele : pair_of_time_and_map.second) {
 			if (std::find(response.begin(), response.end(), map_ele.first) == response.end()) {
 				response.push_back(map_ele.first);
 			}
 		}
 	}
-
 	return response;
 }
 
@@ -135,7 +133,6 @@ std::unordered_map<std::string, std::vector<std::string>> get_attr_to_trace_ids_
 			std::string,
 			std::vector<std::string>> local_attr_to_trace_ids_map = calculate_attr_to_trace_ids_map_for_microservice(
 				span_bucket, object_name, indexed_attribute, client);
-
 		take_per_field_union(attr_to_trace_ids_map, local_attr_to_trace_ids_map);
 	}
 
@@ -215,8 +212,8 @@ std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trac
 				break;
 			}
 
-			if (indexed_attribute == curr_attr_key) {
-				response[curr_attr_val].push_back(trace_id); // NOLINT
+            if (indexed_attribute == curr_attr_key) {
+                response[curr_attr_val].push_back(trace_id); // NOLINT
 			}
 		}
 	}
@@ -236,7 +233,7 @@ batch_timestamp extract_batch_timestamps_struct(std::string batch_name) {
 }
 
 /**
- * TODO: Can do better here. 
+ * TODO: Can do better here.
  */
 std::vector<std::string> get_attr_vals_which_have_enough_data_to_export(index_batch& current_index_batch) {
 	std::unordered_map<std::string, int> attr_to_trace_ids_total;
@@ -278,13 +275,13 @@ void print_index_batch(index_batch& current_index_batch) {
 
 /**
  * @brief Exports index_batch to cloud storage. The batch at this point
- * might contain data that is not necessarily required to be imported 
+ * might contain data that is not necessarily required to be imported
  * right away so only the attributes specified in attrs_to_export are exported.
- * 
- * @param current_index_batch 
- * @param indexed_attribute 
- * @param attrs_to_export 
- * @param client 
+ *
+ * @param current_index_batch
+ * @param indexed_attribute
+ * @param attrs_to_export
+ * @param client
  */
 void export_batch_to_storage(index_batch& current_index_batch, std::string indexed_attribute,
 	std::vector<std::string> attrs_to_export, gcs::Client* client
@@ -380,7 +377,6 @@ void remove_exported_data_from_index_batch(index_batch& current_index_batch, std
 void write_object(std::string bucket_name, std::string object_name,
 	std::string& object_to_write, gcs::Client* client
 ) {
-	std::cout << "Writing " << bucket_name << "/" << object_name << std::endl;
 	gcs::ObjectWriteStream stream = client->WriteObject(bucket_name, object_name);
 	stream << object_to_write << "\n";
     stream.Close();
