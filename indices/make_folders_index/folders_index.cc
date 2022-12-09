@@ -15,9 +15,7 @@ int update_index(gcs::Client* client, time_t last_updated, std::string indexed_a
 			trace_struct_object_names, i, thread_pool_size);
 	}
 
-    std::cout << "before getting bucket name for attr" << std::endl;
 	auto bucket_name = get_bucket_name_for_attr(indexed_attribute);
-    std::cout << "after getting bucket name for attr" << std::endl;
 	batch_timestamp timestamp = extract_batch_timestamps_struct(
 		trace_struct_object_names[trace_struct_object_names.size()-1]);
 	update_last_updated_label_if_needed(bucket_name, timestamp.end_time, client);
@@ -38,18 +36,12 @@ void update_index_batched(gcs::Client* client, time_t last_updated, std::string 
 					std::vector<
 						std::string>>>>> response_futures;
 
-    std::cout << "batch start ind is " << batch_start_ind << std::endl;
-    std::cout << "trace struct object names size is " << trace_struct_object_names.size() << std::endl;
-    std::cout << "batch size is " << batch_size << std::endl;
 	for (uint64_t i = batch_start_ind;
         (i < trace_struct_object_names.size() && i < static_cast<uint64_t>(batch_start_ind+batch_size));
         i++
     ) {
 		auto object_name = trace_struct_object_names[i];
 		if(is_batch_older_than_last_updated(object_name, last_updated)) {
-            std::cout << "last updated is " << last_updated << std::endl;
-            std::cout << "batch name is " << object_name << std::endl;
-            std::cout << "batch is older than last updated" << std::endl;
 			continue;
 		}
 
@@ -57,25 +49,19 @@ void update_index_batched(gcs::Client* client, time_t last_updated, std::string 
 			get_attr_to_trace_ids_map, object_name, indexed_attribute,
 			std::ref(span_buckets_names), client)));
 	}
-    std::cout << "after setting off futures" << std::endl;
-
 	index_batch current_index_batch = index_batch();
-    std::cout << "num response futures is " << response_futures.size() << std::endl;
 	for (uint64_t i = 0; i < response_futures.size(); i++) {
 		auto object_name = response_futures[i].first;
 		auto attr_to_trace_ids_map = response_futures[i].second.get();
-        std::cout << "pushing back on current_index_batch" << std::endl;
 
 		current_index_batch.trace_ids_with_timestamps.push_back(std::make_pair(object_name, attr_to_trace_ids_map));
 
 		auto to_export = get_attr_vals_which_have_enough_data_to_export(current_index_batch);
 
 		if (to_export.size() > 0) {
-            std::cout << "before exporting batch" << std::endl;
 			export_batch_to_storage(current_index_batch, indexed_attribute, to_export, client);
 		}
 	}
-    std::cout << "before exporting batch" << std::endl;
 
 	export_batch_to_storage(current_index_batch, indexed_attribute, get_all_attr_values(current_index_batch), client);
 	return;
@@ -94,16 +80,13 @@ int get_total_of_trace_ids(std::unordered_map<std::string, std::vector<std::stri
  */
 std::vector<std::string> get_all_attr_values(index_batch& current_index_batch) {
 	std::vector<std::string> response;
-    std::cout << "dhdbvjsbv: " << current_index_batch.trace_ids_with_timestamps.size() << std::endl;
 	for (auto& pair_of_time_and_map : current_index_batch.trace_ids_with_timestamps) {
-		std::cout << pair_of_time_and_map.second.size() << std::endl;
         for (auto& map_ele : pair_of_time_and_map.second) {
 			if (std::find(response.begin(), response.end(), map_ele.first) == response.end()) {
 				response.push_back(map_ele.first);
 			}
 		}
 	}
-    std::cout << "attr vals: " << response.size() << std::endl;
 	return response;
 }
 
@@ -143,7 +126,6 @@ std::unordered_map<std::string, std::vector<std::string>> get_attr_to_trace_ids_
 	std::string object_name, std::string indexed_attribute,
 	std::vector<std::string>& span_buckets_names, gcs::Client* client
 ) {
-    std::cout << "in get_attr_to_trace_ids_map" << std::endl;
 	std::unordered_map<std::string, std::vector<std::string>> attr_to_trace_ids_map;
 
 	for (auto span_bucket : span_buckets_names) {
@@ -151,10 +133,8 @@ std::unordered_map<std::string, std::vector<std::string>> get_attr_to_trace_ids_
 			std::string,
 			std::vector<std::string>> local_attr_to_trace_ids_map = calculate_attr_to_trace_ids_map_for_microservice(
 				span_bucket, object_name, indexed_attribute, client);
-        std::cout << "local size: " << local_attr_to_trace_ids_map.size() << std::endl;
 		take_per_field_union(attr_to_trace_ids_map, local_attr_to_trace_ids_map);
 	}
-    std::cout << "out of get_attr_to_trace_ids_map" << attr_to_trace_ids_map.size() << std::endl;
 
 	return attr_to_trace_ids_map;
 }
@@ -233,9 +213,7 @@ std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trac
 				break;
 			}
 
-			std::cout << "has: " << indexed_attribute << " :" << curr_attr_key << std::endl;
             if (indexed_attribute == curr_attr_key) {
-				std::cout << "Jessica no feel" << std::endl;
                 response[curr_attr_val].push_back(trace_id); // NOLINT
 			}
 		}
