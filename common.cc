@@ -37,7 +37,6 @@ std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
 
         response.insert(std::make_pair(trace_id, std::make_pair(start_time, end_time)));
     }
-
     return response;
 }
 

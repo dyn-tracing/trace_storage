@@ -363,7 +363,6 @@ trace_structure morph_trace_object_to_trace_structure(std::string &trace) {
             reverse_node_names[span_to_service[elem.first]],
             reverse_node_names[span_to_service[elem.second]]));
     }
-
     return response;
 }
 

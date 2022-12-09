@@ -25,4 +25,4 @@ std::tuple<time_t, time_t> get_nearest_node(std::tuple<time_t, time_t> root, tim
 StatusOr<objname_to_matching_trace_ids> get_return_value_from_objnames(gcs::Client* client,
     std::vector<std::string> object_names,
     std::string index_bucket, std::string queried_value);
-#endif  // INDICES_QUERY_BLOOM_INDEX_H
+#endif  // INDICES_QUERY_BLOOM_INDEX_H_

@@ -1,4 +1,5 @@
-
+#ifndef INDICES_MAKE_RANGE_INDEX_RANGE_INDEX_H_
+#define INDICES_MAKE_RANGE_INDEX_RANGE_INDEX_H_
 #include <string>
 #include <vector>
 #include "google/cloud/storage/client.h"
@@ -18,3 +19,5 @@ struct RawData {
 };
 
 Status update(std::string indexed_attribute, gcs::Client* client);
+
+#endif  // INDICES_MAKE_RANGE_INDEX_RANGE_INDEX_H_
