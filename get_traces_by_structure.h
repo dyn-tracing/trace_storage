@@ -34,6 +34,12 @@ struct trace_structure {
     std::multimap<int, int> edges;
 };
 
+struct potential_prefix_struct {
+    std::string prefix;
+    std::string batch_name;
+    std::string trace_id;
+};
+
 // This is the highest level function
 StatusOr<traces_by_structure> get_traces_by_structure(
     trace_structure query_trace, int start_time, int end_time, gcs::Client* client);
@@ -128,4 +134,6 @@ graph_type morph_trace_structure_to_boost_graph_type(trace_structure &input_grap
 StatusOr<std::vector<std::string>> get_trace_ids_from_trace_hashes_object(
     const std::string &object_name, gcs::Client* client);
 void print_trace_structure(trace_structure trace);
+StatusOr<potential_prefix_struct> get_potential_prefixes(
+    std::string prefix, gcs::Client* client);
 #endif  // BY_STRUCT_H_ // NOLINT

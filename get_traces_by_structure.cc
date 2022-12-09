@@ -7,6 +7,8 @@ StatusOr<traces_by_structure> get_traces_by_structure(
 
     std::string prefix_to_search = std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
     std::vector<std::string> all_object_names = get_batches_between_timestamps(client, start_time, end_time);
+
+    std::vector<std::future<StatusOr<potential_prefix_struct>>> future_potential_prefixes;
     for (auto&& prefix : client->ListObjectsAndPrefixes(prefix_to_search, gcs::Delimiter("/"))) {
         if (!prefix) {
             std::cerr << "Error in getting prefixes" << std::endl;
@@ -20,10 +22,23 @@ StatusOr<traces_by_structure> get_traces_by_structure(
                 google::cloud::StatusCode::kUnavailable, "error while moving prefix in get_traces_by_structure");
         }
 
-        response_futures.push_back(std::async(
-            std::launch::async, process_trace_hashes_prefix_and_retrieve_relevant_trace_ids,
-            absl::get<std::string>(result), query_trace, start_time, end_time, all_object_names, client));
+        // Get mapping from batch name to prefix and trace ID.
+        future_potential_prefixes.push_back(std::async(std::launch::async,
+            get_potential_prefixes, absl::get<std::string>(result), client));
+
     }
+
+    // Now map from batch name to prefix and trace ID, so you can check
+    // exemplar validity using the same data.
+    std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>> batch_name_map;
+    for (int64_t i=0; i < future_potential_prefixes.size(); i++) {
+        StatusOr<potential_prefix_struct> p = future_potential_prefixes[i].get();
+        if (!p.ok()) { std::cerr << "can't get prefixes" << std::endl; return p.status(); }
+        batch_name_map[p->batch_name].push_back(std::make_pair(p->prefix, p->trace_id));
+    }
+
+    // TODO: filter by validity
+    // TODO: get actual response
 
     traces_by_structure response;
     for (int i = 0; i < response_futures.size(); i++) {
@@ -194,6 +209,46 @@ Status get_traces_by_structure_data(
     }
 
     return Status();
+}
+
+StatusOr<potential_prefix_struct> get_potential_prefixes(
+    std::string prefix, gcs::Client* client) {
+    std::string prefix_to_search = std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
+    std::string object_name = "";
+
+    for (auto&& object_metadata : client->ListObjects(prefix_to_search, gcs::Prefix(prefix), gcs::MaxResults(1))) {
+        if (!object_metadata) {
+            std::cerr << object_metadata.status().message() << std::endl;
+            return object_metadata.status();
+        }
+        object_name =  object_metadata->name();
+
+        // MaxResults param just limits the size of the page, we do not need
+        // to iterate over more data, so break...
+        break;
+    }
+
+    auto response_trace_ids_or_status = get_trace_ids_from_trace_hashes_object(object_name, client);
+    if (!response_trace_ids_or_status.ok()) {
+        return response_trace_ids_or_status.status();
+    }
+
+    auto response_trace_ids = response_trace_ids_or_status.value();
+
+    std::string batch_name = extract_batch_name(object_name);
+    return potential_prefix_struct {
+        .batch_name = batch_name,
+        .trace_id = response_trace_ids[0],
+        .prefix = prefix,
+    };
+}
+
+StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
+    std::vector<std::pair<std::string, std::string>> prefix_to_trace_ids,
+    trace_structure query_trace, int start_time, int end_time,
+    const std::vector<std::string>& all_object_names, gcs::Client* client) {
+    // TODO
+
 }
 
 StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
