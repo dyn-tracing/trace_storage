@@ -287,10 +287,7 @@ void print_index_batch(index_batch& current_index_batch) {
 void export_batch_to_storage(index_batch& current_index_batch, std::string indexed_attribute,
 	std::vector<std::string> attrs_to_export, gcs::Client* client
 ) {
-    std::cout << "in export_batch_to_storage" << std::endl;
-    std::cout << "num attrs to export is " << attrs_to_export.size() << std::endl;
 	for (auto attr_being_exported : attrs_to_export) {
-        std::cout << "exporting attr " << attr_being_exported << std::endl;
 		batch_timestamp consiledated_timestamp = batch_timestamp();
 		std::string object_to_write = "";
 
@@ -332,7 +329,6 @@ void export_batch_to_storage(index_batch& current_index_batch, std::string index
 		std::string object_name = folder_name + "/" + autoscaling_hash + "-" + \
 			consiledated_timestamp.start_time + "-" + consiledated_timestamp.end_time;
 
-        std::cout << "should be writing object now" << std::endl;
 		write_object(bucket_name, object_name, object_to_write, client);
 		update_last_updated_label_if_needed(bucket_name, consiledated_timestamp.end_time, client);
 		remove_exported_data_from_index_batch(current_index_batch, attr_being_exported);
@@ -382,7 +378,6 @@ void remove_exported_data_from_index_batch(index_batch& current_index_batch, std
 void write_object(std::string bucket_name, std::string object_name,
 	std::string& object_to_write, gcs::Client* client
 ) {
-	std::cout << "Writing " << bucket_name << "/" << object_name << std::endl;
 	gcs::ObjectWriteStream stream = client->WriteObject(bucket_name, object_name);
 	stream << object_to_write << "\n";
     stream.Close();
