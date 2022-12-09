@@ -34,7 +34,6 @@ StatusOr<traces_by_structure> get_traces_by_structure(
         batch_name_map[p->batch_name].push_back(std::make_pair(p->prefix, p->trace_id));
     }
 
-    // TODO: filter by validity
     std::vector<std::string> all_object_names = get_batches_between_timestamps(client, start_time, end_time);
     std::vector<std::future<StatusOr<traces_by_structure>>> response_futures;
 
