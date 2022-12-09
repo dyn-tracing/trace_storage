@@ -3,10 +3,7 @@
 StatusOr<traces_by_structure> get_traces_by_structure(
     trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
 
-    std::vector<std::future<StatusOr<traces_by_structure>>> response_futures;
-
     std::string prefix_to_search = std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
-    std::vector<std::string> all_object_names = get_batches_between_timestamps(client, start_time, end_time);
 
     std::vector<std::future<StatusOr<potential_prefix_struct>>> future_potential_prefixes;
     for (auto&& prefix : client->ListObjectsAndPrefixes(prefix_to_search, gcs::Delimiter("/"))) {
@@ -38,65 +35,68 @@ StatusOr<traces_by_structure> get_traces_by_structure(
     }
 
     // TODO: filter by validity
-    // TODO: get actual response
+    std::vector<std::string> all_object_names = get_batches_between_timestamps(client, start_time, end_time);
+    std::vector<std::future<StatusOr<traces_by_structure>>> response_futures;
 
-    traces_by_structure response;
-    for (int i = 0; i < response_futures.size(); i++) {
-        std::future<StatusOr<traces_by_structure>>& fut = response_futures[i];
+    for (auto& [batch_name, prefix_and_trace_id] : batch_name_map) {
+        response_futures.push_back(std::async(std::launch::async,
+            filter_by_query, batch_name, prefix_and_trace_id,
+            query_trace, start_time, end_time, all_object_names, client));
+    }
 
-        auto new_trace_by_struct_res = fut.get();
-        if (!new_trace_by_struct_res.ok()) {
-            std::cerr << new_trace_by_struct_res.status().message() << std::endl;
-            return new_trace_by_struct_res.status();
-        }
-        auto new_trace_by_struct = new_trace_by_struct_res.value();
+    traces_by_structure to_return;
 
-        // now merge it into response
-        int trace_id_offset = response.trace_ids.size();
-        int iso_map_offset = response.iso_maps.size();
+    for (int64_t i=0; i < response_futures.size(); i++) {
+        StatusOr<traces_by_structure> values_to_return = response_futures[i].get();
+    }
 
-        // first merge the vectors of the data itself
-        response.trace_ids.insert(response.trace_ids.end(),
-                                    new_trace_by_struct.trace_ids.begin(),
-                                    new_trace_by_struct.trace_ids.end());
-        response.object_names.insert(response.object_names.end(),
-                                        new_trace_by_struct.object_names.begin(),
-                                        new_trace_by_struct.object_names.end());
-        response.iso_maps.insert(response.iso_maps.end(),
-                                    new_trace_by_struct.iso_maps.begin(),
-                                    new_trace_by_struct.iso_maps.end());
-        response.trace_node_names.insert(response.trace_node_names.end(),
-                                            new_trace_by_struct.trace_node_names.begin(),
-                                            new_trace_by_struct.trace_node_names.end());
 
-        // now merge the pointers by adding the offsets to everything
-        for (const auto &pair : new_trace_by_struct.object_name_to_trace_ids_of_interest) {
-            auto object_name = pair.first;
-            for (uint64_t i=0; i < pair.second.size(); i++) {
-                response.object_name_to_trace_ids_of_interest[object_name].push_back(
-                    pair.second[i] + trace_id_offset);
-            }
-        }
+    return to_return;
+}
 
-        for (const auto &pair : new_trace_by_struct.trace_id_to_isomap_indices) {
-            std::vector<int> isomap_indices;
-            for (uint64_t i=0; i < pair.second.size(); i++) {
-                isomap_indices.push_back(pair.second[i] + iso_map_offset);
-            }
-            response.trace_id_to_isomap_indices[pair.first] = isomap_indices;
-        }
+void merge_traces_by_struct(const traces_by_structure &new_trace_by_struct, traces_by_structure* old ) {
+    int trace_id_offset = old->trace_ids.size();
+    int iso_map_offset = old->iso_maps.size();
 
-        // then finally deal with trace node name stuff
-        if (new_trace_by_struct.trace_node_names.size() > 0) {
-            response.trace_node_names.push_back(new_trace_by_struct.trace_node_names[0]);
-            int tnn_index = response.trace_node_names.size()-1;
-            for (uint64_t i=iso_map_offset; i < response.iso_maps.size(); i++) {
-                response.iso_map_to_trace_node_names[i] = tnn_index;
-            }
+    // first merge the vectors of the data itself
+    old->trace_ids.insert(old->trace_ids.end(),
+                                new_trace_by_struct.trace_ids.begin(),
+                                new_trace_by_struct.trace_ids.end());
+    old->object_names.insert(old->object_names.end(),
+                                    new_trace_by_struct.object_names.begin(),
+                                    new_trace_by_struct.object_names.end());
+    old->iso_maps.insert(old->iso_maps.end(),
+                                new_trace_by_struct.iso_maps.begin(),
+                                new_trace_by_struct.iso_maps.end());
+    old->trace_node_names.insert(old->trace_node_names.end(),
+                                        new_trace_by_struct.trace_node_names.begin(),
+                                        new_trace_by_struct.trace_node_names.end());
+
+    // now merge the pointers by adding the offsets to everything
+    for (const auto &pair : new_trace_by_struct.object_name_to_trace_ids_of_interest) {
+        auto object_name = pair.first;
+        for (uint64_t i=0; i < pair.second.size(); i++) {
+            old->object_name_to_trace_ids_of_interest[object_name].push_back(
+                pair.second[i] + trace_id_offset);
         }
     }
 
-    return response;
+    for (const auto &pair : new_trace_by_struct.trace_id_to_isomap_indices) {
+        std::vector<int> isomap_indices;
+        for (uint64_t i=0; i < pair.second.size(); i++) {
+            isomap_indices.push_back(pair.second[i] + iso_map_offset);
+        }
+        old->trace_id_to_isomap_indices[pair.first] = isomap_indices;
+    }
+
+    // then finally deal with trace node name stuff
+    if (new_trace_by_struct.trace_node_names.size() > 0) {
+        old->trace_node_names.push_back(new_trace_by_struct.trace_node_names[0]);
+        int tnn_index = old->trace_node_names.size()-1;
+        for (uint64_t i=iso_map_offset; i < old->iso_maps.size(); i++) {
+            old->iso_map_to_trace_node_names[i] = tnn_index;
+        }
+    }
 }
 
 StatusOr<std::string> get_examplar_from_prefix(std::string prefix, gcs::Client* client) {
@@ -247,8 +247,40 @@ StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
     std::vector<std::pair<std::string, std::string>> prefix_to_trace_ids,
     trace_structure query_trace, int start_time, int end_time,
     const std::vector<std::string>& all_object_names, gcs::Client* client) {
-    // TODO
+    traces_by_structure to_return;
+    auto object_content_or_status = read_object(TRACE_STRUCT_BUCKET_PREFIX+std::string(BUCKETS_SUFFIX),
+        batch_name, client);
+    if (!object_content_or_status.ok()) {
+        return Status(google::cloud::StatusCode::kUnavailable, "could not get examplar");
+    }
 
+    auto object_content = object_content_or_status.value();
+    for (int64_t i=0; i < prefix_to_trace_ids.size(); i++) {
+        traces_by_structure cur_traces_by_structure;
+        std::vector<std::string> trace_ids;
+        trace_ids.push_back(std::get<1>(prefix_to_trace_ids[i]));
+        std::string trace = extract_any_trace(trace_ids, object_content);
+        auto valid = check_examplar_validity(trace, query_trace, cur_traces_by_structure);
+        if (!valid.ok()) {
+            return valid.status();
+        }
+
+        if (!valid.value()) {
+            continue;
+        }
+
+        auto root_service_name = get_root_service_name(trace);
+        for (auto batch_name : all_object_names) {
+            auto status = get_traces_by_structure_data(
+                client, std::get<0>(prefix_to_trace_ids[i]), batch_name, root_service_name, start_time, end_time, cur_traces_by_structure);
+
+            if (!status.ok()) {
+                return status;
+            }
+        }
+        merge_traces_by_struct(cur_traces_by_structure, &to_return);
+    }
+    return to_return;
 }
 
 StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
