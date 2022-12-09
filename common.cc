@@ -40,7 +40,6 @@ std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
         } catch (...) {
             std::cerr << "..." << std::endl;
         }
-        
     }
     return response;
 }
@@ -336,7 +335,6 @@ std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
         return to_return;
     }
 
-    
     std::stringstream e;
     e << earliest;
     std::stringstream l;

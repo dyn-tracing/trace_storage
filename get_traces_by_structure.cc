@@ -276,7 +276,7 @@ StatusOr<std::vector<std::string>> filter_trace_ids_based_on_query_timestamp_for
  */
 std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
     trace_structure &candidate_trace, trace_structure &query_trace) {
-    
+
     graph_type candidate_graph = morph_trace_structure_to_boost_graph_type(candidate_trace);
     graph_type query_graph = morph_trace_structure_to_boost_graph_type(query_trace);
 
@@ -365,7 +365,7 @@ trace_structure morph_trace_object_to_trace_structure(std::string &trace) {
             reverse_node_names[span_to_service[elem.second]]));
     }
 
-    for (auto [k, v]: response.node_names) {
+    for (auto [k, v] : response.node_names) {
         response.node_names[k] = split_by_string(v, colon)[1];
     }
 
