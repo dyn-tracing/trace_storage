@@ -6,6 +6,7 @@ StatusOr<traces_by_structure> get_traces_by_structure(
     std::vector<std::future<StatusOr<traces_by_structure>>> response_futures;
 
     std::string prefix_to_search = std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
+    std::vector<std::string> all_object_names = get_batches_between_timestamps(client, start_time, end_time);
     for (auto&& prefix : client->ListObjectsAndPrefixes(prefix_to_search, gcs::Delimiter("/"))) {
         if (!prefix) {
             std::cerr << "Error in getting prefixes" << std::endl;
@@ -21,7 +22,7 @@ StatusOr<traces_by_structure> get_traces_by_structure(
 
         response_futures.push_back(std::async(
             std::launch::async, process_trace_hashes_prefix_and_retrieve_relevant_trace_ids,
-            absl::get<std::string>(result), query_trace, start_time, end_time, client));
+            absl::get<std::string>(result), query_trace, start_time, end_time, all_object_names, client));
     }
 
     traces_by_structure response;
@@ -119,7 +120,7 @@ StatusOr<std::string> get_examplar_from_prefix(std::string prefix, gcs::Client* 
 }
 
 /**
- * Checks examplar validity and sets isomaps and node_names in the passed by reference param to_return. 
+ * Checks examplar validity and sets isomaps and node_names in the passed by reference param to_return.
 */
 StatusOr<bool> check_examplar_validity(
     std::string examplar, trace_structure query_trace, traces_by_structure& to_return) {
@@ -195,7 +196,7 @@ Status get_traces_by_structure_data(
 }
 
 StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
-    std::string prefix, trace_structure query_trace, int start_time, int end_time,
+    std::string prefix, trace_structure query_trace, int start_time, int end_time, const std::vector<std::string>& all_object_names,
     gcs::Client* client
 ) {
     traces_by_structure to_return;
@@ -214,7 +215,6 @@ StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_
         return to_return;
     }
 
-    auto all_object_names = get_batches_between_timestamps(client, start_time, end_time);
     auto root_service_name = get_root_service_name(examplar_trace.value());
     for (auto batch_name : all_object_names) {
         auto status = get_traces_by_structure_data(
