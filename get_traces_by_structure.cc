@@ -48,6 +48,11 @@ StatusOr<traces_by_structure> get_traces_by_structure(
 
     for (int64_t i=0; i < response_futures.size(); i++) {
         StatusOr<traces_by_structure> values_to_return = response_futures[i].get();
+        if (!values_to_return.ok()) {
+            std::cerr << "so sad for you, response futures are bad" << std::endl;
+            return values_to_return.status();
+        }
+        merge_traces_by_struct(values_to_return.value(), &to_return);
     }
 
 
