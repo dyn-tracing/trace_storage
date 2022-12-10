@@ -241,9 +241,9 @@ StatusOr<potential_prefix_struct> get_potential_prefixes(
 
     std::string batch_name = extract_batch_name(object_name);
     return potential_prefix_struct {
+        .prefix = prefix,
         .batch_name = batch_name,
         .trace_id = response_trace_ids[0],
-        .prefix = prefix,
     };
 }
 
