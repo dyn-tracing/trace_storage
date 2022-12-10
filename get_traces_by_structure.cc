@@ -22,7 +22,6 @@ StatusOr<traces_by_structure> get_traces_by_structure(
         // Get mapping from batch name to prefix and trace ID.
         future_potential_prefixes.push_back(std::async(std::launch::async,
             get_potential_prefixes, absl::get<std::string>(result), client));
-
     }
 
     // Now map from batch name to prefix and trace ID, so you can check
@@ -276,7 +275,8 @@ StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
         auto root_service_name = get_root_service_name(trace);
         for (auto batch_name : all_object_names) {
             auto status = get_traces_by_structure_data(
-                client, std::get<0>(prefix_to_trace_ids[i]), batch_name, root_service_name, start_time, end_time, cur_traces_by_structure);
+                client, std::get<0>(prefix_to_trace_ids[i]), batch_name,
+                root_service_name, start_time, end_time, cur_traces_by_structure);
 
             if (!status.ok()) {
                 return status;
