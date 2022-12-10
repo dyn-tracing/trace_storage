@@ -287,39 +287,6 @@ StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
     return to_return;
 }
 
-StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
-    std::string prefix, trace_structure query_trace, int start_time, int end_time,
-    const std::vector<std::string>& all_object_names, gcs::Client* client
-) {
-    traces_by_structure to_return;
-
-    auto examplar_trace = get_examplar_from_prefix(prefix, client);
-    if (!examplar_trace.ok()) {
-        return examplar_trace.status();
-    }
-
-    auto valid = check_examplar_validity(examplar_trace.value(), query_trace, to_return);
-    if (!valid.ok()) {
-        return valid.status();
-    }
-
-    if (!valid.value()) {
-        return to_return;
-    }
-
-    auto root_service_name = get_root_service_name(examplar_trace.value());
-    for (auto batch_name : all_object_names) {
-        auto status = get_traces_by_structure_data(
-            client, prefix, batch_name, root_service_name, start_time, end_time, to_return);
-
-        if (!status.ok()) {
-            return status;
-        }
-    }
-
-    return to_return;
-}
-
 std::string get_root_service_name(const std::string &trace) {
     for (const std::string& line : split_by_string(trace, newline)) {
         if (line.substr(0, 1) == ":") {
