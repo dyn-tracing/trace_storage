@@ -26,12 +26,12 @@
 
 const char BUCKET_TYPE_LABEL_KEY[] = "bucket_type";
 const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
-const char PROJECT_ID[] = "cost-project-1";
+const char PROJECT_ID[] = "dynamic-tracing";
 const char BUCKETS_LOCATION[] = "us-central1";
 
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket-alibaba-new-small";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket-alibaba-new-small";
-const char BUCKETS_SUFFIX[] = "-snicket-alibaba-new-small";
+const char TRACE_STRUCT_BUCKET[] = "dyntraces-quest-small2";
+const char TRACE_HASHES_BUCKET[] = "tracehashes-quest-small2";
+const char BUCKETS_SUFFIX[] = "-quest-small2";
 
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
 const int TRACE_ID_LENGTH = 32;
@@ -67,6 +67,7 @@ void print_progress(float progress, std::string label, bool verbose);
 bool less_than(time_t first, std::string second);
 bool greater_than(time_t first, std::string second);
 time_t time_t_from_string(std::string str);
+bool has_suffix(std::string fullString, std::string ending);
 
 /// *********** string processing according to system conventions **********
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(

@@ -279,6 +279,13 @@ void replace_all(std::string& str, const std::string& from, const std::string& t
     }
 }
 
+bool has_suffix(std::string fullString, std::string ending) {
+    if (fullString.length() >= ending.length()) {
+        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+    }
+    return false;
+}
+
 std::vector<std::string> get_spans_buckets_names(gcs::Client* client) {
     std::vector<std::string> response;
 
@@ -286,6 +293,10 @@ std::vector<std::string> get_spans_buckets_names(gcs::Client* client) {
         if (!bucket_metadata) {
             std::cerr << bucket_metadata.status().message() << std::endl;
             exit(1);
+        }
+
+        if (false == has_suffix(bucket_metadata->name(), BUCKETS_SUFFIX)) {
+            continue;
         }
 
         if (true == bucket_metadata->labels().empty()) {
