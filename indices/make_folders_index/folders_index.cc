@@ -6,6 +6,7 @@
 int update_index(gcs::Client* client, time_t last_updated, std::string indexed_attribute
 ) {
 	std::vector<std::string> span_buckets_names = get_spans_buckets_names(client);
+	std::cout << "Total Buckets: " << span_buckets_names.size() << std::endl;
 	std::vector<std::string> trace_struct_object_names = get_all_object_names(TRACE_STRUCT_BUCKET, client);
 	trace_struct_object_names = sort_object_names_on_start_time(trace_struct_object_names);
 
