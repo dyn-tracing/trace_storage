@@ -29,9 +29,9 @@ const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
 const char PROJECT_ID[] = "cost-project-1";
 const char BUCKETS_LOCATION[] = "us-central1";
 
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-snicket-alibaba-new";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-snicket-alibaba-new";
-const char BUCKETS_SUFFIX[] = "-snicket-alibaba-new";
+const char TRACE_STRUCT_BUCKET[] = "dyntraces-quest-small";
+const char TRACE_HASHES_BUCKET[] = "tracehashes-quest-small";
+const char BUCKETS_SUFFIX[] = "-quest-small";
 
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
 const int TRACE_ID_LENGTH = 32;

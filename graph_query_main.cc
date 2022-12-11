@@ -143,9 +143,9 @@ QueryData height_at_least_four() {
 QueryData canonical() {
     QueryData query;
     query.graph.num_nodes = 3;
-    query.graph.node_names.insert(std::make_pair(0, "QueleaBubbleGum"));
-    query.graph.node_names.insert(std::make_pair(1, "KangarooCannonBlack"));
-    query.graph.node_names.insert(std::make_pair(2, "SardineBronzeOlive"));
+    query.graph.node_names.insert(std::make_pair(0, "HummingbirdCadmiumRed"));
+    query.graph.node_names.insert(std::make_pair(1, "HummingbirdKabul"));
+    query.graph.node_names.insert(std::make_pair(2, "TarsierLightPastelPurple"));
 
     query.graph.edges.insert(std::make_pair(0, 1));
     query.graph.edges.insert(std::make_pair(0, 2));
@@ -188,7 +188,7 @@ int main(int argc, char* argv[]) {
     std::vector<time_t> times(n, 0);
     for (int i = 0; i < n; i++) {
         QueryData data = canonical();
-        auto time_taken = perform_query(data, false, 1670727276, 1670794634, &client);
+        auto time_taken = perform_query(data, false, 1670939801, 1670939801, &client);
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;
     }
