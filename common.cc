@@ -104,7 +104,7 @@ bool is_spans_bucket(std::string bucket) {
         return false;
     }
 
-    if (true == has_prefix(bucket, TRACE_STRUCT_BUCKET_PREFIX)) {
+    if (true == has_prefix(bucket, TRACE_HASHES_BUCKET_PREFIX)) {
         return false;
     }
 
