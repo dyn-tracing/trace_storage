@@ -70,9 +70,10 @@ bool less_than(time_t first, std::string second);
 bool greater_than(time_t first, std::string second);
 time_t time_t_from_string(std::string str);
 bool has_suffix(std::string fullString, std::string ending);
+bool has_prefix(std::string fullString, std::string starting);
 
 /// *********** string processing according to system conventions **********
-bool is_spans_bucket(std::string bucket)
+bool is_spans_bucket(std::string bucket);
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
     const std::string &spans_data, const std::vector<std::string> &trace_ids);
 bool object_could_have_out_of_bound_traces(std::pair<int, int> batch_time, int start_time, int end_time);
