@@ -95,7 +95,27 @@ ot::TracesData read_object_and_parse_traces_data(
     return trace_data;
 }
 
-StatusOr<std::string> read_object(const std::string &bucket, const std::string &object, gcs::Client* client) {
+bool is_spans_bucket(std::string bucket) {
+    if (true == has_prefix(bucket, "index-")) {
+        return false;
+    }
+
+    if (true == has_prefix(bucket, TRACE_STRUCT_BUCKET_PREFIX)) {
+        return false;
+    }
+
+    if (true == has_prefix(bucket, TRACE_STRUCT_BUCKET_PREFIX)) {
+        return false;
+    }
+
+    return true;
+}
+
+StatusOr<std::string> read_object(std::string bucket, std::string object, gcs::Client* client) {
+    if (true == is_spans_bucket(bucket)) {
+        object = bucket + "/"+ object;
+        bucket = "microservices";
+    }
     auto reader = client->ReadObject(bucket, object);
     if (!reader) {
         return reader.status();
@@ -282,6 +302,13 @@ void replace_all(std::string& str, const std::string& from, const std::string& t
 bool has_suffix(std::string fullString, std::string ending) {
     if (fullString.length() >= ending.length()) {
         return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+    }
+    return false;
+}
+
+bool has_prefix(std::string fullString, std::string starting) {
+    if (fullString.length() >= starting.length()) {
+        return fullString.find(starting) == 0;
     }
     return false;
 }
