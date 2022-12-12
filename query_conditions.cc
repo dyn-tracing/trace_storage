@@ -191,7 +191,7 @@ bool does_end_time_condition_hold(const ot::Span* sp, const query_condition cond
 bool does_value_satisfy_condition(std::string value, query_condition condition) {
     switch (condition.comp) {
         case Equal_to:
-            return value == condition.node_property_value;
+            return value.compare(condition.node_property_value) == 0;
         case Less_than:
             return value < condition.node_property_value;
         case Greater_than:

@@ -97,10 +97,11 @@ QueryData duration_condition() {
     condition1.type = string_value;
     get_value_func condition_1_union;
     condition1.func = condition_1_union;
-    condition1.node_property_value = "200";
+    condition1.node_property_value = "540";
     condition1.comp = Equal_to;
     condition1.property_name = "http.status_code";
     condition1.is_latency_condition = false;
+    condition1.is_attribute_condition = true;
 
     query.conditions.push_back(condition1);
 

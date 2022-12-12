@@ -584,9 +584,8 @@ bool does_span_satisfy_condition(
         sp = &(trace_data->resource_spans(0).scope_spans(0).spans(i));
 
         if (is_same_hex_str(sp->span_id(), span_id)) {
-            std::cout << "ret1 does_span_satisfy_condition" << std::endl;
             auto res = does_condition_hold(sp, condition);
-            std::cout << "ret2 does_span_satisfy_condition" << std::endl;
+            std::cout << "res is " << res << std::endl;
             return res;
         }
     }
