@@ -67,6 +67,7 @@ void print_progress(float progress, std::string label, bool verbose);
 bool less_than(time_t first, std::string second);
 bool greater_than(time_t first, std::string second);
 time_t time_t_from_string(std::string str);
+bool has_suffix(std::string fullString, std::string ending);
 
 /// *********** string processing according to system conventions **********
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
