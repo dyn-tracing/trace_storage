@@ -29,9 +29,9 @@ const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
 const char PROJECT_ID[] = "dynamic-tracing";
 const char BUCKETS_LOCATION[] = "us-central1";
 
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-quest-dt";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-quest-dt";
-const char BUCKETS_SUFFIX[] = "-quest-dt";
+const char TRACE_STRUCT_BUCKET[] = "dyntraces-quest-small-for-testing";
+const char TRACE_HASHES_BUCKET[] = "tracehashes-quest-small-for-testing";
+const char BUCKETS_SUFFIX[] = "-quest-small-for-testing";
 
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
 const int TRACE_ID_LENGTH = 32;
@@ -64,6 +64,7 @@ bool is_same_hex_str(const std::string &data, const std::string &compare);
 std::string strip_from_the_end(std::string object, char stripper);
 void replace_all(std::string& str, const std::string& from, const std::string& to);
 void print_progress(float progress, std::string label, bool verbose);
+void print_update(std::string to_print, bool verbose);
 bool less_than(time_t first, std::string second);
 bool greater_than(time_t first, std::string second);
 time_t time_t_from_string(std::string str);

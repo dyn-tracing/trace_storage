@@ -335,6 +335,11 @@ void print_progress(float progress, std::string label, bool verbose) {
     std::cout.flush();
 }
 
+void print_update(std::string to_print, bool verbose) {
+    if (!verbose) { return; }
+    std::cout << to_print << std::endl;
+}
+
 std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
     // you want to generate a list of prefixes between earliest and latest
     // find the first digit at which they differ, then do a list on lowest to highest there

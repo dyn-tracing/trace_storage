@@ -8,16 +8,16 @@ struct QueryData {
     return_value ret;
 };
 
-QueryData general_graph_query() {
+QueryData general_graph_query_test2() {
     QueryData query;
     // query trace structure
     query.graph.num_nodes = 3;
-    query.graph.node_names.insert(std::make_pair(0, "frontend"));
-    query.graph.node_names.insert(std::make_pair(1, "adservice"));
-    query.graph.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
+    query.graph.node_names.insert(std::make_pair(0, "HummingbirdCadmiumRed"));
+    query.graph.node_names.insert(std::make_pair(1, "GaurMirage"));
+    query.graph.node_names.insert(std::make_pair(2, "GaurMirage"));
 
     query.graph.edges.insert(std::make_pair(0, 1));
-    query.graph.edges.insert(std::make_pair(1, 2));
+    query.graph.edges.insert(std::make_pair(0, 2));
 
     // query condition
     query_condition condition1;
@@ -31,7 +31,7 @@ QueryData general_graph_query() {
     condition1.is_latency_condition = true;
 
 
-    query.conditions.push_back(condition1);
+    //query.conditions.push_back(condition1);
 
     query.ret.node_index = 1;
     query.ret.type = bytes_value;
@@ -187,8 +187,8 @@ int main(int argc, char* argv[]) {
 
     std::vector<time_t> times(n, 0);
     for (int i = 0; i < n; i++) {
-        QueryData data = canonical();
-        auto time_taken = perform_query(data, false, 1671464277, 1671498493, &client);
+        QueryData data = general_graph_query_test2();
+        auto time_taken = perform_query(data, false, 1670939801, 1670939801, &client);
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;
     }

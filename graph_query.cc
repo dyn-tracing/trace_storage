@@ -70,7 +70,7 @@ std::vector<std::string> query(
     objname_to_matching_trace_ids intersection = intersect_index_results(
         index_results, struct_results.value(), earliest_last_updated, verbose);
 
-    std::cout << "intersection size is " << intersection.size() << std::endl;
+    print_update("intersection size is " + std::to_string(intersection.size()), verbose);
 
     std::vector<std::future<std::vector<std::string>>> results_futures;
     results_futures.reserve(intersection.size());

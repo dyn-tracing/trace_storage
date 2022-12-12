@@ -231,18 +231,16 @@ StatusOr<potential_prefix_struct> get_potential_prefixes(
         break;
     }
 
-    auto response_trace_ids_or_status = get_trace_ids_from_trace_hashes_object(object_name, client);
-    if (!response_trace_ids_or_status.ok()) {
-        return response_trace_ids_or_status.status();
+    StatusOr<std::string> trace_id = get_single_trace_id_from_trace_hashes_object(object_name, client);
+    if (!trace_id.ok()) {
+        std::cerr << "could not get single race ID from hashes object" << std::endl;
+        return trace_id.status();
     }
 
-    auto response_trace_ids = response_trace_ids_or_status.value();
-
-    std::string batch_name = extract_batch_name(object_name);
     return potential_prefix_struct {
         .prefix = prefix,
-        .batch_name = batch_name,
-        .trace_id = response_trace_ids[0],
+        .batch_name = extract_batch_name(object_name),
+        .trace_id = trace_id.value(),
     };
 }
 
@@ -379,6 +377,24 @@ StatusOr<std::vector<std::string>> get_trace_ids_from_trace_hashes_object(
         }
     }
     return response;
+}
+
+StatusOr<std::string> get_single_trace_id_from_trace_hashes_object(
+    const std::string &object_name, gcs::Client* client) {
+
+    auto reader = client->ReadObject(std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX),
+        object_name, gcs::ReadRange(0, TRACE_ID_LENGTH+1));
+    if (!reader) {
+        return reader.status();
+    }
+
+    std::string object_content{std::istreambuf_iterator<char>{reader}, {}};
+
+    if (object_content == "") {
+        return std::string("");
+    }
+    object_content.erase(std::remove_if(object_content.begin(), object_content.end(), ::isspace), object_content.end());
+    return object_content;
 }
 
 trace_structure morph_trace_object_to_trace_structure(std::string &trace) {
