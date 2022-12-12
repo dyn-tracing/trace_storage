@@ -61,7 +61,9 @@ StatusOr<objname_to_matching_trace_ids> get_return_value_from_objnames(gcs::Clie
     objname_to_matching_trace_ids to_return;
     if (index_bucket.compare(TRACE_ID_BUCKET) == 0) {
         for (uint64_t i=0; i < object_names.size(); i++) {
-            StatusOr<std::string> contents = read_object(TRACE_STRUCT_BUCKET, object_names[i], client);
+            StatusOr<std::string> contents = read_object(
+                std::string(TRACE_STRUCT_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX),
+                object_names[i], client);
             if (!contents.ok()) {
                 std::cerr << "get_return_value_from_objnames: could not read object " << object_names[i] << std::endl;
                 return contents.status();
@@ -72,7 +74,9 @@ StatusOr<objname_to_matching_trace_ids> get_return_value_from_objnames(gcs::Clie
         }
     } else if (index_bucket.compare(SPAN_ID_BUCKET) == 0) {
         for (uint64_t i=0; i < object_names.size(); i++) {
-            StatusOr<std::string> contents = read_object(TRACE_STRUCT_BUCKET, object_names[i], client);
+            StatusOr<std::string> contents = read_object(
+                std::string(TRACE_STRUCT_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX),
+                object_names[i], client);
             if (!contents.ok()) {
                 std::cerr << "get_return_value_from_objnames: could not read object " << object_names[i] << std::endl;
                 return contents.status();
@@ -86,7 +90,9 @@ StatusOr<objname_to_matching_trace_ids> get_return_value_from_objnames(gcs::Clie
         }
     } else {
         for (uint64_t i=0; i < object_names.size(); i++) {
-            StatusOr<std::string> contents = read_object(TRACE_STRUCT_BUCKET, object_names[i], client);
+            StatusOr<std::string> contents = read_object(
+                std::string(TRACE_STRUCT_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX),
+                object_names[i], client);
             if (!contents.ok()) {
                 std::cerr << "get_return_value_from_objnames: could not read object " << object_names[i] << std::endl;
                 return contents.status();
