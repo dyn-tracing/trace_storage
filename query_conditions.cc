@@ -39,7 +39,9 @@ bool does_condition_hold(const ot::Span* sp, const query_condition condition) {
     }
     switch (condition.type) {
         case string_value: {
+            std::cout << "In string val" << std::endl;
             const std::string span_value = (sp->*condition.func.string_func)();
+            std::cout << "In2 string val" << std::endl;
             switch (condition.comp) {
                 case Equal_to:
                     return span_value.compare(condition.node_property_value) == 0;

@@ -83,6 +83,7 @@ std::vector<std::string> query(
 
     std::vector<std::string> to_return;
     for (int64_t i = 0; i < results_futures.size(); i++) {
+        std::cout << "damn" << std::endl;
         std::vector<std::string> partial_result = results_futures[i].get();
         to_return.insert(to_return.end(),
                          partial_result.begin(),
@@ -109,6 +110,7 @@ std::vector<std::string> brute_force_per_batch(const std::string batch_name,
 
     std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> filtered;
     if (conditions.size()) {
+        std::cout << "conds" << std::endl;
         filtered = filter_batch_data_based_on_conditions(trace_ids, struct_results, conditions, fetched, ret);
     } else {
         filtered = std::make_tuple(
@@ -418,6 +420,7 @@ std::tuple<std::vector<std::string>, std::map<std::string, iso_to_span_id>> filt
             trace_id_to_span_id_mappings[trace_ids[i]] = isomap_to_node_to_span_id;
         }
     }
+    std::cout << "reti" << std::endl;
     return std::make_tuple(to_return_traces, trace_id_to_span_id_mappings);
 }
 
@@ -564,6 +567,8 @@ std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_s
         }
     }
 
+    std::cout << "get_iso_maps_indices_for_which_trace_satifies_curr_condition" << std::endl;
+
     return response;
 }
 
@@ -573,14 +578,19 @@ bool does_span_satisfy_condition(
 ) {
     ot::TracesData* trace_data = &(evaluation_data.service_name_to_span_data[service_name]);
 
+    std::cout << "does_span_satisfy_condition" << std::endl;
     const ot::Span* sp;
     for (int i=0; i < trace_data->resource_spans(0).scope_spans(0).spans_size(); i++) {
         sp = &(trace_data->resource_spans(0).scope_spans(0).spans(i));
 
         if (is_same_hex_str(sp->span_id(), span_id)) {
-            return does_condition_hold(sp, condition);
+            std::cout << "ret1 does_span_satisfy_condition" << std::endl;
+            auto res = does_condition_hold(sp, condition);
+            std::cout << "ret2 does_span_satisfy_condition" << std::endl;
+            return res;
         }
     }
+    std::cout << "ret does_span_satisfy_condition" << std::endl;
     return false;
 }
 
