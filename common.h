@@ -35,6 +35,7 @@ const char TRACE_HASHES_BUCKET[] = "tracehashes-quest-small-for-testing";
 const char BUCKETS_SUFFIX[] = "-quest-small-for-testing";
 
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
+const char TRACE_HASHES_BUCKET_PREFIX[] = "tracehashes";
 const int TRACE_ID_LENGTH = 32;
 const int SPAN_ID_LENGTH = 16;
 const int element_count = 10000;
@@ -71,6 +72,7 @@ time_t time_t_from_string(std::string str);
 bool has_suffix(std::string fullString, std::string ending);
 
 /// *********** string processing according to system conventions **********
+bool is_spans_bucket(std::string bucket)
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
     const std::string &spans_data, const std::vector<std::string> &trace_ids);
 bool object_could_have_out_of_bound_traces(std::pair<int, int> batch_time, int start_time, int end_time);
@@ -88,7 +90,7 @@ time_t get_lowest_time_val(gcs::Client* client);
 /// **************** GCS processing ********************************
 opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
     const std::string &bucket, const std::string &object_name, gcs::Client* client);
-StatusOr<std::string> read_object(const std::string &bucket, const std::string &object, gcs::Client* client);
+StatusOr<std::string> read_object(std::string bucket, std::string object, gcs::Client* client);
 
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     const std::vector<std::string> &trace_ids,
