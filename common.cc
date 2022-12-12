@@ -114,7 +114,7 @@ bool is_spans_bucket(std::string bucket) {
 StatusOr<std::string> read_object(std::string bucket, std::string object, gcs::Client* client) {
     if (true == is_spans_bucket(bucket)) {
         object = bucket + "/"+ object;
-        bucket = "microservices";
+        bucket = "microservices" + std::string(BUCKETS_SUFFIX);
     }
     auto reader = client->ReadObject(bucket, object);
     if (!reader) {
