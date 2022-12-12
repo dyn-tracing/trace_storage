@@ -147,6 +147,7 @@ QueryData canonical() {
     query.graph.node_names.insert(std::make_pair(1, "GaurMirage"));
     query.graph.node_names.insert(std::make_pair(2, "GaurMirage"));
 
+
     query.graph.edges.insert(std::make_pair(0, 1));
     query.graph.edges.insert(std::make_pair(0, 2));
 
@@ -188,7 +189,7 @@ int main(int argc, char* argv[]) {
     std::vector<time_t> times(n, 0);
     for (int i = 0; i < n; i++) {
         QueryData data = canonical();
-        auto time_taken = perform_query(data, false, 1670939797, 1670939797, &client);
+        auto time_taken = perform_query(data, false, 1670939801, 1670939801, &client);
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;
     }
