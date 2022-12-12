@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "BS_thread_pool.hpp"
 #include "absl/status/statusor.h"
 #include "google/cloud/storage/client.h"
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
@@ -29,9 +30,9 @@ const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
 const char PROJECT_ID[] = "dynamic-tracing";
 const char BUCKETS_LOCATION[] = "us-central1";
 
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-quest-dt";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-quest-dt";
-const char BUCKETS_SUFFIX[] = "-quest-dt";
+const char TRACE_STRUCT_BUCKET[] = "dyntraces-quest-small-for-testing";
+const char TRACE_HASHES_BUCKET[] = "tracehashes-quest-small-for-testing";
+const char BUCKETS_SUFFIX[] = "-quest-small-for-testing";
 
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
 const int TRACE_ID_LENGTH = 32;

@@ -2,6 +2,8 @@
 
 StatusOr<traces_by_structure> get_traces_by_structure(
     trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
+    
+    BS::thread_pool pool;
 
     std::string prefix_to_search = std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
 
@@ -20,7 +22,7 @@ StatusOr<traces_by_structure> get_traces_by_structure(
         }
 
         // Get mapping from batch name to prefix and trace ID.
-        future_potential_prefixes.push_back(std::async(std::launch::async,
+        future_potential_prefixes.push_back(pool.submit(
             get_potential_prefixes, absl::get<std::string>(result), client));
     }
 
@@ -37,7 +39,7 @@ StatusOr<traces_by_structure> get_traces_by_structure(
     std::vector<std::future<StatusOr<traces_by_structure>>> response_futures;
 
     for (auto& [batch_name, prefix_and_trace_id] : batch_name_map) {
-        response_futures.push_back(std::async(std::launch::async,
+        response_futures.push_back(pool.submit(
             filter_by_query, batch_name, prefix_and_trace_id,
             query_trace, start_time, end_time, all_object_names, client));
     }
@@ -52,7 +54,6 @@ StatusOr<traces_by_structure> get_traces_by_structure(
         }
         merge_traces_by_struct(values_to_return.value(), &to_return);
     }
-
 
     return to_return;
 }

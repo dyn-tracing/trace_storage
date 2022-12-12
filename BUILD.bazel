@@ -22,6 +22,7 @@ cc_library(
     srcs = [
         "common.cc",
         "common.h",
+        "BS_thread_pool.hpp",
     ],
     hdrs = ["common.h"],
     deps = [
