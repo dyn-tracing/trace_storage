@@ -60,7 +60,7 @@ QueryData general_graph_query() {
     query.graph.node_names.insert(std::make_pair(2, "MartenPersianOrange"));
 
     query.graph.edges.insert(std::make_pair(0, 1));
-    query.graph.edges.insert(std::make_pair(1, 2));
+    query.graph.edges.insert(std::make_pair(0, 2));
 
     query.ret.node_index = 1;
     query.ret.type = bytes_value;

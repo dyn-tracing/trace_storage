@@ -406,7 +406,6 @@ std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix
         }
         // before we push back, should make sure that it's actually between the bounds
         std::string name = object_metadata->name();
-        std::cout << "found name: " << name << std::endl;
         std::vector<std::string> times = split_by_string(name, hyphen);
         // we care about three of these:
         // if we are neatly between earliest and latest, or if we overlap on one side
@@ -459,7 +458,6 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
             }
         }
     }
-    std::cout << "in get batches between timestamps, size of to_return is " << to_return.size() << std::endl;
     return to_return;
 }
 
