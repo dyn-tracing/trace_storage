@@ -4,7 +4,7 @@ StatusOr<traces_by_structure> get_traces_by_structure(
     trace_structure query_trace, int start_time, int end_time, bool verbose, gcs::Client* client) {
     boost::posix_time::ptime start, stop, start_retrieve_prefixes, start_get_batches;
     start = boost::posix_time::microsec_clock::local_time();
-    BS::thread_pool pool;
+    BS::thread_pool pool(500);
     stop = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration dur = stop - start;
     print_update("Time to initialize thread pool: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
