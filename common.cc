@@ -400,8 +400,6 @@ std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix
     std::vector<std::string> to_return;
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
     std::string suffix(BUCKETS_SUFFIX);
-    std::cout << "in get list result, prefix is " << prefix << std::endl;
-    std::cout << "get list result, looking in bucket " << trace_struct_bucket+suffix << std::endl;
     for (auto&& object_metadata : client->ListObjects(trace_struct_bucket+suffix, gcs::Prefix(prefix))) {
         if (!object_metadata) {
             throw std::runtime_error(object_metadata.status().message());
