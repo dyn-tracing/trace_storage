@@ -62,16 +62,24 @@ QueryData four_fan_out() {
     query.graph.node_names.insert(std::make_pair(2, "PorpoiseSandwisp"));
     query.graph.node_names.insert(std::make_pair(3, "ZebraAfricanViolet"));
     query.graph.node_names.insert(std::make_pair(4, "TapirBitter"));
+    query.graph.node_names.insert(std::make_pair(5, "MartenPersianOrange"));
+    query.graph.node_names.insert(std::make_pair(6, "MissingService"));
+    query.graph.node_names.insert(std::make_pair(7, "KingfisherUltramarineBlue"));
+    query.graph.node_names.insert(std::make_pair(8, "ElkCrimsonGlory"));
 
     query.graph.edges.insert(std::make_pair(0, 1));
     query.graph.edges.insert(std::make_pair(0, 2));
     query.graph.edges.insert(std::make_pair(0, 3));
     query.graph.edges.insert(std::make_pair(0, 4));
+    query.graph.edges.insert(std::make_pair(0, 5));
+    query.graph.edges.insert(std::make_pair(0, 6));
+    query.graph.edges.insert(std::make_pair(0, 7));
+    query.graph.edges.insert(std::make_pair(0, 8));
 
     query.ret.node_index = 0;
     query.ret.type = bytes_value;
     get_value_func ret_union;
-    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::span_id;
+    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
     query.ret.func = ret_union;
 
     return query;
