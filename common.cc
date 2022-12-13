@@ -400,20 +400,26 @@ std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix
     std::vector<std::string> to_return;
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
     std::string suffix(BUCKETS_SUFFIX);
+    std::cout << "in get list result, prefix is " << prefix << std::endl;
+    std::cout << "get list result, looking in bucket " << trace_struct_bucket+suffix << std::endl;
     for (auto&& object_metadata : client->ListObjects(trace_struct_bucket+suffix, gcs::Prefix(prefix))) {
         if (!object_metadata) {
             throw std::runtime_error(object_metadata.status().message());
         }
         // before we push back, should make sure that it's actually between the bounds
         std::string name = object_metadata->name();
+        std::cout << "found name: " << name << std::endl;
         std::vector<std::string> times = split_by_string(name, hyphen);
         // we care about three of these:
         // if we are neatly between earliest and latest, or if we overlap on one side
-        if (less_than(earliest, times[1]) && less_than(earliest, times[2])) {
+        if (less_than(times[1], earliest) && less_than(times[2], earliest)) {
             // we're too far back, already indexed this, ignore
+            std::cout << "we've already indexed" << std::endl;
+            std::cout << "earliest is " << earliest << " and times[1] is " << times[1] << " and times[2] is " << times[2] << std::endl;
             continue;
-        } else if (greater_than(latest, times[1]) && greater_than(latest, times[2])) {
+        } else if (greater_than(times[1], latest) && greater_than(times[2], latest)) {
             // we're too far ahead;  we're still in the waiting period for this data
+            std::cout << "we're too far ahead" << std::endl;
             continue;
         } else {
             to_return.push_back(name);
@@ -458,23 +464,16 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
             }
         }
     }
+    std::cout << "in get batches between timestamps, size of to_return is " << to_return.size() << std::endl;
     return to_return;
 }
 
-bool less_than(time_t first, std::string second) {
-    std::stringstream sec_stream;
-    sec_stream << second;
-    std::string sec_str = sec_stream.str();
-    time_t s = stol(sec_str);
-    return first < s;
+bool less_than(std::string first, time_t second) {
+    return stol(first) < second;
 }
 
-bool greater_than(time_t first, std::string second) {
-    std::stringstream sec_stream;
-    sec_stream << second;
-    std::string sec_str = sec_stream.str();
-    time_t s = stol(sec_str);
-    return first > s;
+bool greater_than(std::string first, time_t second) {
+    return stol(first) > second;
 }
 
 time_t time_t_from_string(std::string str) {
@@ -524,5 +523,6 @@ time_t get_lowest_time_val(gcs::Client* client) {
             }
         }
     }
+    std::cout << "lowest time val is " << lowest_val << std::endl;
     return lowest_val;
 }

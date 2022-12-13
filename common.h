@@ -30,7 +30,7 @@ const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
 const char PROJECT_ID[] = "dynamic-tracing";
 const char BUCKETS_LOCATION[] = "us-central1";
 
-const char BUCKETS_SUFFIX[] = "-quest-only-three-buckets";
+const char BUCKETS_SUFFIX[] = "-quest-new-one-csv";
 
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
 const char TRACE_HASHES_BUCKET_PREFIX[] = "tracehashes";
@@ -67,8 +67,8 @@ bool is_same_hex_str(const std::string &data, const std::string &compare);
 std::string strip_from_the_end(std::string object, char stripper);
 void replace_all(std::string& str, const std::string& from, const std::string& to);
 void print_progress(float progress, std::string label, bool verbose);
-bool less_than(time_t first, std::string second);
-bool greater_than(time_t first, std::string second);
+bool less_than(std::string first, time_t second);
+bool greater_than(std::string first, time_t second);
 time_t time_t_from_string(std::string str);
 bool has_suffix(std::string fullString, std::string ending);
 bool has_prefix(std::string fullString, std::string starting);
