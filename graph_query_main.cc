@@ -112,8 +112,8 @@ QueryData duration_condition() {
     condition1.type = string_value;
     get_value_func condition_1_union;
     condition1.func = condition_1_union;
-    condition1.node_property_value = "300000000"; // 300 ms
-    condition1.comp = Greater_than;
+    condition1.node_property_value = "310000000"; // 300 ms
+    condition1.comp = Less_than;
     condition1.property_name = "duration";
     condition1.is_latency_condition = true;
 
@@ -240,7 +240,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (argc > 2) {
-        auto q = argv[2];
+        auto q = std::string(argv[2]);
         if (q == "fanout") {
             data = four_fan_out();
             std::cout << "Running four_fan_out()" << std::endl;
@@ -258,7 +258,7 @@ int main(int argc, char* argv[]) {
 
     std::vector<time_t> times(n, 0);
     for (int i = 0; i < n; i++) {
-        auto time_taken = perform_query(data, true, 1670796531, 1670829563, &client);
+        auto time_taken = perform_query(data, false, 1670796531, 1670829563, &client);
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;
     }
