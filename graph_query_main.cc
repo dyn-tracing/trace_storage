@@ -58,10 +58,10 @@ QueryData four_fan_out() {
     QueryData query;
     query.graph.num_nodes = 5;
     query.graph.node_names.insert(std::make_pair(0, "ElkCrimsonGlory"));
-    query.graph.node_names.insert(std::make_pair(1, ASTERISK_SERVICE));
-    query.graph.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
-    query.graph.node_names.insert(std::make_pair(3, ASTERISK_SERVICE));
-    query.graph.node_names.insert(std::make_pair(4, ASTERISK_SERVICE));
+    query.graph.node_names.insert(std::make_pair(1, "JackalFreshAir"));
+    query.graph.node_names.insert(std::make_pair(2, "PorpoiseSandwisp"));
+    query.graph.node_names.insert(std::make_pair(3, "ZebraAfricanViolet"));
+    query.graph.node_names.insert(std::make_pair(4, "TapirBitter"));
 
     query.graph.edges.insert(std::make_pair(0, 1));
     query.graph.edges.insert(std::make_pair(0, 2));
