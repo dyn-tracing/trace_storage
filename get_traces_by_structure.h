@@ -41,7 +41,7 @@ struct potential_prefix_struct {
 
 // This is the highest level function
 StatusOr<traces_by_structure> get_traces_by_structure(
-    trace_structure query_trace, int start_time, int end_time, gcs::Client* client);
+    trace_structure query_trace, int start_time, int end_time, bool verbose, gcs::Client* client);
 
 template < typename PropertyMapFirst, typename PropertyMapSecond >
 struct property_map_equivalent_custom {
