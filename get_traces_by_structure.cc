@@ -53,7 +53,7 @@ StatusOr<traces_by_structure> get_traces_by_structure(
 
     for (auto& [batch_name, prefix_and_trace_id] : batch_name_map) {
         response_futures.push_back(pool.submit(
-            filter_by_query, batch_name, prefix_and_trace_id,
+            filter_by_query, batch_name, std::ref(prefix_and_trace_id),
             query_trace, start_time, end_time, all_object_names, client));
     }
 
@@ -262,7 +262,7 @@ StatusOr<potential_prefix_struct> get_potential_prefixes(
 }
 
 StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
-    std::vector<std::pair<std::string, std::string>> prefix_to_trace_ids,
+    std::vector<std::pair<std::string, std::string>> &prefix_to_trace_ids,
     trace_structure query_trace, int start_time, int end_time,
     const std::vector<std::string>& all_object_names, gcs::Client* client) {
     traces_by_structure to_return;
