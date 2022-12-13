@@ -243,12 +243,16 @@ int main(int argc, char* argv[]) {
         auto q = argv[2];
         if (q == "fanout") {
             data = four_fan_out();
+            std::cout << "Running four_fan_out()" << std::endl;
         } else if (q == "one_call") {
             data = service_calls_one_other();
+            std::cout << "Running service_calls_one_other()" << std::endl;
         } else if (q == "duration") {
             data = duration_condition();
+            std::cout << "Running duration_condition()" << std::endl;
         } else if (q == "height") {
             data = height_at_least_four();
+            std::cout << "Running height_at_least_four()" << std::endl;
         }
     }
 
