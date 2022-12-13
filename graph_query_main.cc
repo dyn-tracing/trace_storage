@@ -19,7 +19,6 @@ std::string fetch_obj_name_from_index(std::string trace_id, int start_time, int 
         return objname;
     }
     return "";
-
 }
 
 QueryData trace_id_query() {

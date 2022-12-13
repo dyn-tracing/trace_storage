@@ -414,12 +414,9 @@ std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix
         // if we are neatly between earliest and latest, or if we overlap on one side
         if (less_than(times[1], earliest) && less_than(times[2], earliest)) {
             // we're too far back, already indexed this, ignore
-            std::cout << "we've already indexed" << std::endl;
-            std::cout << "earliest is " << earliest << " and times[1] is " << times[1] << " and times[2] is " << times[2] << std::endl;
             continue;
         } else if (greater_than(times[1], latest) && greater_than(times[2], latest)) {
             // we're too far ahead;  we're still in the waiting period for this data
-            std::cout << "we're too far ahead" << std::endl;
             continue;
         } else {
             to_return.push_back(name);

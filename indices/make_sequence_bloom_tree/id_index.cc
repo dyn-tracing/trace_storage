@@ -545,15 +545,13 @@ int update_index(gcs::Client* client, std::string property_name, time_t granular
     index_bucket = "index-" + index_bucket + std::string(BUCKETS_SUFFIX);
     time_t now;
     time(&now);
-    time_t to_update = now-(now%granularity); // this is the right thing
+    time_t to_update = now-(now%granularity);
     time_t last_updated = create_index_bucket(client, index_bucket);
     if (last_updated == 0) {
         last_updated = get_lowest_time_val(client);
         last_updated = last_updated - (last_updated%granularity);
-        std::cout << "last updated is now " << last_updated << std::endl;
     }
-    //time_t to_update = last_updated + (20*granularity);
-    std::cout << "to update is " << to_update << std::endl;
+    // time_t to_update = last_updated + (20*granularity); // Used for testing
 
     std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, to_update);
     std::vector<BatchObjectNames> batches_by_leaf = split_batches_by_leaf(
