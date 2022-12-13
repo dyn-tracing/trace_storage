@@ -8,6 +8,8 @@ struct QueryData {
     return_value ret;
 };
 
+
+
 std::string fetch_obj_name_from_index(std::string trace_id, int start_time, int end_time, gcs::Client* client) {
     StatusOr<objname_to_matching_trace_ids> res_tup = query_bloom_index_for_value(client,
         trace_id, "index-trace-id-quest-new-one-csv", start_time, end_time);
@@ -25,12 +27,12 @@ QueryData trace_id_query() {
     QueryData query;
     // query trace structure
     query.graph.num_nodes = 3;
-    query.graph.node_names.insert(std::make_pair(0, "ElkCrimsonGlory"));
-    query.graph.node_names.insert(std::make_pair(1, "BatSkyMagenta"));
-    query.graph.node_names.insert(std::make_pair(2, "MartenPersianOrange"));
+    query.graph.node_names.insert(std::make_pair(0, "KoupreyMing"));
+    query.graph.node_names.insert(std::make_pair(1, "FalconHitPink"));
+    query.graph.node_names.insert(std::make_pair(2, "FalconHitPink"));
 
     query.graph.edges.insert(std::make_pair(0, 1));
-    query.graph.edges.insert(std::make_pair(1, 2));
+    query.graph.edges.insert(std::make_pair(0, 2));
 
 
     query_condition condition1;
@@ -39,7 +41,7 @@ QueryData trace_id_query() {
     get_value_func condition_1_union;
     condition_1_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
     condition1.func = condition_1_union;
-    condition1.node_property_value = "0b14258715919241051298000e1cb600";
+    condition1.node_property_value = "0b14315f15919239692554000e52bd00";
     query.conditions.push_back(condition1);
 
     query.ret.node_index = 1;
@@ -51,30 +53,11 @@ QueryData trace_id_query() {
     return query;
 }
 
-QueryData general_graph_query() {
-    QueryData query;
-    // query trace structure
-    query.graph.num_nodes = 3;
-    query.graph.node_names.insert(std::make_pair(0, "ElkCrimsonGlory"));
-    query.graph.node_names.insert(std::make_pair(1, "BatSkyMagenta"));
-    query.graph.node_names.insert(std::make_pair(2, "MartenPersianOrange"));
-
-    query.graph.edges.insert(std::make_pair(0, 1));
-    query.graph.edges.insert(std::make_pair(0, 2));
-
-    query.ret.node_index = 1;
-    query.ret.type = bytes_value;
-    get_value_func ret_union;
-    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::span_id;
-
-    query.ret.func = ret_union;
-    return query;
-}
-
+// Done
 QueryData four_fan_out() {
     QueryData query;
     query.graph.num_nodes = 5;
-    query.graph.node_names.insert(std::make_pair(0, "adservice"));
+    query.graph.node_names.insert(std::make_pair(0, "ElkCrimsonGlory"));
     query.graph.node_names.insert(std::make_pair(1, ASTERISK_SERVICE));
     query.graph.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
     query.graph.node_names.insert(std::make_pair(3, ASTERISK_SERVICE));
@@ -94,28 +77,31 @@ QueryData four_fan_out() {
     return query;
 }
 
-QueryData frontend_span_ids() {
+// Done
+QueryData service_calls_one_other() {
     QueryData query;
     query.graph.num_nodes = 2;
-    query.graph.node_names.insert(std::make_pair(0, "frontend"));
+    query.graph.node_names.insert(std::make_pair(0, "ElkCrimsonGlory"));
     query.graph.node_names.insert(std::make_pair(1, ASTERISK_SERVICE));
+
     query.graph.edges.insert(std::make_pair(0, 1));
 
     query.ret.node_index = 0;
     query.ret.type = bytes_value;
     get_value_func ret_union;
-    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::span_id;
+    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
     query.ret.func = ret_union;
 
     return query;
 }
 
+// done
 QueryData duration_condition() {
     QueryData query;
     query.graph.num_nodes = 3;
-    query.graph.node_names.insert(std::make_pair(0, "SparrowGalliano"));
-    query.graph.node_names.insert(std::make_pair(1, "FalconHitPink"));
-    query.graph.node_names.insert(std::make_pair(2, "FalconHitPink"));
+    query.graph.node_names.insert(std::make_pair(0, "OryxGreenSmoke"));
+    query.graph.node_names.insert(std::make_pair(1, "WolfTowerGray"));
+    query.graph.node_names.insert(std::make_pair(2, "GiraffeOldBrick"));
 
     query.graph.edges.insert(std::make_pair(0, 1));
     query.graph.edges.insert(std::make_pair(0, 2));
@@ -126,11 +112,10 @@ QueryData duration_condition() {
     condition1.type = string_value;
     get_value_func condition_1_union;
     condition1.func = condition_1_union;
-    condition1.node_property_value = "540";
-    condition1.comp = Equal_to;
-    condition1.property_name = "http.status_code";
-    condition1.is_latency_condition = false;
-    condition1.is_attribute_condition = true;
+    condition1.node_property_value = "300000000"; // 300 ms
+    condition1.comp = Greater_than;
+    condition1.property_name = "duration";
+    condition1.is_latency_condition = true;
 
     query.conditions.push_back(condition1);
 
@@ -143,10 +128,11 @@ QueryData duration_condition() {
     return query;
 }
 
+// Done
 QueryData height_at_least_four() {
     QueryData query;
     query.graph.num_nodes = 4;
-    query.graph.node_names.insert(std::make_pair(0, "frontend"));
+    query.graph.node_names.insert(std::make_pair(0, "KoupreyMing"));
     query.graph.node_names.insert(std::make_pair(1, ASTERISK_SERVICE));
     query.graph.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
     query.graph.node_names.insert(std::make_pair(3, ASTERISK_SERVICE));
@@ -161,6 +147,33 @@ QueryData height_at_least_four() {
     ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
     query.ret.func = ret_union;
 
+    return query;
+}
+
+QueryData find_all_frontends() {
+    // TODO
+    QueryData query;
+    return query;
+}
+
+
+QueryData general_graph_query() {
+    QueryData query;
+    // query trace structure
+    query.graph.num_nodes = 3;
+    query.graph.node_names.insert(std::make_pair(0, "ElkCrimsonGlory"));
+    query.graph.node_names.insert(std::make_pair(1, "BatSkyMagenta"));
+    query.graph.node_names.insert(std::make_pair(2, "MartenPersianOrange"));
+
+    query.graph.edges.insert(std::make_pair(0, 1));
+    query.graph.edges.insert(std::make_pair(0, 2));
+
+    query.ret.node_index = 1;
+    query.ret.type = bytes_value;
+    get_value_func ret_union;
+    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::span_id;
+
+    query.ret.func = ret_union;
     return query;
 }
 
@@ -220,21 +233,28 @@ int64_t perform_trace_query(std::string trace_id, time_t start_time, time_t end_
 int main(int argc, char* argv[]) {
     auto client = gcs::Client();
 
-    // TODO(jessberg): make this choice a command line argument
-    // QueryData data = four_fan_out(); // works
-    // QueryData data = frontend_span_ids();
-    // QueryData data = duration_condition();
-    // QueryData data = height_at_least_four();
-    QueryData data = general_graph_query();
+    QueryData data = four_fan_out();
     int n = 1;
     if (argc > 1) {
         n = std::stoi(argv[1]);
     }
 
+    if (argc > 2) {
+        auto q = argv[2];
+        if (q == "fanout") {
+            data = four_fan_out();
+        } else if (q == "one_call") {
+            data = service_calls_one_other();
+        } else if (q == "duration") {
+            data = duration_condition();
+        } else if (q == "height") {
+            data = height_at_least_four();
+        }
+    }
+
     std::vector<time_t> times(n, 0);
     for (int i = 0; i < n; i++) {
-        // auto time_taken = perform_trace_query("0b14258715919241051298000e1cb600", 1670932409, 1670966010, &client);
-        auto time_taken = perform_query(data, true, 1670932409, 1670966010, &client);
+        auto time_taken = perform_query(data, true, 1670796531, 1670829563, &client);
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;
     }
