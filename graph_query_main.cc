@@ -57,11 +57,11 @@ QueryData trace_id_query() {
 QueryData four_fan_out() {
     QueryData query;
     query.graph.num_nodes = 5;
-    query.graph.node_names.insert(std::make_pair(0, "ElkCrimsonGlory"));
-    query.graph.node_names.insert(std::make_pair(1, "JackalFreshAir"));
-    query.graph.node_names.insert(std::make_pair(2, "PorpoiseSandwisp"));
-    query.graph.node_names.insert(std::make_pair(3, "ZebraAfricanViolet"));
-    query.graph.node_names.insert(std::make_pair(4, "TapirBitter"));
+    query.graph.node_names.insert(std::make_pair(0, "OryxGreenSmoke"));
+    query.graph.node_names.insert(std::make_pair(1, "WolfTowerGray"));
+    query.graph.node_names.insert(std::make_pair(2, "GiraffeOldBrick"));
+    query.graph.node_names.insert(std::make_pair(3, "OryxGreenSmoke"));
+    query.graph.node_names.insert(std::make_pair(4, "MissingService"));
     // query.graph.node_names.insert(std::make_pair(5, "MartenPersianOrange"));
     // query.graph.node_names.insert(std::make_pair(6, "MissingService"));
     // query.graph.node_names.insert(std::make_pair(7, "KingfisherUltramarineBlue"));
