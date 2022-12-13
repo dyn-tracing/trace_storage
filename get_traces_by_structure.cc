@@ -54,7 +54,7 @@ StatusOr<traces_by_structure> get_traces_by_structure(
     for (auto& [batch_name, prefix_and_trace_id] : batch_name_map) {
         response_futures.push_back(pool.submit(
             filter_by_query, batch_name, std::ref(prefix_and_trace_id),
-            query_trace, start_time, end_time, all_object_names, client));
+            query_trace, start_time, end_time, all_object_names, verbose, client));
     }
 
     traces_by_structure to_return;
@@ -265,16 +265,25 @@ StatusOr<potential_prefix_struct> get_potential_prefixes(
 StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
     std::vector<std::pair<std::string, std::string>> &prefix_to_trace_ids,
     trace_structure query_trace, int start_time, int end_time,
-    const std::vector<std::string>& all_object_names, gcs::Client* client) {
+    const std::vector<std::string>& all_object_names, bool verbose, gcs::Client* client) {
+
+    boost::posix_time::ptime start, stop;
+    boost::posix_time::time_duration dur;
+
+    start = boost::posix_time::microsec_clock::local_time();
     traces_by_structure to_return;
     auto object_content_or_status = read_object(TRACE_STRUCT_BUCKET_PREFIX+std::string(BUCKETS_SUFFIX),
         batch_name, client);
     if (!object_content_or_status.ok()) {
         return Status(google::cloud::StatusCode::kUnavailable, "could not get examplar");
     }
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop - start;
+    print_update("Time to retrieve object: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
 
     auto object_content = object_content_or_status.value();
     for (int64_t i=0; i < prefix_to_trace_ids.size(); i++) {
+        // TODO(jessberg): can do this loop in parallel
         traces_by_structure cur_traces_by_structure;
         std::vector<std::string> trace_ids;
         trace_ids.push_back(std::get<1>(prefix_to_trace_ids[i]));
@@ -300,6 +309,9 @@ StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
         }
         merge_traces_by_struct(cur_traces_by_structure, &to_return);
     }
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop - start;
+    print_update("Time to filter by query: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     return to_return;
 }
 
