@@ -200,6 +200,7 @@ ret_req_data fetch_return_data(
 StatusOr<std::tuple<index_type, time_t>> is_indexed(const query_condition *condition, gcs::Client* client) {
     std::string bucket_name = condition->property_name;
     replace_all(bucket_name, ".", "-");
+    bucket_name = "index-" + bucket_name + BUCKETS_SUFFIX;
     StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->GetBucketMetadata(bucket_name);
     if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound ||
