@@ -89,8 +89,8 @@ QueryData four_fan_out() {
 QueryData service_calls_one_other() {
     QueryData query;
     query.graph.num_nodes = 2;
-    query.graph.node_names.insert(std::make_pair(0, "ElkCrimsonGlory"));
-    query.graph.node_names.insert(std::make_pair(1, ASTERISK_SERVICE));
+    query.graph.node_names.insert(std::make_pair(0, "OryxGreenSmoke"));
+    query.graph.node_names.insert(std::make_pair(1, "WolfTowerGray"));
 
     query.graph.edges.insert(std::make_pair(0, 1));
 
