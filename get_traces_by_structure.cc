@@ -441,6 +441,9 @@ trace_structure morph_trace_object_to_trace_structure(const std::string &trace) 
 
     response.num_nodes = span_to_service.size();
 
+    response.node_names.reserve(span_to_service.size());
+    reverse_node_names.reserve(span_to_service.size());
+
     // Filling response.node_names
     int count = 0;
     for (const auto& elem : span_to_service) {
