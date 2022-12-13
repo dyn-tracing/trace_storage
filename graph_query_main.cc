@@ -55,26 +55,12 @@ QueryData general_graph_query() {
     QueryData query;
     // query trace structure
     query.graph.num_nodes = 3;
-    query.graph.node_names.insert(std::make_pair(0, "frontend"));
-    query.graph.node_names.insert(std::make_pair(1, "adservice"));
-    query.graph.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
+    query.graph.node_names.insert(std::make_pair(0, "ElkCrimsonGlory"));
+    query.graph.node_names.insert(std::make_pair(1, "BatSkyMagenta"));
+    query.graph.node_names.insert(std::make_pair(2, "MartenPersianOrange"));
 
     query.graph.edges.insert(std::make_pair(0, 1));
     query.graph.edges.insert(std::make_pair(1, 2));
-
-    // query condition
-    query_condition condition1;
-    condition1.node_index = 0;
-    condition1.type = int_value;
-    get_value_func condition_1_union;
-    condition1.func = condition_1_union;
-    condition1.node_property_value = "100000000";
-    condition1.comp = Greater_than;
-    condition1.property_name = "duration";
-    condition1.is_latency_condition = true;
-
-
-    query.conditions.push_back(condition1);
 
     query.ret.node_index = 1;
     query.ret.type = bytes_value;
