@@ -12,7 +12,8 @@ struct Counts {
 
 Counts get_counts_for_object(std::string object, gcs::Client* client) {
     Counts to_return;
-    auto reader = client->ReadObject(TRACE_STRUCT_BUCKET, object);
+    auto reader = client->ReadObject(
+        std::string(TRACE_STRUCT_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX), object);
     if (!reader) {
         std::cerr << "Error getting object " << reader.status().code() << std::endl;
     }
@@ -34,7 +35,8 @@ void count_spans_and_traces(gcs::Client* client) {
     std::unordered_set<std::string> traces;
     std::unordered_set<std::string> spans;
     std::vector<std::future<Counts>> counts_futures;
-    for (auto& object_metadata : client ->ListObjects(TRACE_STRUCT_BUCKET)) {
+    std::string trace_struct_bucket = std::string(TRACE_STRUCT_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
+    for (auto& object_metadata : client ->ListObjects(trace_struct_bucket)) {
         if (!object_metadata) {
             std::cerr << "Error in getting object" << std::endl;
             exit(1);

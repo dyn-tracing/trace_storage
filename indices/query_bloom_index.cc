@@ -61,46 +61,47 @@ StatusOr<objname_to_matching_trace_ids> get_return_value_from_objnames(gcs::Clie
     objname_to_matching_trace_ids to_return;
     if (index_bucket.compare(TRACE_ID_BUCKET) == 0) {
         for (uint64_t i=0; i < object_names.size(); i++) {
-            auto reader = client->ReadObject(TRACE_STRUCT_BUCKET, object_names[i]);
-            if (!reader) {
-                std::cerr << "Error reading object: " << reader.status() << object_names[i] << "\n";
-                return reader.status();
+            StatusOr<std::string> contents = read_object(
+                std::string(TRACE_STRUCT_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX),
+                object_names[i], client);
+            if (!contents.ok()) {
+                std::cerr << "get_return_value_from_objnames: could not read object " << object_names[i] << std::endl;
+                return contents.status();
             }
-            std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-            if (contents.find(queried_value) != std::string::npos) {
+            if (contents.value().find(queried_value) != std::string::npos) {
                 to_return[object_names[i]].push_back(queried_value);
             }
         }
     } else if (index_bucket.compare(SPAN_ID_BUCKET) == 0) {
         for (uint64_t i=0; i < object_names.size(); i++) {
-            auto reader = client->ReadObject(TRACE_STRUCT_BUCKET, object_names[i]);
-            if (!reader) {
-                std::cerr << "Error reading object: " << reader.status() << object_names[i] << "\n";
-                throw std::runtime_error("Error reading node object");
-                return reader.status();
+            StatusOr<std::string> contents = read_object(
+                std::string(TRACE_STRUCT_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX),
+                object_names[i], client);
+            if (!contents.ok()) {
+                std::cerr << "get_return_value_from_objnames: could not read object " << object_names[i] << std::endl;
+                return contents.status();
             }
-            std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-            std::size_t index = contents.find(queried_value);
+            std::size_t index = contents->find(queried_value);
             if (index != std::string::npos) {
-                int trace_id_index = contents.rfind("Trace ID", index);
-                std::string trace_id = contents.substr(trace_id_index + 10, TRACE_ID_LENGTH);
+                int trace_id_index = contents->rfind("Trace ID", index);
+                std::string trace_id = contents->substr(trace_id_index + 10, TRACE_ID_LENGTH);
                 to_return[object_names[i]].push_back(trace_id);
             }
         }
     } else {
         for (uint64_t i=0; i < object_names.size(); i++) {
-            auto reader = client->ReadObject(TRACE_STRUCT_BUCKET, object_names[i]);
-            if (!reader) {
-                std::cerr << "Error reading object: " << reader.status() << object_names[i] << "\n";
-                throw std::runtime_error("Error reading node object");
-                return reader.status();
+            StatusOr<std::string> contents = read_object(
+                std::string(TRACE_STRUCT_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX),
+                object_names[i], client);
+            if (!contents.ok()) {
+                std::cerr << "get_return_value_from_objnames: could not read object " << object_names[i] << std::endl;
+                return contents.status();
             }
-            std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-            std::vector<std::string> lines = split_by_string(contents, newline);
+            std::vector<std::string> lines = split_by_string(contents.value(), newline);
             for (uint64_t j=0; j < lines.size(); j++) {
                 std::size_t trace_id_index = lines[j].find("Trace ID");
                 if (trace_id_index != std::string::npos) {
-                    std::string trace_id = contents.substr(trace_id_index+10, TRACE_ID_LENGTH);
+                    std::string trace_id = contents->substr(trace_id_index+10, TRACE_ID_LENGTH);
                     if (std::find(to_return[object_names[i]].begin(),
                                   to_return[object_names[i]].end(),
                                   trace_id)

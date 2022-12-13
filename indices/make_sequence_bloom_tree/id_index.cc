@@ -107,14 +107,13 @@ std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std
     auto batch_split = split_by_string(obj_name, hyphen);
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
     std::string suffix(BUCKETS_SUFFIX);
-    auto reader = client->ReadObject(trace_struct_bucket+suffix, obj_name);
-    if (!reader) {
-        std::cerr << "Error reading object: " << reader.status() << "\n";
-        throw std::runtime_error("Error reading trace object");
+    StatusOr<std::string> contents = read_object(trace_struct_bucket+suffix, obj_name, client);
+    if (!contents.ok()) {
+        std::cerr << "trace_ids_from_trace_id_object: error in getting contents" << std::endl;
+        return to_return;
     }
-    std::string contents{std::istreambuf_iterator<char>{reader}, {}};
 
-    std::vector<std::string> trace_and_spans = split_by_string(contents, newline);
+    std::vector<std::string> trace_and_spans = split_by_string(contents.value(), newline);
     for (uint64_t j=0; j < trace_and_spans.size(); j++) {
         if (trace_and_spans[j].find("Trace ID") != std::string::npos) {
             int start = trace_and_spans[j].find("Trace ID");
@@ -131,13 +130,14 @@ std::vector<std::string> span_ids_from_trace_id_object(gcs::Client* client, std:
     auto batch_split = split_by_string(obj_name, hyphen);
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
     std::string suffix(BUCKETS_SUFFIX);
-    auto reader = client->ReadObject(trace_struct_bucket+suffix, obj_name);
-    if (!reader) {
-        std::cerr << "Error reading object: " << reader.status() << "\n";
-        throw std::runtime_error("Error reading trace object");
+    StatusOr<std::string> contents = read_object(trace_struct_bucket+suffix, obj_name, client);
+    if (!contents.ok()) {
+        std::cerr << "span_ids_from_trace_id_object: error in getting contents" << std::endl;
+        return to_return;
     }
-    std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-    std::vector<std::string> trace_and_spans = split_by_string(contents, newline);
+
+    std::vector<std::string> trace_and_spans = split_by_string(contents.value(), newline);
+
     for (uint64_t j=0; j < trace_and_spans.size(); j++) {
         if (trace_and_spans[j].find("Trace ID") == std::string::npos && trace_and_spans[j].size() > 0) {
             std::vector<std::string> sp = split_by_string(trace_and_spans[j], colon);
@@ -150,17 +150,18 @@ std::vector<std::string> span_ids_from_trace_id_object(gcs::Client* client, std:
 std::vector<std::string> get_values_in_span_object(gcs::Client* client, std::string bucket_name,
     std::string object_name, property_type prop_type, get_value_func val_func) {
     std::vector<std::string> to_return;
-    auto reader = client->ReadObject(bucket_name, object_name);
-    if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
+
+    StatusOr<std::string> contents = read_object(bucket_name, object_name, client);
+
+    if (contents.status().code() == ::google::cloud::StatusCode::kNotFound) {
         // this is fine, just means nothing was put in this microservice for this batch
         return to_return;
-    } else if (!reader) {
-        std::cerr << "Error reading object: " << reader.status() << "\n";
+    } else if (!contents.ok()) {
+        std::cerr << "get_values_in_span_object: Error reading object: " << contents.status() << "\n";
         throw std::runtime_error("Error reading trace object");
     }
-    std::string contents{std::istreambuf_iterator<char>{reader}, {}};
     opentelemetry::proto::trace::v1::TracesData tracing_data;
-    bool ret = tracing_data.ParseFromString(contents);
+    bool ret = tracing_data.ParseFromString(contents.value());
     if (!ret) {
         throw std::runtime_error("could not parse span data");
     }
@@ -236,14 +237,13 @@ bloom_filter create_bloom_filter_partial_batch(
     auto values_unfiltered = values_from_trace_id_object(client, batch, property_name, prop_type, val_func);
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
     std::string suffix(BUCKETS_SUFFIX);
-    auto reader = client->ReadObject(trace_struct_bucket+suffix, batch);
-    if (!reader) {
-        std::cerr << "Error reading object: " << reader.status() << "\n";
+    StatusOr<std::string> contents = read_object(trace_struct_bucket+suffix, batch, client);
+    if (!contents.ok()) {
+        std::cerr << "create_bloom_filter_partial_batch: Error reading object: " << contents.status() << "\n";
         throw std::runtime_error("Error reading trace object");
     }
-    std::string contents{std::istreambuf_iterator<char>{reader}, {}};
     auto values = filter_trace_ids_based_on_query_timestamp(
-        values_unfiltered, batch, contents, earliest, latest, client);
+        values_unfiltered, batch, contents.value(), earliest, latest, client);
 
     for (uint64_t i=0; i < values.size(); i++) {
         filter.insert(values[i]);
@@ -309,7 +309,7 @@ Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch,
         throw std::runtime_error(metadata.status().message());
     }
 
-    // gonna double check this
+    // gonna double check this`
     auto reader = client->ReadObject(index_bucket, objname_stream.str());
     if (!reader) {
         std::cerr << "Error reading object: " << reader.status() << "\n";
@@ -535,6 +535,7 @@ int update_index(gcs::Client* client, std::string property_name, time_t granular
     property_type prop_type, get_value_func val_func) {
     std::string index_bucket = property_name;
     replace_all(index_bucket, ".", "-");
+    index_bucket = "index-" + index_bucket + std::string(BUCKETS_SUFFIX);
     time_t now;
     time(&now);
     //  time_t to_update = now-(now%granularity); // this is the right thing

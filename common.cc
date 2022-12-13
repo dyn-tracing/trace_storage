@@ -95,7 +95,27 @@ ot::TracesData read_object_and_parse_traces_data(
     return trace_data;
 }
 
-StatusOr<std::string> read_object(const std::string &bucket, const std::string &object, gcs::Client* client) {
+bool is_spans_bucket(std::string bucket) {
+    if (true == has_prefix(bucket, "index-")) {
+        return false;
+    }
+
+    if (true == has_prefix(bucket, TRACE_STRUCT_BUCKET_PREFIX)) {
+        return false;
+    }
+
+    if (true == has_prefix(bucket, TRACE_HASHES_BUCKET_PREFIX)) {
+        return false;
+    }
+
+    return true;
+}
+
+StatusOr<std::string> read_object(std::string bucket, std::string object, gcs::Client* client) {
+    if (true == is_spans_bucket(bucket)) {
+        object = bucket + "/"+ object;
+        bucket = "microservices" + std::string(BUCKETS_SUFFIX);
+    }
     auto reader = client->ReadObject(bucket, object);
     if (!reader) {
         return reader.status();
@@ -286,31 +306,32 @@ bool has_suffix(std::string fullString, std::string ending) {
     return false;
 }
 
+bool has_prefix(std::string fullString, std::string starting) {
+    if (fullString.length() >= starting.length()) {
+        return fullString.find(starting) == 0;
+    }
+    return false;
+}
+
 std::vector<std::string> get_spans_buckets_names(gcs::Client* client) {
     std::vector<std::string> response;
-
-    for (auto&& bucket_metadata : client->ListBucketsForProject(PROJECT_ID)) {
-        if (!bucket_metadata) {
-            std::cerr << bucket_metadata.status().message() << std::endl;
-            exit(1);
+    for (auto&& prefix : client->ListObjectsAndPrefixes(
+        std::string(SERVICES_BUCKET_PREFIX)+std::string(BUCKETS_SUFFIX), gcs::Delimiter("/"))) {
+        if (!prefix) {
+            std::cerr << "Error in getting prefixes" << std::endl;
+            return response;
         }
 
-        if (false == has_suffix(bucket_metadata->name(), BUCKETS_SUFFIX)) {
-            continue;
+        auto result = *std::move(prefix);
+        if (false == absl::holds_alternative<std::string>(result)) {
+            std::cerr << "Error in moving prefix in get_spans_buckets_names" << std::endl;
+            return response;
         }
-
-        if (true == bucket_metadata->labels().empty()) {
-            continue;
-        }
-
-        for (auto const& kv : bucket_metadata->labels()) {
-            if (kv.first == BUCKET_TYPE_LABEL_KEY && kv.second == BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS &&
-                bucket_metadata->name().find(BUCKETS_SUFFIX) != std::string::npos) {
-                response.push_back(bucket_metadata->name());
-            }
-        }
+        std::string res = absl::get<std::string>(result);
+        replace_all(res, "/", "");
+        response.push_back(res);
+        std::cout << "pushign back " << res << std::endl;
     }
-
     return response;
 }
 

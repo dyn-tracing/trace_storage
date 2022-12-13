@@ -9,7 +9,6 @@
 #include <vector>
 #include "common.h"
 
-const char TRACE_HASHES_BUCKET_PREFIX[] = "tracehashes";
 const char ASTERISK_SERVICE[] = "NONE";
 
 using ::google::cloud::StatusOr;

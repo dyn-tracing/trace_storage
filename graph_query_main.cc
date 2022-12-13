@@ -83,22 +83,25 @@ QueryData frontend_span_ids() {
 
 QueryData duration_condition() {
     QueryData query;
-    query.graph.num_nodes = 2;
-    query.graph.node_names.insert(std::make_pair(0, "emailservice"));
-    query.graph.node_names.insert(std::make_pair(1, "recommendationservice"));
+    query.graph.num_nodes = 3;
+    query.graph.node_names.insert(std::make_pair(0, "SparrowGalliano"));
+    query.graph.node_names.insert(std::make_pair(1, "FalconHitPink"));
+    query.graph.node_names.insert(std::make_pair(2, "FalconHitPink"));
+
     query.graph.edges.insert(std::make_pair(0, 1));
+    query.graph.edges.insert(std::make_pair(0, 2));
 
     // query condition
     query_condition condition1;
     condition1.node_index = 0;
-    condition1.type = int_value;
+    condition1.type = string_value;
     get_value_func condition_1_union;
     condition1.func = condition_1_union;
-    condition1.node_property_value = "400";
-    condition1.comp = Greater_than;
-    condition1.property_name = "duration";
-    condition1.is_latency_condition = true;
-
+    condition1.node_property_value = "540";
+    condition1.comp = Equal_to;
+    condition1.property_name = "http.status_code";
+    condition1.is_latency_condition = false;
+    condition1.is_attribute_condition = true;
 
     query.conditions.push_back(condition1);
 
@@ -143,9 +146,9 @@ QueryData height_at_least_four() {
 QueryData canonical() {
     QueryData query;
     query.graph.num_nodes = 3;
-    query.graph.node_names.insert(std::make_pair(0, "ElkCrimsonGlory"));
-    query.graph.node_names.insert(std::make_pair(1, "JaguarConifer"));
-    query.graph.node_names.insert(std::make_pair(2, "TarsierBunting"));
+    query.graph.node_names.insert(std::make_pair(0, "SparrowGalliano"));
+    query.graph.node_names.insert(std::make_pair(1, "FalconHitPink"));
+    query.graph.node_names.insert(std::make_pair(2, "FalconHitPink"));
 
     query.graph.edges.insert(std::make_pair(0, 1));
     query.graph.edges.insert(std::make_pair(0, 2));
@@ -187,8 +190,8 @@ int main(int argc, char* argv[]) {
 
     std::vector<time_t> times(n, 0);
     for (int i = 0; i < n; i++) {
-        QueryData data = general_graph_query_test2();
-        auto time_taken = perform_query(data, false, 1670939801, 1670939801, &client);
+        QueryData data = duration_condition();
+        auto time_taken = perform_query(data, true, 1670939801, 1670939801, &client);
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;
     }

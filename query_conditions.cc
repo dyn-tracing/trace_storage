@@ -32,14 +32,51 @@ std::string get_value_as_string(const ot::Span* sp,
     }
 }
 
+bool does_attribute_condition_hold(const ot::Span* sp, const query_condition condition) {
+    const opentelemetry::proto::common::v1::KeyValue* attribute;
+
+    for (int64_t i=0; i < sp->attributes_size(); i++) {
+        attribute = &(sp->attributes(i));
+        const opentelemetry::proto::common::v1::AnyValue* val = &(attribute->value());
+        auto curr_attr_key = attribute->key();
+        std::string curr_attr_val = "";
+        switch (val->value_case()) {
+            case 1:
+                curr_attr_val = val->string_value();
+                break;
+            case 2:
+                curr_attr_val = val->bool_value() ? "true" : "false";
+                break;
+            case 3:
+                curr_attr_val = std::to_string(val->int_value());
+                break;
+            case 4:
+                curr_attr_val = std::to_string(val->double_value());
+                break;
+            default:
+                std::cerr << "Not supported attr type." << std::endl;
+                exit(1);
+                break;
+        }
+        if (condition.property_name == curr_attr_key) {
+            return does_value_satisfy_condition(curr_attr_val, condition);
+        }
+    }
+    // couldn't find the attribute, so probably not true for this span
+    return false;
+}
 
 bool does_condition_hold(const ot::Span* sp, const query_condition condition) {
     if (condition.is_latency_condition) {
         return does_latency_condition_hold(sp, condition);
+    } else if (condition.is_attribute_condition) {
+        return does_attribute_condition_hold(sp, condition);
     }
     switch (condition.type) {
         case string_value: {
+            std::cout << "In string val" << std::endl;
             const std::string span_value = (sp->*condition.func.string_func)();
+            std::cout << "In2 string val" << std::endl;
             switch (condition.comp) {
                 case Equal_to:
                     return span_value.compare(condition.node_property_value) == 0;
@@ -154,7 +191,7 @@ bool does_end_time_condition_hold(const ot::Span* sp, const query_condition cond
 bool does_value_satisfy_condition(std::string value, query_condition condition) {
     switch (condition.comp) {
         case Equal_to:
-            return value == condition.node_property_value;
+            return value.compare(condition.node_property_value) == 0;
         case Less_than:
             return value < condition.node_property_value;
         case Greater_than:
