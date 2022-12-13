@@ -30,15 +30,13 @@ const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
 const char PROJECT_ID[] = "dynamic-tracing";
 const char BUCKETS_LOCATION[] = "us-central1";
 
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-quest-only-three-buckets";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-quest-only-three-buckets";
-const char BUCKETS_SUFFIX[] = "-quest-only-three-buckets";
+const char BUCKETS_SUFFIX[] = "-quest-new-one-csv";
 
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
 const char TRACE_HASHES_BUCKET_PREFIX[] = "tracehashes";
 
 // regarding the hack of changing buckets to folders
-const char SERVICES_BUCKET_PREFIX[] = "microservices"; 
+const char SERVICES_BUCKET_PREFIX[] = "microservices";
 const int TRACE_ID_LENGTH = 32;
 const int SPAN_ID_LENGTH = 16;
 const int element_count = 10000;
