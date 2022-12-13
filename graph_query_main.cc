@@ -225,6 +225,7 @@ int main(int argc, char* argv[]) {
     // QueryData data = frontend_span_ids();
     // QueryData data = duration_condition();
     // QueryData data = height_at_least_four();
+    QueryData data = general_graph_query();
     int n = 1;
     if (argc > 1) {
         n = std::stoi(argv[1]);
@@ -232,8 +233,8 @@ int main(int argc, char* argv[]) {
 
     std::vector<time_t> times(n, 0);
     for (int i = 0; i < n; i++) {
-        auto time_taken = perform_trace_query("0b14258715919241051298000e1cb600", 1670932409, 1670966010, &client);
-        // auto time_taken = perform_query(data, true, 1670932409, 1670966010, &client);
+        //auto time_taken = perform_trace_query("0b14258715919241051298000e1cb600", 1670932409, 1670966010, &client);
+        auto time_taken = perform_query(data, true, 1670932409, 1670966010, &client);
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;
     }
