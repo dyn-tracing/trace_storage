@@ -128,7 +128,7 @@ std::vector<std::unordered_map<int, int>> get_isomorphism_mappings(
 StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_trace_ids(
     std::string prefix, trace_structure query_trace, int start_time, int end_time,
     const std::vector<std::string>& all_object_names, gcs::Client* client);
-trace_structure morph_trace_object_to_trace_structure(std::string &trace);
+trace_structure morph_trace_object_to_trace_structure(const std::string &trace);
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure &input_graph);
 StatusOr<std::vector<std::string>> get_trace_ids_from_trace_hashes_object(
     const std::string &object_name, gcs::Client* client);

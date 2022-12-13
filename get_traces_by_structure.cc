@@ -414,7 +414,7 @@ StatusOr<std::vector<std::string>> get_trace_ids_from_trace_hashes_object(
     return response;
 }
 
-trace_structure morph_trace_object_to_trace_structure(std::string &trace) {
+trace_structure morph_trace_object_to_trace_structure(const std::string &trace) {
     trace_structure response;
 
     std::unordered_map<std::string, std::string> span_to_service;
