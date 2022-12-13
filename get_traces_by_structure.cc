@@ -135,8 +135,9 @@ StatusOr<std::string> get_examplar_from_prefix(std::string prefix, gcs::Client* 
         break;
     }
 
-    auto response_trace_ids_or_status = get_trace_ids_from_trace_hashes_object(object_name, client);
+    StatusOr<std::vector<std::string>> response_trace_ids_or_status = read_trace_ids_from_trace_hashes_object(object_name, client);
     if (!response_trace_ids_or_status.ok()) {
+        std::cerr << "get_examplar_from_prefix: didn't get response trace IDs" << std::endl;
         return response_trace_ids_or_status.status();
     }
 
@@ -191,7 +192,7 @@ Status get_traces_by_structure_data(
         return Status();
     }
 
-    auto response_trace_ids_or_status = get_trace_ids_from_trace_hashes_object(hashes_bucket_object_name, client);
+    StatusOr<std::vector<std::string>> response_trace_ids_or_status = read_trace_ids_from_trace_hashes_object(hashes_bucket_object_name, client);
 
     if (!response_trace_ids_or_status.ok()) {
         return Status(

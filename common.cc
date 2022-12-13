@@ -68,8 +68,6 @@ bool is_same_hex_str(const std::string &data, const std::string &compare) {
     return true;
 }
 
-
-
 ot::TracesData read_object_and_parse_traces_data(
     const std::string &bucket, const std::string& object_name, gcs::Client* client
 ) {
@@ -109,6 +107,27 @@ bool is_spans_bucket(std::string bucket) {
     }
 
     return true;
+}
+
+StatusOr<std::vector<std::string>> read_trace_ids_from_trace_hashes_object(
+    const std::string &object_name, gcs::Client* client) {
+    auto reader = client->ReadObject(std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX), object_name);
+    if (!reader) {
+        if (reader.status().code() == google::cloud::StatusCode::kNotFound) {
+            std::vector<std::string> res;
+            return res;
+        }
+        return reader.status();
+    }
+
+    std::vector<std::string> response;
+    std::string line;
+    while (std::getline(reader, line, '\n')) {
+        if (line != "") {
+            response.push_back(line);
+        }
+    }
+    return response;
 }
 
 StatusOr<std::string> read_object(std::string bucket, std::string object, gcs::Client* client) {
