@@ -30,9 +30,13 @@ const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
 const char PROJECT_ID[] = "dynamic-tracing";
 const char BUCKETS_LOCATION[] = "us-central1";
 
-const char BUCKETS_SUFFIX[] = "-quest-only-three-buckets";
+const char BUCKETS_SUFFIX[] = "-quest-new-one-csv";
 
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
+const char TRACE_HASHES_BUCKET_PREFIX[] = "tracehashes";
+
+// regarding the hack of changing buckets to folders
+const char SERVICES_BUCKET_PREFIX[] = "microservices";
 const char TRACE_HASHES_BUCKET_PREFIX[] = "tracehashes";
 
 // regarding the hack of changing buckets to folders
@@ -73,8 +77,10 @@ bool greater_than(time_t first, std::string second);
 time_t time_t_from_string(std::string str);
 bool has_suffix(std::string fullString, std::string ending);
 bool has_prefix(std::string fullString, std::string starting);
+bool has_prefix(std::string fullString, std::string starting);
 
 /// *********** string processing according to system conventions **********
+bool is_spans_bucket(std::string bucket);
 bool is_spans_bucket(std::string bucket);
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
     const std::string &spans_data, const std::vector<std::string> &trace_ids);
@@ -93,6 +99,7 @@ time_t get_lowest_time_val(gcs::Client* client);
 /// **************** GCS processing ********************************
 opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
     const std::string &bucket, const std::string &object_name, gcs::Client* client);
+StatusOr<std::string> read_object(std::string bucket, std::string object, gcs::Client* client);
 StatusOr<std::string> read_object(std::string bucket, std::string object, gcs::Client* client);
 
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(

@@ -8,7 +8,80 @@ struct QueryData {
     return_value ret;
 };
 
-QueryData general_graph_query_test2() {
+std::string fetch_obj_name_from_index(std::string trace_id, int start_time, int end_time, gcs::Client* client) {
+    StatusOr<objname_to_matching_trace_ids> res_tup = query_bloom_index_for_value(client,
+        trace_id, "index-trace-id-quest-new-one-csv", start_time, end_time);
+    if (!res_tup.ok()) {
+        std::cout << "am sad" << std::endl;
+        return "";
+    }
+    for (auto& [objname, trace_ids] : res_tup.value()) {
+        return objname;
+    }
+    return "";
+}
+
+QueryData trace_id_query() {
+    QueryData query;
+    // query trace structure
+    query.graph.num_nodes = 3;
+    query.graph.node_names.insert(std::make_pair(0, "ElkCrimsonGlory"));
+    query.graph.node_names.insert(std::make_pair(1, "BatSkyMagenta"));
+    query.graph.node_names.insert(std::make_pair(2, "MartenPersianOrange"));
+
+    query.graph.edges.insert(std::make_pair(0, 1));
+    query.graph.edges.insert(std::make_pair(1, 2));
+
+
+    query_condition condition1;
+    condition1.node_index = 0;
+    condition1.type = int_value;
+    get_value_func condition_1_union;
+    condition_1_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
+    condition1.func = condition_1_union;
+    condition1.node_property_value = "0b14258715919241051298000e1cb600";
+    query.conditions.push_back(condition1);
+
+    query.ret.node_index = 1;
+    query.ret.type = bytes_value;
+    get_value_func ret_union;
+    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
+
+    query.ret.func = ret_union;
+    return query;
+}
+
+QueryData general_graph_query() {
+    QueryData query;
+    // query trace structure
+    query.graph.num_nodes = 3;
+    query.graph.node_names.insert(std::make_pair(0, "frontend"));
+    query.graph.node_names.insert(std::make_pair(1, "adservice"));
+    query.graph.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
+
+    query.graph.edges.insert(std::make_pair(0, 1));
+    query.graph.edges.insert(std::make_pair(1, 2));
+
+
+    query_condition condition1;
+    condition1.node_index = 0;
+    condition1.type = int_value;
+    get_value_func condition_1_union;
+    condition_1_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
+    condition1.func = condition_1_union;
+    condition1.node_property_value = "0b14258715919241051298000e1cb600";
+    query.conditions.push_back(condition1);
+
+    query.ret.node_index = 1;
+    query.ret.type = bytes_value;
+    get_value_func ret_union;
+    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
+
+    query.ret.func = ret_union;
+    return query;
+}
+
+QueryData general_graph_query() {
     QueryData query;
     // query trace structure
     query.graph.num_nodes = 3;
@@ -175,6 +248,19 @@ int64_t perform_query(QueryData query_data, bool verbose, time_t start_time, tim
     return milliseconds;
 }
 
+int64_t perform_trace_query(std::string trace_id, time_t start_time, time_t end_time, gcs::Client* client) {
+    boost::posix_time::ptime start, stop;
+    start = boost::posix_time::microsec_clock::local_time();
+
+    std::string res = fetch_obj_name_from_index(trace_id, start_time, end_time, client);
+    stop = boost::posix_time::microsec_clock::local_time();
+
+    boost::posix_time::time_duration dur = stop - start;
+    int64_t milliseconds = dur.total_milliseconds();
+    std::cout << "Results: " << res << std::endl;
+    return milliseconds;
+}
+
 int main(int argc, char* argv[]) {
     auto client = gcs::Client();
 
@@ -190,8 +276,8 @@ int main(int argc, char* argv[]) {
 
     std::vector<time_t> times(n, 0);
     for (int i = 0; i < n; i++) {
-        QueryData data = duration_condition();
-        auto time_taken = perform_query(data, true, 1670939801, 1670939801, &client);
+        auto time_taken = perform_trace_query("0b14258715919241051298000e1cb600", 1670932409, 1670966010, &client);
+        // auto time_taken = perform_query(data, true, 1670932409, 1670966010, &client);
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;
     }

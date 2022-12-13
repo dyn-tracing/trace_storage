@@ -129,7 +129,9 @@ std::map<std::string, iso_to_span_id> get_iso_map_to_span_id_info(
     std::map<std::string, iso_to_span_id> res;
 
     for (auto [k, v] : struct_results.object_name_to_trace_ids_of_interest) {
-        auto structural_object_ = read_object(std::string(TRACE_STRUCT_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX), struct_results.object_names[k], client);
+        auto structural_object_ = read_object(
+            std::string(TRACE_STRUCT_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX),
+            struct_results.object_names[k], client);
         auto structural_object = structural_object_.value();
 
         for (auto trace_id_index : v) {
@@ -200,6 +202,7 @@ ret_req_data fetch_return_data(
 StatusOr<std::tuple<index_type, time_t>> is_indexed(const query_condition *condition, gcs::Client* client) {
     std::string bucket_name = condition->property_name;
     replace_all(bucket_name, ".", "-");
+    bucket_name = "index-" + bucket_name + BUCKETS_SUFFIX;
     StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->GetBucketMetadata(bucket_name);
     if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound ||
