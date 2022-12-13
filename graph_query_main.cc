@@ -55,26 +55,12 @@ QueryData general_graph_query() {
     QueryData query;
     // query trace structure
     query.graph.num_nodes = 3;
-    query.graph.node_names.insert(std::make_pair(0, "frontend"));
-    query.graph.node_names.insert(std::make_pair(1, "adservice"));
-    query.graph.node_names.insert(std::make_pair(2, ASTERISK_SERVICE));
+    query.graph.node_names.insert(std::make_pair(0, "ElkCrimsonGlory"));
+    query.graph.node_names.insert(std::make_pair(1, "BatSkyMagenta"));
+    query.graph.node_names.insert(std::make_pair(2, "MartenPersianOrange"));
 
     query.graph.edges.insert(std::make_pair(0, 1));
-    query.graph.edges.insert(std::make_pair(1, 2));
-
-    // query condition
-    query_condition condition1;
-    condition1.node_index = 0;
-    condition1.type = int_value;
-    get_value_func condition_1_union;
-    condition1.func = condition_1_union;
-    condition1.node_property_value = "100000000";
-    condition1.comp = Greater_than;
-    condition1.property_name = "duration";
-    condition1.is_latency_condition = true;
-
-
-    query.conditions.push_back(condition1);
+    query.graph.edges.insert(std::make_pair(0, 2));
 
     query.ret.node_index = 1;
     query.ret.type = bytes_value;
@@ -239,6 +225,7 @@ int main(int argc, char* argv[]) {
     // QueryData data = frontend_span_ids();
     // QueryData data = duration_condition();
     // QueryData data = height_at_least_four();
+    QueryData data = general_graph_query();
     int n = 1;
     if (argc > 1) {
         n = std::stoi(argv[1]);
@@ -246,8 +233,8 @@ int main(int argc, char* argv[]) {
 
     std::vector<time_t> times(n, 0);
     for (int i = 0; i < n; i++) {
-        auto time_taken = perform_trace_query("0b14258715919241051298000e1cb600", 1670932409, 1670966010, &client);
-        // auto time_taken = perform_query(data, true, 1670932409, 1670966010, &client);
+        // auto time_taken = perform_trace_query("0b14258715919241051298000e1cb600", 1670932409, 1670966010, &client);
+        auto time_taken = perform_query(data, true, 1670932409, 1670966010, &client);
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;
     }

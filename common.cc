@@ -356,6 +356,11 @@ void print_progress(float progress, std::string label, bool verbose) {
     std::cout.flush();
 }
 
+void print_update(std::string to_print, bool verbose) {
+    if (!verbose) { return; }
+    std::cout << to_print << std::endl;
+}
+
 std::vector<std::string> generate_prefixes(time_t earliest, time_t latest) {
     // you want to generate a list of prefixes between earliest and latest
     // find the first digit at which they differ, then do a list on lowest to highest there
@@ -400,15 +405,12 @@ std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix
     std::vector<std::string> to_return;
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
     std::string suffix(BUCKETS_SUFFIX);
-    std::cout << "in get list result, prefix is " << prefix << std::endl;
-    std::cout << "get list result, looking in bucket " << trace_struct_bucket+suffix << std::endl;
     for (auto&& object_metadata : client->ListObjects(trace_struct_bucket+suffix, gcs::Prefix(prefix))) {
         if (!object_metadata) {
             throw std::runtime_error(object_metadata.status().message());
         }
         // before we push back, should make sure that it's actually between the bounds
         std::string name = object_metadata->name();
-        std::cout << "found name: " << name << std::endl;
         std::vector<std::string> times = split_by_string(name, hyphen);
         // we care about three of these:
         // if we are neatly between earliest and latest, or if we overlap on one side
@@ -461,7 +463,6 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
             }
         }
     }
-    std::cout << "in get batches between timestamps, size of to_return is " << to_return.size() << std::endl;
     return to_return;
 }
 

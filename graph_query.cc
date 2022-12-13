@@ -20,7 +20,7 @@ std::vector<std::string> query(
 
     std::future<StatusOr<traces_by_structure>> struct_filter_obj = std::async(std::launch::async,
         get_traces_by_structure,
-        query_trace, start_time, end_time, client);
+        query_trace, start_time, end_time, verbose, client);
 
     time_t earliest_last_updated = -1;
     std::vector<std::future<StatusOr<objname_to_matching_trace_ids>>> index_results_futures;

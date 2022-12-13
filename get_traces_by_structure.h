@@ -41,7 +41,7 @@ struct potential_prefix_struct {
 
 // This is the highest level function
 StatusOr<traces_by_structure> get_traces_by_structure(
-    trace_structure query_trace, int start_time, int end_time, gcs::Client* client);
+    trace_structure query_trace, int start_time, int end_time, bool verbose, gcs::Client* client);
 
 template < typename PropertyMapFirst, typename PropertyMapSecond >
 struct property_map_equivalent_custom {
@@ -131,6 +131,8 @@ StatusOr<traces_by_structure> process_trace_hashes_prefix_and_retrieve_relevant_
 trace_structure morph_trace_object_to_trace_structure(std::string &trace);
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure &input_graph);
 StatusOr<std::vector<std::string>> get_trace_ids_from_trace_hashes_object(
+    const std::string &object_name, gcs::Client* client);
+StatusOr<std::string> get_single_trace_id_from_trace_hashes_object(
     const std::string &object_name, gcs::Client* client);
 void print_trace_structure(trace_structure trace);
 StatusOr<potential_prefix_struct> get_potential_prefixes(
