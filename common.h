@@ -67,6 +67,7 @@ bool is_same_hex_str(const std::string &data, const std::string &compare);
 std::string strip_from_the_end(std::string object, char stripper);
 void replace_all(std::string& str, const std::string& from, const std::string& to);
 void print_progress(float progress, std::string label, bool verbose);
+void print_update(std::string to_print, bool verbose);
 bool less_than(std::string first, time_t second);
 bool greater_than(std::string first, time_t second);
 time_t time_t_from_string(std::string str);

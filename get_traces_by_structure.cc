@@ -1,10 +1,17 @@
 #include "get_traces_by_structure.h"
 
 StatusOr<traces_by_structure> get_traces_by_structure(
-    trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
+    trace_structure query_trace, int start_time, int end_time, bool verbose, gcs::Client* client) {
+    boost::posix_time::ptime start, stop, start_retrieve_prefixes, start_get_batches;
+    start = boost::posix_time::microsec_clock::local_time();
     BS::thread_pool pool;
+    stop = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration dur = stop - start;
+    print_update("Time to initialize thread pool: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
 
     std::string prefix_to_search = std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
+
+    start_retrieve_prefixes = boost::posix_time::microsec_clock::local_time();
 
     std::vector<std::future<StatusOr<potential_prefix_struct>>> future_potential_prefixes;
     for (auto&& prefix : client->ListObjectsAndPrefixes(prefix_to_search, gcs::Delimiter("/"))) {
@@ -33,8 +40,15 @@ StatusOr<traces_by_structure> get_traces_by_structure(
         if (!p.ok()) { std::cerr << "can't get prefixes" << std::endl; return p.status(); }
         batch_name_map[p->batch_name].push_back(std::make_pair(p->prefix, p->trace_id));
     }
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop - start_retrieve_prefixes;
+    print_update("Time to retrieve prefixes: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
 
+    start_get_batches = boost::posix_time::microsec_clock::local_time();
     std::vector<std::string> all_object_names = get_batches_between_timestamps(client, start_time, end_time);
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop - start_get_batches;
+    print_update("Time to get batches between timestamps: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     std::vector<std::future<StatusOr<traces_by_structure>>> response_futures;
 
     for (auto& [batch_name, prefix_and_trace_id] : batch_name_map) {
@@ -53,6 +67,9 @@ StatusOr<traces_by_structure> get_traces_by_structure(
         }
         merge_traces_by_struct(values_to_return.value(), &to_return);
     }
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop - start;
+    print_update("Time to go through structural filter: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
 
     return to_return;
 }
