@@ -56,7 +56,7 @@ QueryData trace_id_query() {
 // Done
 QueryData four_fan_out() {
     QueryData query;
-    query.graph.num_nodes = 5;
+    query.graph.num_nodes = 9;
     query.graph.node_names.insert(std::make_pair(0, "ElkCrimsonGlory"));
     query.graph.node_names.insert(std::make_pair(1, "JackalFreshAir"));
     query.graph.node_names.insert(std::make_pair(2, "PorpoiseSandwisp"));
