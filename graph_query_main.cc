@@ -141,7 +141,7 @@ QueryData height_at_least_four() {
     QueryData query;
     query.graph.num_nodes = 4;
     query.graph.node_names.insert(std::make_pair(0, "KoupreyMing"));
-    query.graph.node_names.insert(std::make_pair(1, "StingrayMabe"));
+    query.graph.node_names.insert(std::make_pair(1, "StingrayMabel"));
     query.graph.node_names.insert(std::make_pair(2, "QueleaSinopia"));
     query.graph.node_names.insert(std::make_pair(3, "MissingService"));
 
