@@ -107,19 +107,19 @@ std::vector<std::string> trace_ids_from_trace_id_object(gcs::Client* client, std
     auto batch_split = split_by_string(obj_name, hyphen);
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
     std::string suffix(BUCKETS_SUFFIX);
-    auto reader = client->ReadObject(trace_struct_bucket+suffix, obj_name);
-    if (!reader) {
-        std::cerr << "Error reading object: " << reader.status() << "\n";
-        throw std::runtime_error("Error reading trace object");
+    StatusOr<std::string> contents = read_object(trace_struct_bucket+suffix, obj_name, client);
+    if (!contents.ok()) {
+        std::cerr << "trace_ids_from_trace_id_object: error in getting contents" << std::endl;
+        return to_return;
     }
-    std::string contents{std::istreambuf_iterator<char>{reader}, {}};
 
-    std::vector<std::string> trace_and_spans = split_by_string(contents, newline);
+    std::vector<std::string> trace_and_spans = split_by_string(contents.value(), newline);
     for (uint64_t j=0; j < trace_and_spans.size(); j++) {
         if (trace_and_spans[j].find("Trace ID") != std::string::npos) {
             int start = trace_and_spans[j].find("Trace ID");
             std::string trace_id =
                 trace_and_spans[j].substr(start + 10, trace_and_spans[j].length() - 11);  // 8 is len of Trace ID
+            std::cout << "found trace ID " << trace_id << std::endl;
             to_return.push_back(trace_id);
         }
     }
@@ -131,13 +131,14 @@ std::vector<std::string> span_ids_from_trace_id_object(gcs::Client* client, std:
     auto batch_split = split_by_string(obj_name, hyphen);
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
     std::string suffix(BUCKETS_SUFFIX);
-    auto reader = client->ReadObject(trace_struct_bucket+suffix, obj_name);
-    if (!reader) {
-        std::cerr << "Error reading object: " << reader.status() << "\n";
-        throw std::runtime_error("Error reading trace object");
+    StatusOr<std::string> contents = read_object(trace_struct_bucket+suffix, obj_name, client);
+    if (!contents.ok()) {
+        std::cerr << "span_ids_from_trace_id_object: error in getting contents" << std::endl;
+        return to_return;
     }
-    std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-    std::vector<std::string> trace_and_spans = split_by_string(contents, newline);
+
+    std::vector<std::string> trace_and_spans = split_by_string(contents.value(), newline);
+
     for (uint64_t j=0; j < trace_and_spans.size(); j++) {
         if (trace_and_spans[j].find("Trace ID") == std::string::npos && trace_and_spans[j].size() > 0) {
             std::vector<std::string> sp = split_by_string(trace_and_spans[j], colon);
@@ -150,17 +151,18 @@ std::vector<std::string> span_ids_from_trace_id_object(gcs::Client* client, std:
 std::vector<std::string> get_values_in_span_object(gcs::Client* client, std::string bucket_name,
     std::string object_name, property_type prop_type, get_value_func val_func) {
     std::vector<std::string> to_return;
-    auto reader = client->ReadObject(bucket_name, object_name);
-    if (reader.status().code() == ::google::cloud::StatusCode::kNotFound) {
+
+    StatusOr<std::string> contents = read_object(bucket_name, object_name, client);
+
+    if (contents.status().code() == ::google::cloud::StatusCode::kNotFound) {
         // this is fine, just means nothing was put in this microservice for this batch
         return to_return;
-    } else if (!reader) {
-        std::cerr << "Error reading object: " << reader.status() << "\n";
+    } else if (!contents.ok()) {
+        std::cerr << "get_values_in_span_object: Error reading object: " << contents.status() << "\n";
         throw std::runtime_error("Error reading trace object");
     }
-    std::string contents{std::istreambuf_iterator<char>{reader}, {}};
     opentelemetry::proto::trace::v1::TracesData tracing_data;
-    bool ret = tracing_data.ParseFromString(contents);
+    bool ret = tracing_data.ParseFromString(contents.value());
     if (!ret) {
         throw std::runtime_error("could not parse span data");
     }
@@ -198,6 +200,7 @@ std::vector<std::string> values_from_trace_id_object(gcs::Client* client, std::s
 
 bloom_filter create_bloom_filter_entire_batch(gcs::Client* client, std::string batch,
     std::string property_name, property_type prop_type, get_value_func val_func) {
+    std::cout << "creating entire batch " << std::endl;
     bloom_parameters parameters;
 
     // How many elements roughly do we expect to insert?
@@ -236,14 +239,13 @@ bloom_filter create_bloom_filter_partial_batch(
     auto values_unfiltered = values_from_trace_id_object(client, batch, property_name, prop_type, val_func);
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
     std::string suffix(BUCKETS_SUFFIX);
-    auto reader = client->ReadObject(trace_struct_bucket+suffix, batch);
-    if (!reader) {
-        std::cerr << "Error reading object: " << reader.status() << "\n";
+    StatusOr<std::string> contents = read_object(trace_struct_bucket+suffix, batch, client);
+    if (!contents.ok()) {
+        std::cerr << "create_bloom_filter_partial_batch: Error reading object: " << contents.status() << "\n";
         throw std::runtime_error("Error reading trace object");
     }
-    std::string contents{std::istreambuf_iterator<char>{reader}, {}};
     auto values = filter_trace_ids_based_on_query_timestamp(
-        values_unfiltered, batch, contents, earliest, latest, client);
+        values_unfiltered, batch, contents.value(), earliest, latest, client);
 
     for (uint64_t i=0; i < values.size(); i++) {
         filter.insert(values[i]);
@@ -309,7 +311,7 @@ Leaf make_leaf(gcs::Client* client, BatchObjectNames &batch,
         throw std::runtime_error(metadata.status().message());
     }
 
-    // gonna double check this
+    // gonna double check this`
     auto reader = client->ReadObject(index_bucket, objname_stream.str());
     if (!reader) {
         std::cerr << "Error reading object: " << reader.status() << "\n";
@@ -486,6 +488,8 @@ std::vector<struct BatchObjectNames> split_batches_by_leaf(
         end_stream << timestamps[2];
         std::string end_str = end_stream.str();
         time_t end_time = stol(end_str);
+        std::cout << "start time is " << start_time << std::endl;
+        std::cout << "last updated is " << last_updated << std::endl;
         if (start_time-last_updated < 0) {
             // first one
             to_return[0].early.push_back(object_names[i]);
@@ -493,12 +497,15 @@ std::vector<struct BatchObjectNames> split_batches_by_leaf(
             time_t index_for_start = (start_time-last_updated) / granularity;
             time_t index_for_end = (end_time-last_updated) / granularity;
             if (index_for_start == index_for_end) {
+                std::cout << "pushing back inclusive" << std::endl;
                 to_return[index_for_start].inclusive.push_back(object_names[i]);
             } else {
                 if (static_cast<uint64_t>(index_for_end) < to_return.size()) {
+                    std::cout << "pushing back late and early" << std::endl;
                     to_return[index_for_start].late.push_back(object_names[i]);
                     to_return[index_for_end].early.push_back(object_names[i]);
                 } else {
+                    std::cout << "pushing back here" << std::endl;
                     to_return[index_for_start].late.push_back(object_names[i]);
                 }
             }
@@ -535,15 +542,16 @@ int update_index(gcs::Client* client, std::string property_name, time_t granular
     property_type prop_type, get_value_func val_func) {
     std::string index_bucket = property_name;
     replace_all(index_bucket, ".", "-");
+    index_bucket = "index-" + index_bucket + std::string(BUCKETS_SUFFIX);
     time_t now;
     time(&now);
-    //  time_t to_update = now-(now%granularity); // this is the right thing
+    time_t to_update = now-(now%granularity);
     time_t last_updated = create_index_bucket(client, index_bucket);
     if (last_updated == 0) {
         last_updated = get_lowest_time_val(client);
         last_updated = last_updated - (last_updated%granularity);
     }
-    time_t to_update = last_updated + (20*granularity);
+    // time_t to_update = last_updated + (20*granularity); // Used for testing
 
     std::vector<std::string> batches = get_batches_between_timestamps(client, last_updated, to_update);
     std::vector<BatchObjectNames> batches_by_leaf = split_batches_by_leaf(

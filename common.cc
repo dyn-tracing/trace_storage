@@ -95,7 +95,27 @@ ot::TracesData read_object_and_parse_traces_data(
     return trace_data;
 }
 
-StatusOr<std::string> read_object(const std::string &bucket, const std::string &object, gcs::Client* client) {
+bool is_spans_bucket(std::string bucket) {
+    if (true == has_prefix(bucket, "index-")) {
+        return false;
+    }
+
+    if (true == has_prefix(bucket, TRACE_STRUCT_BUCKET_PREFIX)) {
+        return false;
+    }
+
+    if (true == has_prefix(bucket, TRACE_HASHES_BUCKET_PREFIX)) {
+        return false;
+    }
+
+    return true;
+}
+
+StatusOr<std::string> read_object(std::string bucket, std::string object, gcs::Client* client) {
+    if (true == is_spans_bucket(bucket)) {
+        object = bucket + "/"+ object;
+        bucket = "microservices" + std::string(BUCKETS_SUFFIX);
+    }
     auto reader = client->ReadObject(bucket, object);
     if (!reader) {
         return reader.status();
@@ -286,31 +306,32 @@ bool has_suffix(std::string fullString, std::string ending) {
     return false;
 }
 
+bool has_prefix(std::string fullString, std::string starting) {
+    if (fullString.length() >= starting.length()) {
+        return fullString.find(starting) == 0;
+    }
+    return false;
+}
+
 std::vector<std::string> get_spans_buckets_names(gcs::Client* client) {
     std::vector<std::string> response;
-
-    for (auto&& bucket_metadata : client->ListBucketsForProject(PROJECT_ID)) {
-        if (!bucket_metadata) {
-            std::cerr << bucket_metadata.status().message() << std::endl;
-            exit(1);
+    for (auto&& prefix : client->ListObjectsAndPrefixes(
+        std::string(SERVICES_BUCKET_PREFIX)+std::string(BUCKETS_SUFFIX), gcs::Delimiter("/"))) {
+        if (!prefix) {
+            std::cerr << "Error in getting prefixes" << std::endl;
+            return response;
         }
 
-        if (false == has_suffix(bucket_metadata->name(), BUCKETS_SUFFIX)) {
-            continue;
+        auto result = *std::move(prefix);
+        if (false == absl::holds_alternative<std::string>(result)) {
+            std::cerr << "Error in moving prefix in get_spans_buckets_names" << std::endl;
+            return response;
         }
-
-        if (true == bucket_metadata->labels().empty()) {
-            continue;
-        }
-
-        for (auto const& kv : bucket_metadata->labels()) {
-            if (kv.first == BUCKET_TYPE_LABEL_KEY && kv.second == BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS &&
-                bucket_metadata->name().find(BUCKETS_SUFFIX) != std::string::npos) {
-                response.push_back(bucket_metadata->name());
-            }
-        }
+        std::string res = absl::get<std::string>(result);
+        replace_all(res, "/", "");
+        response.push_back(res);
+        std::cout << "pushign back " << res << std::endl;
     }
-
     return response;
 }
 
@@ -379,19 +400,22 @@ std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix
     std::vector<std::string> to_return;
     std::string trace_struct_bucket(TRACE_STRUCT_BUCKET_PREFIX);
     std::string suffix(BUCKETS_SUFFIX);
+    std::cout << "in get list result, prefix is " << prefix << std::endl;
+    std::cout << "get list result, looking in bucket " << trace_struct_bucket+suffix << std::endl;
     for (auto&& object_metadata : client->ListObjects(trace_struct_bucket+suffix, gcs::Prefix(prefix))) {
         if (!object_metadata) {
             throw std::runtime_error(object_metadata.status().message());
         }
         // before we push back, should make sure that it's actually between the bounds
         std::string name = object_metadata->name();
+        std::cout << "found name: " << name << std::endl;
         std::vector<std::string> times = split_by_string(name, hyphen);
         // we care about three of these:
         // if we are neatly between earliest and latest, or if we overlap on one side
-        if (less_than(earliest, times[1]) && less_than(earliest, times[2])) {
+        if (less_than(times[1], earliest) && less_than(times[2], earliest)) {
             // we're too far back, already indexed this, ignore
             continue;
-        } else if (greater_than(latest, times[1]) && greater_than(latest, times[2])) {
+        } else if (greater_than(times[1], latest) && greater_than(times[2], latest)) {
             // we're too far ahead;  we're still in the waiting period for this data
             continue;
         } else {
@@ -437,23 +461,16 @@ std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, tim
             }
         }
     }
+    std::cout << "in get batches between timestamps, size of to_return is " << to_return.size() << std::endl;
     return to_return;
 }
 
-bool less_than(time_t first, std::string second) {
-    std::stringstream sec_stream;
-    sec_stream << second;
-    std::string sec_str = sec_stream.str();
-    time_t s = stol(sec_str);
-    return first < s;
+bool less_than(std::string first, time_t second) {
+    return stol(first) < second;
 }
 
-bool greater_than(time_t first, std::string second) {
-    std::stringstream sec_stream;
-    sec_stream << second;
-    std::string sec_str = sec_stream.str();
-    time_t s = stol(sec_str);
-    return first > s;
+bool greater_than(std::string first, time_t second) {
+    return stol(first) > second;
 }
 
 time_t time_t_from_string(std::string str) {
@@ -503,5 +520,6 @@ time_t get_lowest_time_val(gcs::Client* client) {
             }
         }
     }
+    std::cout << "lowest time val is " << lowest_val << std::endl;
     return lowest_val;
 }

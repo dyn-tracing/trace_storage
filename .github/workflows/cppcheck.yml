@@ -11,7 +11,7 @@ jobs:
     - uses: actions/checkout@v1
     - uses: actions/setup-python@v1
     - run: pip install cpplint
-    - run: cpplint --recursive --exclude indices/make_sequence_bloom_tree/bloom_filter.hpp .
+    - run: cpplint --recursive --exclude indices/make_sequence_bloom_tree/bloom_filter.hpp --exclude BS_thread_pool.hpp .
   build:
     runs-on: ubuntu-latest
     steps:
@@ -33,4 +33,4 @@ jobs:
       with:
         path: "~/.cache/bazel"
         key: bazel
-    - run: bazel test //...
+    - run: bazel test //...  --cxxopt='-std=c++17'

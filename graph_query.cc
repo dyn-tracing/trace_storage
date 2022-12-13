@@ -129,7 +129,9 @@ std::map<std::string, iso_to_span_id> get_iso_map_to_span_id_info(
     std::map<std::string, iso_to_span_id> res;
 
     for (auto [k, v] : struct_results.object_name_to_trace_ids_of_interest) {
-        auto structural_object_ = read_object(TRACE_STRUCT_BUCKET, struct_results.object_names[k], client);
+        auto structural_object_ = read_object(
+            std::string(TRACE_STRUCT_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX),
+            struct_results.object_names[k], client);
         auto structural_object = structural_object_.value();
 
         for (auto trace_id_index : v) {
@@ -200,6 +202,7 @@ ret_req_data fetch_return_data(
 StatusOr<std::tuple<index_type, time_t>> is_indexed(const query_condition *condition, gcs::Client* client) {
     std::string bucket_name = condition->property_name;
     replace_all(bucket_name, ".", "-");
+    bucket_name = "index-" + bucket_name + BUCKETS_SUFFIX;
     StatusOr<gcs::BucketMetadata> bucket_metadata =
       client->GetBucketMetadata(bucket_name);
     if (bucket_metadata.status().code() == ::google::cloud::StatusCode::kNotFound ||
@@ -554,7 +557,7 @@ std::map<int, std::map<int, std::string>> get_iso_maps_indices_for_which_trace_s
             if (line.find(condition_service) != std::string::npos) {
                 auto span_info = split_by_string(line, colon);
                 node_ind_to_span_id_map[curr_condition.node_index] = span_info[1];
-                does_trace_satisfy_condition = does_span_satisfy_condition(
+                does_trace_satisfy_condition = does_trace_satisfy_condition || does_span_satisfy_condition(
                     span_info[1], span_info[2], curr_condition, evaluation_data);
             }
         }
@@ -578,7 +581,8 @@ bool does_span_satisfy_condition(
         sp = &(trace_data->resource_spans(0).scope_spans(0).spans(i));
 
         if (is_same_hex_str(sp->span_id(), span_id)) {
-            return does_condition_hold(sp, condition);
+            auto res = does_condition_hold(sp, condition);
+            return res;
         }
     }
     return false;

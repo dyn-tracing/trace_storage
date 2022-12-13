@@ -30,11 +30,13 @@ const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
 const char PROJECT_ID[] = "dynamic-tracing";
 const char BUCKETS_LOCATION[] = "us-central1";
 
-const char TRACE_STRUCT_BUCKET[] = "dyntraces-quest-small-for-testing";
-const char TRACE_HASHES_BUCKET[] = "tracehashes-quest-small-for-testing";
-const char BUCKETS_SUFFIX[] = "-quest-small-for-testing";
+const char BUCKETS_SUFFIX[] = "-quest-new-one-csv";
 
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
+const char TRACE_HASHES_BUCKET_PREFIX[] = "tracehashes";
+
+// regarding the hack of changing buckets to folders
+const char SERVICES_BUCKET_PREFIX[] = "microservices";
 const int TRACE_ID_LENGTH = 32;
 const int SPAN_ID_LENGTH = 16;
 const int element_count = 10000;
@@ -65,12 +67,14 @@ bool is_same_hex_str(const std::string &data, const std::string &compare);
 std::string strip_from_the_end(std::string object, char stripper);
 void replace_all(std::string& str, const std::string& from, const std::string& to);
 void print_progress(float progress, std::string label, bool verbose);
-bool less_than(time_t first, std::string second);
-bool greater_than(time_t first, std::string second);
+bool less_than(std::string first, time_t second);
+bool greater_than(std::string first, time_t second);
 time_t time_t_from_string(std::string str);
 bool has_suffix(std::string fullString, std::string ending);
+bool has_prefix(std::string fullString, std::string starting);
 
 /// *********** string processing according to system conventions **********
+bool is_spans_bucket(std::string bucket);
 std::map<std::string, std::pair<int, int>> get_timestamp_map_for_trace_ids(
     const std::string &spans_data, const std::vector<std::string> &trace_ids);
 bool object_could_have_out_of_bound_traces(std::pair<int, int> batch_time, int start_time, int end_time);
@@ -88,7 +92,7 @@ time_t get_lowest_time_val(gcs::Client* client);
 /// **************** GCS processing ********************************
 opentelemetry::proto::trace::v1::TracesData read_object_and_parse_traces_data(
     const std::string &bucket, const std::string &object_name, gcs::Client* client);
-StatusOr<std::string> read_object(const std::string &bucket, const std::string &object, gcs::Client* client);
+StatusOr<std::string> read_object(std::string bucket, std::string object, gcs::Client* client);
 
 std::vector<std::string> filter_trace_ids_based_on_query_timestamp(
     const std::vector<std::string> &trace_ids,
