@@ -262,36 +262,6 @@ StatusOr<potential_prefix_struct> get_potential_prefixes(
     };
 }
 
-StatusOr<traces_by_structure> get_traces_from_prefix_to_trace_ids(
-    std::string &prefix, std::vector<std::string> &trace_ids, std::string &object_content,
-    trace_structure query_trace, int start_time, int end_time, std::string &batch_name,
-    const std::vector<std::string>& all_object_names, bool verbose, gcs::Client* client) {
-
-    traces_by_structure cur_traces_by_structure;
-    std::string trace = extract_any_trace(trace_ids, object_content);
-    if (trace == "") { std::cout << "EMPTY TRACE" << std::endl; }
-    auto valid = check_examplar_validity(trace, query_trace, cur_traces_by_structure);
-    if (!valid.ok()) {
-        return valid.status();
-    }
-
-    if (!valid.value()) {
-        return cur_traces_by_structure;
-    }
-
-    auto root_service_name = get_root_service_name(trace);
-    for (auto batch_name : all_object_names) {
-        auto status = get_traces_by_structure_data(
-            client, prefix, batch_name,
-            root_service_name, start_time, end_time, cur_traces_by_structure);
-
-        if (!status.ok()) {
-            return status;
-        }
-    }
-    return cur_traces_by_structure;
-}
-
 StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
     std::vector<std::pair<std::string, std::string>> &prefix_to_trace_ids,
     trace_structure query_trace, int start_time, int end_time,
@@ -312,26 +282,32 @@ StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
     print_update("Time to retrieve object: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
 
     auto object_content = object_content_or_status.value();
-
-    std::vector<std::future<StatusOr<traces_by_structure>>> future_trace_by_structs;
     for (int64_t i=0; i < prefix_to_trace_ids.size(); i++) {
+        // TODO(jessberg): can do this loop in parallel
+        traces_by_structure cur_traces_by_structure;
         std::vector<std::string> trace_ids;
         trace_ids.push_back(std::get<1>(prefix_to_trace_ids[i]));
-
-        future_trace_by_structs.push_back(std::async(std::launch::async,
-            get_traces_from_prefix_to_trace_ids,
-            std::ref(std::get<0>(prefix_to_trace_ids[i])), std::ref(trace_ids),
-            std::ref(object_content), query_trace, start_time, end_time, std::ref(batch_name), all_object_names,
-            verbose, client));
-    }
-    for (int64_t i=0; i< future_trace_by_structs.size(); i++) {
-        StatusOr<traces_by_structure> ret = future_trace_by_structs[i].get();
-        if (!ret.ok()) {
-            std::cerr << "filter_by_query: parallelization problems" << std::endl;
-            return ret.status();
+        std::string trace = extract_any_trace(trace_ids, object_content);
+        auto valid = check_examplar_validity(trace, query_trace, cur_traces_by_structure);
+        if (!valid.ok()) {
+            return valid.status();
         }
-        merge_traces_by_struct(ret.value(), &to_return);
 
+        if (!valid.value()) {
+            continue;
+        }
+
+        auto root_service_name = get_root_service_name(trace);
+        for (auto batch_name : all_object_names) {
+            auto status = get_traces_by_structure_data(
+                client, std::get<0>(prefix_to_trace_ids[i]), batch_name,
+                root_service_name, start_time, end_time, cur_traces_by_structure);
+
+            if (!status.ok()) {
+                return status;
+            }
+        }
+        merge_traces_by_struct(cur_traces_by_structure, &to_return);
     }
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop - start;
@@ -466,7 +442,6 @@ trace_structure morph_trace_object_to_trace_structure(const std::string &trace) 
         std::vector<std::string> span_info = split_by_string(line, colon);
         if (span_info.size() != 4) {
             std::cerr << "Malformed trace found: \n" << trace << std::endl;
-            std::cerr << "Found line: " << line << std::endl;
             return response;
         }
 
