@@ -138,8 +138,8 @@ void print_trace_structure(trace_structure trace);
 StatusOr<potential_prefix_struct> get_potential_prefixes(
     std::string prefix, gcs::Client* client);
 void merge_traces_by_struct(const traces_by_structure &new_trace_by_struct, traces_by_structure* old);
-StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
-    std::vector<std::pair<std::string, std::string>> prefix_to_trace_ids,
+StatusOr<std::vector<traces_by_structure>> filter_by_query(std::string batch_name,
+    std::vector<std::pair<std::string, std::string>> &prefix_to_trace_ids,
     trace_structure query_trace, int start_time, int end_time,
-    const std::vector<std::string>& all_object_names, gcs::Client* client);
+    const std::vector<std::string>& all_object_names, bool verbose, gcs::Client* client);
 #endif  // BY_STRUCT_H_ // NOLINT

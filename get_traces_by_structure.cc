@@ -49,23 +49,25 @@ StatusOr<traces_by_structure> get_traces_by_structure(
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop - start_get_batches;
     print_update("Time to get batches between timestamps: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
-    std::vector<std::future<StatusOr<traces_by_structure>>> response_futures;
+    std::vector<std::future<StatusOr<std::vector<traces_by_structure>>>> response_futures;
 
     for (auto& [batch_name, prefix_and_trace_id] : batch_name_map) {
         response_futures.push_back(pool.submit(
-            filter_by_query, batch_name, prefix_and_trace_id,
-            query_trace, start_time, end_time, all_object_names, client));
+            filter_by_query, batch_name, std::ref(prefix_and_trace_id),
+            query_trace, start_time, end_time, all_object_names, false, client));
     }
 
     traces_by_structure to_return;
 
     for (int64_t i=0; i < response_futures.size(); i++) {
-        StatusOr<traces_by_structure> values_to_return = response_futures[i].get();
+        StatusOr<std::vector<traces_by_structure>> values_to_return = response_futures[i].get();
         if (!values_to_return.ok()) {
             std::cerr << "so sad for you, response futures are bad" << std::endl;
             return values_to_return.status();
         }
-        merge_traces_by_struct(values_to_return.value(), &to_return);
+        for (auto ele : values_to_return.value()) {
+            merge_traces_by_struct(ele, &to_return);
+        }
     }
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop - start;
@@ -261,46 +263,83 @@ StatusOr<potential_prefix_struct> get_potential_prefixes(
     };
 }
 
-StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
-    std::vector<std::pair<std::string, std::string>> prefix_to_trace_ids,
+StatusOr<traces_by_structure> filter_prefix_by_query(std::string &batch_name, std::string &prefix,
+    std::string &trace_id,
+    std::string &object_content, trace_structure &query_trace, int start_time, int end_time,
+    const std::vector<std::string> &all_object_names, bool verbose, gcs::Client* client) {
+    traces_by_structure cur_traces_by_structure;
+    std::string trace = extract_trace_from_traces_object(trace_id, object_content);
+    if (trace == "") {
+        std::cerr << "problematic" << std::endl;
+        return Status();  // TODO(jessberg): what is error code
+    }
+    auto valid = check_examplar_validity(trace, query_trace, cur_traces_by_structure);
+    if (!valid.ok()) {
+        return valid.status();
+    }
+
+    if (!valid.value()) {
+        traces_by_structure empty;
+        return empty;
+    }
+
+    auto root_service_name = get_root_service_name(trace);
+    for (auto batch_name : all_object_names) {
+        auto status = get_traces_by_structure_data(
+            client, prefix, batch_name,
+            root_service_name, start_time, end_time, cur_traces_by_structure);
+
+        if (!status.ok()) {
+            return status;
+        }
+    }
+    return cur_traces_by_structure;
+}
+
+StatusOr<std::vector<traces_by_structure>> filter_by_query(std::string batch_name,
+    std::vector<std::pair<std::string, std::string>> &prefix_to_trace_ids,
     trace_structure query_trace, int start_time, int end_time,
-    const std::vector<std::string>& all_object_names, gcs::Client* client) {
-    traces_by_structure to_return;
+    const std::vector<std::string>& all_object_names, bool verbose, gcs::Client* client) {
+
+    boost::posix_time::ptime start, stop;
+    boost::posix_time::time_duration dur;
+
+    start = boost::posix_time::microsec_clock::local_time();
+    std::vector<traces_by_structure> to_return;
     auto object_content_or_status = read_object(TRACE_STRUCT_BUCKET_PREFIX+std::string(BUCKETS_SUFFIX),
         batch_name, client);
     if (!object_content_or_status.ok()) {
         return Status(google::cloud::StatusCode::kUnavailable, "could not get examplar");
     }
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop - start;
+    print_update("Time to retrieve object: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
+    BS::thread_pool pool(5);  // TODO(jessberg): what is optimum val here?
 
     auto object_content = object_content_or_status.value();
+    std::vector<std::future<StatusOr<traces_by_structure>>> future_traces_by_structure;
     for (int64_t i=0; i < prefix_to_trace_ids.size(); i++) {
-        traces_by_structure cur_traces_by_structure;
-        std::vector<std::string> trace_ids;
-        trace_ids.push_back(std::get<1>(prefix_to_trace_ids[i]));
-        std::string trace = extract_any_trace(trace_ids, object_content);
-        auto valid = check_examplar_validity(trace, query_trace, cur_traces_by_structure);
-        if (!valid.ok()) {
-            return valid.status();
-        }
-
-        if (!valid.value()) {
-            continue;
-        }
-
-        auto root_service_name = get_root_service_name(trace);
-        for (auto batch_name : all_object_names) {
-            auto status = get_traces_by_structure_data(
-                client, std::get<0>(prefix_to_trace_ids[i]), batch_name,
-                root_service_name, start_time, end_time, cur_traces_by_structure);
-
-            if (!status.ok()) {
-                return status;
-            }
-        }
-        merge_traces_by_struct(cur_traces_by_structure, &to_return);
+        future_traces_by_structure.push_back(pool.submit(filter_prefix_by_query,
+            std::ref(batch_name), std::ref(std::get<0>(prefix_to_trace_ids[i])),
+            std::ref(std::get<1>(prefix_to_trace_ids[i])), std::ref(object_content),
+            std::ref(query_trace), start_time, end_time,
+            all_object_names, verbose, client));
     }
+    StatusOr<traces_by_structure> cur_traces_by_structure;
+    for (int64_t i=0; i < future_traces_by_structure.size(); i++) {
+        auto cur_traces_by_structure = future_traces_by_structure[i].get();
+        if (!cur_traces_by_structure.ok()) {
+            std::cerr << "oh no!" << std::endl;
+        }
+
+        to_return.push_back(cur_traces_by_structure.value());
+    }
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop - start;
+    print_update("Time to filter by query: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     return to_return;
 }
+
 
 std::string get_root_service_name(const std::string &trace) {
     for (const std::string& line : split_by_string(trace, newline)) {

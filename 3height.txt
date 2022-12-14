@@ -1,0 +1,42 @@
+Running height_at_least_four()
+intersection size is 1
+Total results: 4
+Time Taken: 29691 ms
+
+intersection size is 1
+Total results: 4
+Time Taken: 26889 ms
+
+intersection size is 1
+Total results: 4
+Time Taken: 25524 ms
+
+intersection size is 1
+Total results: 4
+Time Taken: 26142 ms
+
+intersection size is 1
+Total results: 4
+Time Taken: 26395 ms
+
+intersection size is 1
+Total results: 4
+Time Taken: 27499 ms
+
+intersection size is 1
+Total results: 4
+Time Taken: 24405 ms
+
+intersection size is 1
+Total results: 4
+Time Taken: 24228 ms
+
+intersection size is 1
+Total results: 4
+Time Taken: 24759 ms
+
+intersection size is 1
+Total results: 4
+Time Taken: 26021 ms
+
+Median: 26081.5

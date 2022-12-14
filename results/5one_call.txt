@@ -1,0 +1,42 @@
+Running service_calls_one_other()
+intersection size is 1
+Total results: 216
+Time Taken: 51436 ms
+
+intersection size is 1
+Total results: 216
+Time Taken: 47032 ms
+
+intersection size is 1
+Total results: 216
+Time Taken: 43506 ms
+
+intersection size is 1
+Total results: 216
+Time Taken: 42082 ms
+
+intersection size is 1
+Total results: 216
+Time Taken: 42451 ms
+
+intersection size is 1
+Total results: 216
+Time Taken: 41160 ms
+
+intersection size is 1
+Total results: 216
+Time Taken: 43075 ms
+
+intersection size is 1
+Total results: 216
+Time Taken: 43519 ms
+
+intersection size is 1
+Total results: 216
+Time Taken: 40875 ms
+
+intersection size is 1
+Total results: 216
+Time Taken: 42149 ms
+
+Median: 42763

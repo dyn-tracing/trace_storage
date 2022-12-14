@@ -75,8 +75,9 @@ ot::TracesData read_object_and_parse_traces_data(
 ) {
     auto data_ = read_object(bucket, object_name, client);
     if (!data_.ok()) {
-        std::cout << "data is not okay because " << data_.status().message() << std::endl;
-        exit(1);
+    std::cout << "data is not okay because " << data_.status().message() << std::endl;
+	std::cout << "bucket: " << bucket << " object name: " << object_name << std::endl;
+	exit(1);
     }
     auto data = data_.value();
 
