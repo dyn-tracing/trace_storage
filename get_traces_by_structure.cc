@@ -54,7 +54,7 @@ StatusOr<traces_by_structure> get_traces_by_structure(
     for (auto& [batch_name, prefix_and_trace_id] : batch_name_map) {
         response_futures.push_back(pool.submit(
             filter_by_query, batch_name, std::ref(prefix_and_trace_id),
-            query_trace, start_time, end_time, std::ref(all_object_names), false, client));
+            query_trace, start_time, end_time, all_object_names, false, client));
     }
 
     traces_by_structure to_return;
@@ -271,7 +271,7 @@ StatusOr<traces_by_structure> filter_prefix_by_query(std::string &batch_name, st
     std::string trace = extract_trace_from_traces_object(trace_id, object_content);
     if (trace == "") {
         std::cerr << "problematic" << std::endl;
-        return Status(); // TODO(jessberg): what is error code
+        return Status();  // TODO(jessberg): what is error code
     }
     auto valid = check_examplar_validity(trace, query_trace, cur_traces_by_structure);
     if (!valid.ok()) {
@@ -321,7 +321,8 @@ StatusOr<std::vector<traces_by_structure>> filter_by_query(std::string batch_nam
     for (int64_t i=0; i < prefix_to_trace_ids.size(); i++) {
         future_traces_by_structure.push_back(pool.submit(filter_prefix_by_query,
             std::ref(batch_name), std::ref(std::get<0>(prefix_to_trace_ids[i])),
-            std::ref(std::get<1>(prefix_to_trace_ids[i])), std::ref(object_content), std::ref(query_trace), start_time, end_time,
+            std::ref(std::get<1>(prefix_to_trace_ids[i])), std::ref(object_content), 
+            std::ref(query_trace), start_time, end_time,
             all_object_names, verbose, client));
     }
     StatusOr<traces_by_structure> cur_traces_by_structure;

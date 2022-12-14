@@ -120,7 +120,7 @@ QueryData duration_condition() {
     condition1.type = string_value;
     get_value_func condition_1_union;
     condition1.func = condition_1_union;
-    condition1.node_property_value = "310000000"; // 300 ms
+    condition1.node_property_value = "310000000";  // 300 ms
     condition1.comp = Less_than;
     condition1.property_name = "duration";
     condition1.is_latency_condition = true;
@@ -159,7 +159,6 @@ QueryData height_at_least_four() {
 }
 
 QueryData find_all_frontends() {
-    // TODO
     QueryData query;
     return query;
 }
