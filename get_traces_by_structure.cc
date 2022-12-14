@@ -321,7 +321,7 @@ StatusOr<std::vector<traces_by_structure>> filter_by_query(std::string batch_nam
     for (int64_t i=0; i < prefix_to_trace_ids.size(); i++) {
         future_traces_by_structure.push_back(pool.submit(filter_prefix_by_query,
             std::ref(batch_name), std::ref(std::get<0>(prefix_to_trace_ids[i])),
-            std::ref(std::get<1>(prefix_to_trace_ids[i])), std::ref(object_content), 
+            std::ref(std::get<1>(prefix_to_trace_ids[i])), std::ref(object_content),
             std::ref(query_trace), start_time, end_time,
             all_object_names, verbose, client));
     }
