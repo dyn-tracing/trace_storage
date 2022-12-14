@@ -1,0 +1,42 @@
+Running duration_condition()
+intersection size is 1
+Total results: 1
+Time Taken: 38119 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 31656 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 32290 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 28728 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 30119 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 29099 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 30197 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 29057 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 29984 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 29333 ms
+
+Median: 30051.5

@@ -1,0 +1,42 @@
+Running four_fan_out()
+intersection size is 1
+Total results: 45
+Time Taken: 39007 ms
+
+intersection size is 1
+Total results: 45
+Time Taken: 31640 ms
+
+intersection size is 1
+Total results: 45
+Time Taken: 31356 ms
+
+intersection size is 1
+Total results: 45
+Time Taken: 30702 ms
+
+intersection size is 1
+Total results: 45
+Time Taken: 30950 ms
+
+intersection size is 1
+Total results: 45
+Time Taken: 35821 ms
+
+intersection size is 1
+Total results: 45
+Time Taken: 30407 ms
+
+intersection size is 1
+Total results: 45
+Time Taken: 31825 ms
+
+intersection size is 1
+Total results: 45
+Time Taken: 30107 ms
+
+intersection size is 1
+Total results: 45
+Time Taken: 32853 ms
+
+Median: 31498

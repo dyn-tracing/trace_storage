@@ -73,10 +73,13 @@ bool is_same_hex_str(const std::string &data, const std::string &compare) {
 ot::TracesData read_object_and_parse_traces_data(
     const std::string &bucket, const std::string& object_name, gcs::Client* client
 ) {
+
     auto data_ = read_object(bucket, object_name, client);
     if (!data_.ok()) {
+
         std::cout << "data is not okay because " << data_.status().message() << std::endl;
-        exit(1);
+	std::cout << "bucket: " << bucket << " object name: " << object_name << std::endl;
+	exit(1);
     }
     auto data = data_.value();
 
