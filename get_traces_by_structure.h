@@ -33,15 +33,9 @@ struct trace_structure {
     std::multimap<int, int> edges;
 };
 
-struct potential_prefix_struct {
-    std::string prefix;
-    std::string batch_name;
-    std::string trace_id;
-};
-
 // This is the highest level function
 StatusOr<traces_by_structure> get_traces_by_structure(
-    trace_structure query_trace, int start_time, int end_time, bool verbose, gcs::Client* client);
+    trace_structure query_trace, int start_time, int end_time, gcs::Client* client);
 
 template < typename PropertyMapFirst, typename PropertyMapSecond >
 struct property_map_equivalent_custom {
@@ -132,14 +126,5 @@ trace_structure morph_trace_object_to_trace_structure(std::string &trace);
 graph_type morph_trace_structure_to_boost_graph_type(trace_structure &input_graph);
 StatusOr<std::vector<std::string>> get_trace_ids_from_trace_hashes_object(
     const std::string &object_name, gcs::Client* client);
-StatusOr<std::string> get_single_trace_id_from_trace_hashes_object(
-    const std::string &object_name, gcs::Client* client);
 void print_trace_structure(trace_structure trace);
-StatusOr<potential_prefix_struct> get_potential_prefixes(
-    std::string prefix, gcs::Client* client);
-void merge_traces_by_struct(const traces_by_structure &new_trace_by_struct, traces_by_structure* old);
-StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
-    std::vector<std::pair<std::string, std::string>> prefix_to_trace_ids,
-    trace_structure query_trace, int start_time, int end_time,
-    const std::vector<std::string>& all_object_names, gcs::Client* client);
 #endif  // BY_STRUCT_H_ // NOLINT

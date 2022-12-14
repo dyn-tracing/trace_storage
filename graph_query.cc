@@ -20,7 +20,7 @@ std::vector<std::string> query(
 
     std::future<StatusOr<traces_by_structure>> struct_filter_obj = std::async(std::launch::async,
         get_traces_by_structure,
-        query_trace, start_time, end_time, verbose, client);
+        query_trace, start_time, end_time, client);
 
     time_t earliest_last_updated = -1;
     std::vector<std::future<StatusOr<objname_to_matching_trace_ids>>> index_results_futures;
@@ -69,6 +69,7 @@ std::vector<std::string> query(
 
     objname_to_matching_trace_ids intersection = intersect_index_results(
         index_results, struct_results.value(), earliest_last_updated, verbose);
+
 
     std::cout << "intersection size is " << intersection.size() << std::endl;
 
@@ -189,6 +190,8 @@ ret_req_data fetch_return_data(
                 (response.find(service_name) ==
                     response.end())
             ) {
+                std::cout << "service_name: " << service_name << std::endl;
+
                 response[service_name] = read_object_and_parse_traces_data(
                     service_name+BUCKETS_SUFFIX, batch_name, client);
             }
