@@ -49,7 +49,7 @@ StatusOr<traces_by_structure> get_traces_by_structure(
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop - start_get_batches;
     print_update("Time to get batches between timestamps: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
-    std::vector<std::future<StatusOr<traces_by_structure>>> response_futures;
+    std::vector<std::future<StatusOr<std::vector<traces_by_structure>>>> response_futures;
 
     for (auto& [batch_name, prefix_and_trace_id] : batch_name_map) {
         response_futures.push_back(pool.submit(
@@ -60,12 +60,14 @@ StatusOr<traces_by_structure> get_traces_by_structure(
     traces_by_structure to_return;
 
     for (int64_t i=0; i < response_futures.size(); i++) {
-        StatusOr<traces_by_structure> values_to_return = response_futures[i].get();
+        StatusOr<std::vector<traces_by_structure>> values_to_return = response_futures[i].get();
         if (!values_to_return.ok()) {
             std::cerr << "so sad for you, response futures are bad" << std::endl;
             return values_to_return.status();
         }
-        merge_traces_by_struct(values_to_return.value(), &to_return);
+        for (int64_t j=0; j < values_to_return->size(); j++) {
+            merge_traces_by_struct(values_to_return.value()[j], &to_return);
+        }
     }
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop - start;
@@ -295,7 +297,7 @@ StatusOr<traces_by_structure> filter_prefix_by_query(std::string &batch_name, st
     return cur_traces_by_structure;
 }
 
-StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
+StatusOr<std::vector<traces_by_structure>> filter_by_query(std::string batch_name,
     std::vector<std::pair<std::string, std::string>> &prefix_to_trace_ids,
     trace_structure query_trace, int start_time, int end_time,
     const std::vector<std::string>& all_object_names, bool verbose, gcs::Client* client) {
@@ -304,7 +306,7 @@ StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
     boost::posix_time::time_duration dur;
 
     start = boost::posix_time::microsec_clock::local_time();
-    traces_by_structure to_return;
+    std::vector<traces_by_structure> to_return;
     auto object_content_or_status = read_object(TRACE_STRUCT_BUCKET_PREFIX+std::string(BUCKETS_SUFFIX),
         batch_name, client);
     if (!object_content_or_status.ok()) {
@@ -323,13 +325,12 @@ StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
             std::ref(std::get<1>(prefix_to_trace_ids[i])), std::ref(object_content), std::ref(query_trace), start_time, end_time,
             all_object_names, verbose, client));
     }
-    StatusOr<traces_by_structure> cur_traces_by_structure;
     for (int64_t i=0; i < future_traces_by_structure.size(); i++) {
         auto cur_traces_by_structure = future_traces_by_structure[i].get();
         if (!cur_traces_by_structure.ok()) {
             std::cerr << "oh no!" << std::endl;
         }
-        merge_traces_by_struct(cur_traces_by_structure.value(), &to_return);
+        to_return.push_back(cur_traces_by_structure.value());
     }
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop - start;
