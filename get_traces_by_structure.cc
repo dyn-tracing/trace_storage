@@ -53,8 +53,8 @@ StatusOr<traces_by_structure> get_traces_by_structure(
 
     for (auto& [batch_name, prefix_and_trace_id] : batch_name_map) {
         response_futures.push_back(pool.submit(
-            filter_by_query, batch_name, prefix_and_trace_id,
-            query_trace, start_time, end_time, all_object_names, client));
+            filter_by_query, batch_name, std::ref(prefix_and_trace_id),
+            query_trace, start_time, end_time, std::ref(all_object_names), false, client));
     }
 
     traces_by_structure to_return;
