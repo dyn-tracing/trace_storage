@@ -262,15 +262,16 @@ StatusOr<potential_prefix_struct> get_potential_prefixes(
     };
 }
 
-StatusOr<traces_by_structure> filter_prefix_by_query(std::string batch_name, std::string prefix,
-    std::string trace_id,
-    std::string object_content, trace_structure query_trace, int start_time, int end_time,
+StatusOr<traces_by_structure> filter_prefix_by_query(std::string &batch_name, std::string &prefix,
+    std::string &trace_id,
+    std::string &object_content, trace_structure &query_trace, int start_time, int end_time,
     const std::vector<std::string> &all_object_names, bool verbose, gcs::Client* client) {
     traces_by_structure cur_traces_by_structure;
-    // have to make it a vector so that it works with extract_any_trace
-    std::vector<std::string> trace_ids;
-    trace_ids.push_back(trace_id);
-    std::string trace = extract_any_trace(trace_ids, object_content);
+    std::string trace = extract_trace_from_traces_object(trace_id, object_content);
+    if (trace == "") {
+        std::cerr << "problematic" << std::endl;
+        return Status(); // TODO(jessberg): what is error code
+    }
     auto valid = check_examplar_validity(trace, query_trace, cur_traces_by_structure);
     if (!valid.ok()) {
         return valid.status();
@@ -318,7 +319,8 @@ StatusOr<traces_by_structure> filter_by_query(std::string batch_name,
     std::vector<std::future<StatusOr<traces_by_structure>>> future_traces_by_structure;
     for (int64_t i=0; i < prefix_to_trace_ids.size(); i++) {
         future_traces_by_structure.push_back(pool.submit(filter_prefix_by_query,
-            batch_name, std::get<0>(prefix_to_trace_ids[i]), std::get<1>(prefix_to_trace_ids[i]), object_content, query_trace, start_time, end_time,
+            std::ref(batch_name), std::ref(std::get<0>(prefix_to_trace_ids[i])),
+            std::ref(std::get<1>(prefix_to_trace_ids[i])), std::ref(object_content), std::ref(query_trace), start_time, end_time,
             all_object_names, verbose, client));
     }
     StatusOr<traces_by_structure> cur_traces_by_structure;
