@@ -4,6 +4,7 @@ StatusOr<traces_by_structure> get_traces_by_structure(
     trace_structure query_trace, int start_time, int end_time, gcs::Client* client) {
 
     std::vector<std::future<StatusOr<traces_by_structure>>> response_futures;
+    BS::thread_pool pool(500);
 
     std::string prefix_to_search = std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
     std::vector<std::string> all_object_names = get_batches_between_timestamps(client, start_time, end_time);
@@ -20,8 +21,7 @@ StatusOr<traces_by_structure> get_traces_by_structure(
                 google::cloud::StatusCode::kUnavailable, "error while moving prefix in get_traces_by_structure");
         }
 
-        response_futures.push_back(std::async(
-            std::launch::async, process_trace_hashes_prefix_and_retrieve_relevant_trace_ids,
+        response_futures.push_back(pool.submit(process_trace_hashes_prefix_and_retrieve_relevant_trace_ids,
             absl::get<std::string>(result), query_trace, start_time, end_time, all_object_names, client));
     }
 
