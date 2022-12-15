@@ -3,53 +3,53 @@ Loading: 0 packages loaded
 Analyzing: target //:graph_query (0 packages loaded, 0 targets configured)
 INFO: Analyzed target //:graph_query (0 packages loaded, 0 targets configured).
 INFO: Found 1 target...
-[0 / 3] [Prepa] BazelWorkspaceStatusAction stable-status.txt
+[0 / 4] [Prepa] BazelWorkspaceStatusAction stable-status.txt
 Target //:graph_query up-to-date:
   bazel-bin/graph_query
-INFO: Elapsed time: 0.266s, Critical Path: 0.01s
+INFO: Elapsed time: 0.257s, Critical Path: 0.01s
 INFO: 1 process: 1 internal.
 INFO: Build completed successfully, 1 total action
-INFO: Running command line: bazel-bin/graph_query 10 one_call
+INFO: Running command line: bazel-bin/graph_query 10 fanout
 INFO: Build completed successfully, 1 total action
-Running service_calls_one_other()
+Running four_fan_out()
 intersection size is 1
-Total results: 216
-Time Taken: 34610 ms
+Total results: 45
+Time Taken: 24042 ms
 
 intersection size is 1
-Total results: 216
-Time Taken: 28667 ms
+Total results: 45
+Time Taken: 16659 ms
 
 intersection size is 1
-Total results: 216
-Time Taken: 28737 ms
+Total results: 45
+Time Taken: 16814 ms
 
 intersection size is 1
-Total results: 216
-Time Taken: 28732 ms
+Total results: 45
+Time Taken: 16834 ms
 
 intersection size is 1
-Total results: 216
-Time Taken: 28146 ms
+Total results: 45
+Time Taken: 17254 ms
 
 intersection size is 1
-Total results: 216
-Time Taken: 27190 ms
+Total results: 45
+Time Taken: 17174 ms
 
 intersection size is 1
-Total results: 216
-Time Taken: 27573 ms
+Total results: 45
+Time Taken: 16763 ms
 
 intersection size is 1
-Total results: 216
-Time Taken: 27780 ms
+Total results: 45
+Time Taken: 16993 ms
 
 intersection size is 1
-Total results: 216
-Time Taken: 28622 ms
+Total results: 45
+Time Taken: 16640 ms
 
 intersection size is 1
-Total results: 216
-Time Taken: 28800 ms
+Total results: 45
+Time Taken: 16575 ms
 
-Median: 28644.5
+Median: 16824

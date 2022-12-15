@@ -1,3 +1,55 @@
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //:graph_query (0 packages loaded, 0 targets configured)
+INFO: Analyzed target //:graph_query (0 packages loaded, 0 targets configured).
+INFO: Found 1 target...
+[0 / 3] [Prepa] BazelWorkspaceStatusAction stable-status.txt
+Target //:graph_query up-to-date:
+  bazel-bin/graph_query
+INFO: Elapsed time: 0.267s, Critical Path: 0.01s
+INFO: 1 process: 1 internal.
+INFO: Build completed successfully, 1 total action
+INFO: Running command line: bazel-bin/graph_query 10 duration
+INFO: Build completed successfully, 1 total action
 Running duration_condition()
 intersection size is 1
-data is not okay because Permanent error in Read(): 
+Total results: 1
+Time Taken: 41234 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 35616 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 35745 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 34908 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 34582 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 34958 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 33887 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 34721 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 33625 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 33660 ms
+
+Median: 34814.5

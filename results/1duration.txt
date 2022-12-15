@@ -1,0 +1,114 @@
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //:graph_query (0 packages loaded, 0 targets configured)
+INFO: Analyzed target //:graph_query (0 packages loaded, 0 targets configured).
+INFO: Found 1 target...
+[0 / 4] [Prepa] BazelWorkspaceStatusAction stable-status.txt
+[11 / 23] Compiling query_conditions.cc; 1s linux-sandbox ... (10 actions running)
+[11 / 23] Compiling query_conditions.cc; 11s linux-sandbox ... (10 actions running)
+INFO: From Compiling query_conditions.cc:
+query_conditions.cc: In function 'bool does_latency_condition_hold(const opentelemetry::proto::trace::v1::Span*, query_condition)':
+query_conditions.cc:145:28: warning: comparison of integer expressions of different signedness: 'const __int64_t' {aka 'const long int'} and 'long unsigned int' [-Wsign-compare]
+  145 |             return latency == std::stoul(condition.node_property_value);
+      |                    ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+query_conditions.cc:147:28: warning: comparison of integer expressions of different signedness: 'const __int64_t' {aka 'const long int'} and 'long unsigned int' [-Wsign-compare]
+  147 |             return latency < std::stoul(condition.node_property_value);
+      |                    ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+query_conditions.cc:149:28: warning: comparison of integer expressions of different signedness: 'const __int64_t' {aka 'const long int'} and 'long unsigned int' [-Wsign-compare]
+  149 |             return latency > std::stoul(condition.node_property_value);
+      |                    ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+INFO: From Compiling indices/folders_index_query.cc:
+indices/folders_index_query.cc: In function 'google::cloud::v1_35_0::StatusOr<std::unordered_map<std::__cxx11::basic_string<char>, std::vector<std::__cxx11::basic_string<char> > > > get_obj_name_to_trace_ids_map_from_folders_index(std::string, std::string, int, int, google::cloud::storage::v1_35_0::Client*)':
+indices/folders_index_query.cc:28:20: warning: comparison of integer expressions of different signedness: 'int' and 'std::vector<std::future<google::cloud::v1_35_0::StatusOr<std::unordered_map<std::__cxx11::basic_string<char>, std::vector<std::__cxx11::basic_string<char> > > > > >::size_type' {aka 'long unsigned int'} [-Wsign-compare]
+   28 |  for (int i = 0; i < response_futures.size(); i++) {
+      |                  ~~^~~~~~~~~~~~~~~~~~~~~~~~~
+INFO: From Compiling indices/query_bloom_index.cc:
+indices/query_bloom_index.cc: In function 'google::cloud::v1_35_0::StatusOr<std::unordered_map<std::__cxx11::basic_string<char>, std::vector<std::__cxx11::basic_string<char> > > > query_bloom_index_for_value(google::cloud::storage::v1_35_0::Client*, std::string, std::string, time_t, time_t)':
+indices/query_bloom_index.cc:180:25: warning: comparison of integer expressions of different signedness: 'int' and 'std::vector<std::future<google::cloud::v1_35_0::StatusOr<bool> > >::size_type' {aka 'long unsigned int'} [-Wsign-compare]
+  180 |         for (int i=0; i < got_positive.size(); i++) {
+      |                       ~~^~~~~~~~~~~~~~~~~~~~~
+indices/query_bloom_index.cc:188:33: warning: comparison of integer expressions of different signedness: 'int' and 'std::vector<std::tuple<long int, long int> >::size_type' {aka 'long unsigned int'} [-Wsign-compare]
+  188 |                 for (int j=0; j < children.size(); j++) {
+      |                               ~~^~~~~~~~~~~~~~~~~
+indices/query_bloom_index.cc:201:21: warning: comparison of integer expressions of different signedness: 'int' and 'std::vector<std::future<google::cloud::v1_35_0::StatusOr<std::vector<std::__cxx11::basic_string<char> > > > >::size_type' {aka 'long unsigned int'} [-Wsign-compare]
+  201 |     for (int i=0; i < batches.size(); i++) {
+      |                   ~~^~~~~~~~~~~~~~~~
+indices/query_bloom_index.cc:207:25: warning: comparison of integer expressions of different signedness: 'int' and 'std::vector<std::__cxx11::basic_string<char> >::size_type' {aka 'long unsigned int'} [-Wsign-compare]
+  207 |         for (int j=0; j < verified.value().size(); j++) {
+      |                       ~~^~~~~~~~~~~~~~~~~~~~~~~~~
+[16 / 23] Compiling indices/make_folders_index/folders_index.cc; 17s linux-sandbox ... (5 actions running)
+INFO: From Compiling common.cc:
+common.cc: In function 'std::vector<std::__cxx11::basic_string<char> > generate_prefixes(time_t, time_t)':
+common.cc:385:15: warning: comparison of integer expressions of different signedness: 'int' and 'std::__cxx11::basic_string<char>::size_type' {aka 'long unsigned int'} [-Wsign-compare]
+  385 |     for ( ; i < e_str.length(); i++) {
+      |             ~~^~~~~~~~~~~~~~~~
+INFO: From Compiling graph_query.cc:
+graph_query.cc: In function 'std::vector<std::__cxx11::basic_string<char> > query(trace_structure, int, int, std::vector<query_condition>, return_value, bool, google::cloud::storage::v1_35_0::Client*)':
+graph_query.cc:85:27: warning: comparison of integer expressions of different signedness: 'int64_t' {aka 'long int'} and 'std::vector<std::future<std::vector<std::__cxx11::basic_string<char> > > >::size_type' {aka 'long unsigned int'} [-Wsign-compare]
+   85 |     for (int64_t i = 0; i < results_futures.size(); i++) {
+      |                         ~~^~~~~~~~~~~~~~~~~~~~~~~~
+[20 / 23] Compiling get_traces_by_structure.cc; 22s linux-sandbox
+INFO: From Compiling get_traces_by_structure.cc:
+get_traces_by_structure.cc: In function 'google::cloud::v1_35_0::StatusOr<traces_by_structure> get_traces_by_structure(trace_structure, int, int, bool, google::cloud::storage::v1_35_0::Client*)':
+get_traces_by_structure.cc:38:25: warning: comparison of integer expressions of different signedness: 'int64_t' {aka 'long int'} and 'std::vector<std::future<google::cloud::v1_35_0::StatusOr<potential_prefix_struct> > >::size_type' {aka 'long unsigned int'} [-Wsign-compare]
+   38 |     for (int64_t i=0; i < future_potential_prefixes.size(); i++) {
+      |                       ~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+get_traces_by_structure.cc:62:25: warning: comparison of integer expressions of different signedness: 'int64_t' {aka 'long int'} and 'std::vector<std::future<google::cloud::v1_35_0::StatusOr<std::vector<traces_by_structure> > > >::size_type' {aka 'long unsigned int'} [-Wsign-compare]
+   62 |     for (int64_t i=0; i < response_futures.size(); i++) {
+      |                       ~~^~~~~~~~~~~~~~~~~~~~~~~~~
+get_traces_by_structure.cc: In function 'google::cloud::v1_35_0::StatusOr<std::vector<traces_by_structure> > filter_by_query(std::string, std::vector<std::pair<std::__cxx11::basic_string<char>, std::__cxx11::basic_string<char> > >&, trace_structure, int, int, const std::vector<std::__cxx11::basic_string<char> >&, bool, google::cloud::storage::v1_35_0::Client*)':
+get_traces_by_structure.cc:321:25: warning: comparison of integer expressions of different signedness: 'int64_t' {aka 'long int'} and 'std::vector<std::pair<std::__cxx11::basic_string<char>, std::__cxx11::basic_string<char> > >::size_type' {aka 'long unsigned int'} [-Wsign-compare]
+  321 |     for (int64_t i=0; i < prefix_to_trace_ids.size(); i++) {
+      |                       ~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+get_traces_by_structure.cc:329:25: warning: comparison of integer expressions of different signedness: 'int64_t' {aka 'long int'} and 'std::vector<std::future<google::cloud::v1_35_0::StatusOr<traces_by_structure> > >::size_type' {aka 'long unsigned int'} [-Wsign-compare]
+  329 |     for (int64_t i=0; i < future_traces_by_structure.size(); i++) {
+      |                       ~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Target //:graph_query up-to-date:
+  bazel-bin/graph_query
+INFO: Elapsed time: 24.753s, Critical Path: 24.43s
+INFO: 12 processes: 1 internal, 11 linux-sandbox.
+INFO: Build completed successfully, 12 total actions
+INFO: Running command line: bazel-bin/graph_query 10 duration
+INFO: Build completed successfully, 12 total actions
+Running duration_condition()
+intersection size is 1
+Total results: 1
+Time Taken: 16970 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 13424 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 14432 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 11448 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 11667 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 12795 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 11490 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 11461 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 11777 ms
+
+intersection size is 1
+Total results: 1
+Time Taken: 12618 ms
+
+Median: 12197.5
