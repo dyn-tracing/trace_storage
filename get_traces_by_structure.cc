@@ -4,9 +4,7 @@ StatusOr<traces_by_structure> get_traces_by_structure(
     trace_structure query_trace, int start_time, int end_time, bool verbose, gcs::Client* client) {
     boost::posix_time::ptime start, stop, start_retrieve_prefixes, start_get_batches;
     start = boost::posix_time::microsec_clock::local_time();
-    BS::thread_pool pool(500);
-    stop = boost::posix_time::microsec_clock::local_time();
-    boost::posix_time::time_duration dur = stop - start;
+    boost::posix_time::time_duration dur;
     print_update("Time to initialize thread pool: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
 
 
@@ -45,6 +43,12 @@ std::string get_root_service_name(const std::string &trace) {
 StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_structure &query_trace,
     std::string &bucket_name, std::string object_name, std::vector<std::string> &all_object_names,
     time_t start_time, time_t end_time, gcs::Client* client) {
+
+    bool verbose = false;
+    boost::posix_time::ptime start, stop, start_batches;
+    start = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration dur;
+
     traces_by_structure ts;
     StatusOr<std::string> trace = read_object(bucket_name, object_name, client);
     if (!trace.ok()) {
@@ -52,6 +56,8 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
         std::cout << "trace status code " << trace.status().code() << std::endl;
         return trace.status();
     }
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop-start;
     std::string cleaned_trace = strip_from_the_end(trace.value().substr(0, trace->size()), '\n');
     auto valid = check_examplar_validity(cleaned_trace, query_trace, ts);
     if (!valid.ok()) {
@@ -61,32 +67,45 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
         traces_by_structure empty;
         return empty;
     }
-    std::cout << "fits the query!" << std::endl;
-    std::cout << "len all object names is " << all_object_names.size() << std::endl;
+    print_update("Time to retrieve first obj: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     auto root_service_name = get_root_service_name(trace.value());
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop-start;
+    print_update("Time for everything except getting data: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
+    start_batches= boost::posix_time::microsec_clock::local_time();
     for (auto batch_name : all_object_names) {
         auto status = get_traces_by_structure_data(
             client, object_name, batch_name,
             root_service_name, start_time, end_time, ts);
-	std::cout << "trace ids: " << ts.trace_ids.size() << std::endl;
 
         if (!status.ok()) {
             return status;
         }
     }
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop-start_batches;
+    print_update("Time for batches: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
+    dur = stop-start;
+    print_update("Time for read object and get data: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     return ts;
 }
 
 StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure &query_trace, time_t start_time, time_t end_time, gcs::Client* client) {
+
+    boost::posix_time::ptime start, stop, start_batches;
+    start = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration dur;
+
+
     std::string list_bucket_name = std::string(LIST_HASHES_BUCKET_PREFIX) + BUCKETS_SUFFIX;
     std::vector<std::string> all_object_names = get_batches_between_timestamps(client, start_time, end_time);
-    BS::thread_pool pool(500);
+    BS::thread_pool pool(700);
     std::vector<traces_by_structure> to_return;
 
     // here, we list all the objects in the bucket, because there is only one
     // object per prefix
     std::vector<std::future<StatusOr<traces_by_structure>>> future_traces_by_struct;
-    for (auto&& object_metadata : client->ListObjects(list_bucket_name, gcs::Delimiter("/"))) {
+    for (auto&& object_metadata : client->ListObjects(list_bucket_name)) {
         if (!object_metadata) {
             std::cerr << "Error in getting list objects" << std::endl;
             return object_metadata.status();
@@ -95,18 +114,27 @@ StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure 
             std::ref(query_trace), std::ref(list_bucket_name), object_metadata->name(), std::ref(all_object_names), start_time, end_time, client
         ));
     }
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop-start;
+    print_update("Time to list: " + std::to_string(dur.total_milliseconds()) + "\n", true);
+    /*
+    for (int i=0; i<5; i++) {
+	    std::cout << "tasks queued: " << pool.get_tasks_queued() << std::endl;
+	    std::cout << "tasks running: " << pool.get_tasks_running() << std::endl;
+	    sleep(1);
+    }
+    */
     for (int64_t i=0; i < future_traces_by_struct.size(); i++) {
         StatusOr<traces_by_structure> cur_traces_by_structure = future_traces_by_struct[i].get();
         if (!cur_traces_by_structure.ok()) {
             std::cerr << "sad, there's been an error" << std::endl;
             return cur_traces_by_structure.status();
         }
-	traces_by_structure empty;
-	if (cur_traces_by_structure->trace_ids.size() != 0) {
-		std::cout << "not empty!" << std::endl;
-	}
         to_return.push_back(cur_traces_by_structure.value());
     }
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop-start;
+    print_update("Time for filter data by query: " + std::to_string(dur.total_milliseconds()) + "\n", true);
     return to_return;
 }
 
@@ -221,14 +249,12 @@ Status get_traces_by_structure_data(
     time_t start_time, time_t end_time,
     traces_by_structure& to_return
 ) {
-	std::cout << "prefix is " << prefix << "and batch is " << batch_name << std::endl;
     auto hashes_bucket_object_name = prefix + "/" + batch_name;
 
     if (false == is_object_within_timespan(extract_batch_timestamps(batch_name), start_time, end_time)) {
         return Status();
     }
 
-    std::cout << "calling get trace ids from trace hashes object with  arg " << hashes_bucket_object_name << std::endl;
     auto response_trace_ids_or_status = get_trace_ids_from_trace_hashes_object(hashes_bucket_object_name, client);
 
     if (!response_trace_ids_or_status.ok()) {
@@ -239,7 +265,6 @@ Status get_traces_by_structure_data(
 
     auto response_trace_ids = response_trace_ids_or_status.value();
     if (response_trace_ids.size() < 1) {
-	   std::cout << "no trace ids in the trace hashes object" << std::endl;
         return Status();
     }
 
