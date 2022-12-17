@@ -62,11 +62,13 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
         return empty;
     }
     std::cout << "fits the query!" << std::endl;
+    std::cout << "len all object names is " << all_object_names.size() << std::endl;
     auto root_service_name = get_root_service_name(trace.value());
     for (auto batch_name : all_object_names) {
         auto status = get_traces_by_structure_data(
             client, object_name, batch_name,
             root_service_name, start_time, end_time, ts);
+	std::cout << "trace ids: " << ts.trace_ids.size() << std::endl;
 
         if (!status.ok()) {
             return status;
@@ -99,6 +101,10 @@ StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure 
             std::cerr << "sad, there's been an error" << std::endl;
             return cur_traces_by_structure.status();
         }
+	traces_by_structure empty;
+	if (cur_traces_by_structure->trace_ids.size() != 0) {
+		std::cout << "not empty!" << std::endl;
+	}
         to_return.push_back(cur_traces_by_structure.value());
     }
     return to_return;
@@ -215,12 +221,14 @@ Status get_traces_by_structure_data(
     time_t start_time, time_t end_time,
     traces_by_structure& to_return
 ) {
-    auto hashes_bucket_object_name = prefix + batch_name;
+	std::cout << "prefix is " << prefix << "and batch is " << batch_name << std::endl;
+    auto hashes_bucket_object_name = prefix + "/" + batch_name;
 
     if (false == is_object_within_timespan(extract_batch_timestamps(batch_name), start_time, end_time)) {
         return Status();
     }
 
+    std::cout << "calling get trace ids from trace hashes object with  arg " << hashes_bucket_object_name << std::endl;
     auto response_trace_ids_or_status = get_trace_ids_from_trace_hashes_object(hashes_bucket_object_name, client);
 
     if (!response_trace_ids_or_status.ok()) {
@@ -231,6 +239,7 @@ Status get_traces_by_structure_data(
 
     auto response_trace_ids = response_trace_ids_or_status.value();
     if (response_trace_ids.size() < 1) {
+	   std::cout << "no trace ids in the trace hashes object" << std::endl;
         return Status();
     }
 
