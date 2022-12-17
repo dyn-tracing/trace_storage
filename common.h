@@ -30,10 +30,11 @@ const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
 const char PROJECT_ID[] = "dynamic-tracing";
 const char BUCKETS_LOCATION[] = "us-central1";
 
-const char BUCKETS_SUFFIX[] = "-quest-hopefully-final";
+const char BUCKETS_SUFFIX[] = "-quest-test-new-bucket";
 
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
 const char TRACE_HASHES_BUCKET_PREFIX[] = "tracehashes";
+const char LIST_HASHES_BUCKET_PREFIX[] = "list-hashes";
 
 // regarding the hack of changing buckets to folders
 const char SERVICES_BUCKET_PREFIX[] = "microservices";

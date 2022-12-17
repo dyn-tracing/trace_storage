@@ -9,70 +9,85 @@ StatusOr<traces_by_structure> get_traces_by_structure(
     boost::posix_time::time_duration dur = stop - start;
     print_update("Time to initialize thread pool: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
 
-    std::string prefix_to_search = std::string(TRACE_HASHES_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX);
 
-    start_retrieve_prefixes = boost::posix_time::microsec_clock::local_time();
-
-    std::vector<std::future<StatusOr<potential_prefix_struct>>> future_potential_prefixes;
-    for (auto&& prefix : client->ListObjectsAndPrefixes(prefix_to_search, gcs::Delimiter("/"))) {
-        if (!prefix) {
-            std::cerr << "Error in getting prefixes" << std::endl;
-            return prefix.status();
-        }
-
-        auto result = *std::move(prefix);
-        if (false == absl::holds_alternative<std::string>(result)) {
-            std::cerr << "Error in getting prefixes" << std::endl;
-            return Status(
-                google::cloud::StatusCode::kUnavailable, "error while moving prefix in get_traces_by_structure");
-        }
-
-        // Get mapping from batch name to prefix and trace ID.
-        future_potential_prefixes.push_back(pool.submit(
-            get_potential_prefixes, absl::get<std::string>(result), client));
-    }
-
-    // Now map from batch name to prefix and trace ID, so you can check
-    // exemplar validity using the same data.
-    std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>> batch_name_map;
-    for (int64_t i=0; i < future_potential_prefixes.size(); i++) {
-        StatusOr<potential_prefix_struct> p = future_potential_prefixes[i].get();
-        if (!p.ok()) { std::cerr << "can't get prefixes" << std::endl; return p.status(); }
-        batch_name_map[p->batch_name].push_back(std::make_pair(p->prefix, p->trace_id));
-    }
-    stop = boost::posix_time::microsec_clock::local_time();
-    dur = stop - start_retrieve_prefixes;
-    print_update("Time to retrieve prefixes: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
-
-    start_get_batches = boost::posix_time::microsec_clock::local_time();
-    std::vector<std::string> all_object_names = get_batches_between_timestamps(client, start_time, end_time);
-    stop = boost::posix_time::microsec_clock::local_time();
-    dur = stop - start_get_batches;
-    print_update("Time to get batches between timestamps: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     std::vector<std::future<StatusOr<std::vector<traces_by_structure>>>> response_futures;
-
-    for (auto& [batch_name, prefix_and_trace_id] : batch_name_map) {
-        response_futures.push_back(pool.submit(
-            filter_by_query, batch_name, std::ref(prefix_and_trace_id),
-            query_trace, start_time, end_time, all_object_names, false, client));
+    StatusOr<std::vector<traces_by_structure>> data_fulfilling_query = filter_data_by_query(
+        query_trace, start_time, end_time, client);
+    if (!data_fulfilling_query.ok()) {
+        std::cerr << "couldn't get data fulflling query" << std::endl;
+        return data_fulfilling_query.status();
     }
 
     traces_by_structure to_return;
 
-    for (int64_t i=0; i < response_futures.size(); i++) {
-        StatusOr<std::vector<traces_by_structure>> values_to_return = response_futures[i].get();
-        if (!values_to_return.ok()) {
-            std::cerr << "so sad for you, response futures are bad" << std::endl;
-            return values_to_return.status();
-        }
-        for (auto ele : values_to_return.value()) {
-            merge_traces_by_struct(ele, &to_return);
-        }
+    for (int64_t i=0; i < data_fulfilling_query->size(); i++) {
+        merge_traces_by_struct(data_fulfilling_query.value()[i], &to_return);
+
     }
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop - start;
     print_update("Time to go through structural filter: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
 
+    return to_return;
+}
+
+std::string get_root_service_name(const std::string &trace) {
+    for (const std::string& line : split_by_string(trace, newline)) {
+        if (line.substr(0, 1) == ":") {
+            return split_by_string(line, colon)[2];
+        }
+    }
+    return "";
+}
+
+
+// Returns empty string if doesn't fit query
+StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_structure &query_trace,
+    std::string &bucket_name, std::string object_name, std::vector<std::string> &all_object_names,
+    time_t start_time, time_t end_time, gcs::Client* client) {
+    traces_by_structure ts;
+    StatusOr<std::string> trace = read_object(bucket_name, object_name, client);
+    auto valid = check_examplar_validity(trace.value(), query_trace, ts);
+    if (!valid.ok()) {
+        return valid.status();
+    }
+    if (!valid.value()) {
+        traces_by_structure empty;
+        return empty;
+    }
+    auto root_service_name = get_root_service_name(trace.value());
+    for (auto batch_name : all_object_names) {
+        auto status = get_traces_by_structure_data(
+            client, object_name, batch_name,
+            root_service_name, start_time, end_time, ts);
+
+        if (!status.ok()) {
+            return status;
+        }
+    }
+    return ts;
+}
+
+StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure &query_trace, time_t start_time, time_t end_time, gcs::Client* client) {
+    std::string list_bucket_name = std::string(LIST_HASHES_BUCKET_PREFIX) + BUCKETS_SUFFIX;
+    std::vector<std::string> all_object_names = get_batches_between_timestamps(client, start_time, end_time);
+    std::vector<traces_by_structure> to_return;
+
+    // here, we list all the objects in the bucket, because there is only one
+    // object per prefix
+    for (auto&& object_metadata : client->ListObjects(list_bucket_name, gcs::Delimiter("/"))) {
+        if (!object_metadata) {
+            std::cerr << "Error in getting list objects" << std::endl;
+            return object_metadata.status();
+        }
+        StatusOr<traces_by_structure> cur_traces_by_structure = read_object_and_determine_if_fits_query(
+            query_trace, list_bucket_name, object_metadata->name(), all_object_names, start_time, end_time, client);
+        if (!cur_traces_by_structure.ok()) {
+            std::cerr << "sad, there's been an error" << std::endl;
+            return cur_traces_by_structure.status();
+        }
+        to_return.push_back(cur_traces_by_structure.value());
+    }
     return to_return;
 }
 
@@ -340,15 +355,6 @@ StatusOr<std::vector<traces_by_structure>> filter_by_query(std::string batch_nam
     return to_return;
 }
 
-
-std::string get_root_service_name(const std::string &trace) {
-    for (const std::string& line : split_by_string(trace, newline)) {
-        if (line.substr(0, 1) == ":") {
-            return split_by_string(line, colon)[2];
-        }
-    }
-    return "";
-}
 
 StatusOr<std::vector<std::string>> filter_trace_ids_based_on_query_timestamp_for_given_root_service(
     std::vector<std::string> &trace_ids,
