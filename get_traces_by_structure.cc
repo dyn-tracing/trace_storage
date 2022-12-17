@@ -47,7 +47,13 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
     time_t start_time, time_t end_time, gcs::Client* client) {
     traces_by_structure ts;
     StatusOr<std::string> trace = read_object(bucket_name, object_name, client);
-    auto valid = check_examplar_validity(trace.value(), query_trace, ts);
+    if (!trace.ok()) {
+        std::cout << "could not read trace" << "with bucket name " << bucket_name << "and object name " << object_name << std::endl;
+        std::cout << "trace status code " << trace.status().code() << std::endl;
+        return trace.status();
+    }
+    std::string cleaned_trace = strip_from_the_end(trace.value().substr(0, trace->size()), '\n');
+    auto valid = check_examplar_validity(cleaned_trace, query_trace, ts);
     if (!valid.ok()) {
         return valid.status();
     }
@@ -55,6 +61,7 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
         traces_by_structure empty;
         return empty;
     }
+    std::cout << "fits the query!" << std::endl;
     auto root_service_name = get_root_service_name(trace.value());
     for (auto batch_name : all_object_names) {
         auto status = get_traces_by_structure_data(
@@ -71,17 +78,23 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
 StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure &query_trace, time_t start_time, time_t end_time, gcs::Client* client) {
     std::string list_bucket_name = std::string(LIST_HASHES_BUCKET_PREFIX) + BUCKETS_SUFFIX;
     std::vector<std::string> all_object_names = get_batches_between_timestamps(client, start_time, end_time);
+    BS::thread_pool pool(500);
     std::vector<traces_by_structure> to_return;
 
     // here, we list all the objects in the bucket, because there is only one
     // object per prefix
+    std::vector<std::future<StatusOr<traces_by_structure>>> future_traces_by_struct;
     for (auto&& object_metadata : client->ListObjects(list_bucket_name, gcs::Delimiter("/"))) {
         if (!object_metadata) {
             std::cerr << "Error in getting list objects" << std::endl;
             return object_metadata.status();
         }
-        StatusOr<traces_by_structure> cur_traces_by_structure = read_object_and_determine_if_fits_query(
-            query_trace, list_bucket_name, object_metadata->name(), all_object_names, start_time, end_time, client);
+        future_traces_by_struct.push_back(pool.submit(read_object_and_determine_if_fits_query,
+            std::ref(query_trace), std::ref(list_bucket_name), object_metadata->name(), std::ref(all_object_names), start_time, end_time, client
+        ));
+    }
+    for (int64_t i=0; i < future_traces_by_struct.size(); i++) {
+        StatusOr<traces_by_structure> cur_traces_by_structure = future_traces_by_struct[i].get();
         if (!cur_traces_by_structure.ok()) {
             std::cerr << "sad, there's been an error" << std::endl;
             return cur_traces_by_structure.status();
@@ -474,6 +487,7 @@ trace_structure morph_trace_object_to_trace_structure(std::string &trace) {
         std::vector<std::string> span_info = split_by_string(line, colon);
         if (span_info.size() != 4) {
             std::cerr << "Malformed trace found: \n" << trace << std::endl;
+            std::cerr << "Line was : \n" << line << std::endl;
             return response;
         }
 
