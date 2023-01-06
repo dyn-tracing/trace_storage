@@ -61,7 +61,6 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
         traces_by_structure empty;
         return empty;
     }
-    std::cout << "fits the query!" << std::endl;
     auto root_service_name = get_root_service_name(trace.value());
     for (auto batch_name : all_object_names) {
         auto status = get_traces_by_structure_data(
@@ -215,7 +214,7 @@ Status get_traces_by_structure_data(
     time_t start_time, time_t end_time,
     traces_by_structure& to_return
 ) {
-    auto hashes_bucket_object_name = prefix + batch_name;
+    auto hashes_bucket_object_name = prefix + "/" + batch_name;
 
     if (false == is_object_within_timespan(extract_batch_timestamps(batch_name), start_time, end_time)) {
         return Status();
