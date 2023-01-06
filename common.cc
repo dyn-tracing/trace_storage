@@ -445,10 +445,11 @@ std::vector<std::string> list_objects_in_bucket_by_prefix(gcs::Client* client,
 
 std::vector<std::string> list_objects_in_bucket(gcs::Client* client, std::string bucket_name) {
     std::vector<std::future<std::vector<std::string>>> future_object_names;
+    BS::thread_pool pool(500);
     for (int64_t i = 0; i < 10; i++) {
         for (int64_t j = 0; j < 10; j++) {
             std::string new_prefix = std::to_string(i) + std::to_string(j);
-            future_object_names.push_back(std::async(std::launch::async,
+            future_object_names.push_back(pool.submit(
                 list_objects_in_bucket_by_prefix, client, bucket_name, new_prefix));
         }
     }
