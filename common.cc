@@ -431,6 +431,35 @@ std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix
     return to_return;
 }
 
+std::vector<std::string> list_objects_in_bucket_by_prefix(gcs::Client* client,
+    const std::string& bucket_name, const std::string prefix) {
+    std::vector<std::string> to_return;
+    for (auto&& object_metadata : client->ListObjects(bucket_name, gcs::Prefix(prefix))) {
+        if (!object_metadata) {
+            throw std::runtime_error(object_metadata.status().message());
+        }
+        to_return.push_back(object_metadata->name());
+    }
+    return to_return;
+}
+
+std::vector<std::string> list_objects_in_bucket(gcs::Client* client, std::string bucket_name) {
+    std::vector<std::future<std::vector<std::string>>> future_object_names;
+    for (int64_t i = 0; i < 10; i++) {
+        for (int64_t j = 0; j < 10; j++) {
+            std::string new_prefix = std::to_string(i) + std::to_string(j);
+            future_object_names.push_back(std::async(std::launch::async,
+                list_objects_in_bucket_by_prefix, client, bucket_name, new_prefix));
+        }
+    }
+    std::vector<std::string> to_return;
+    for (int64_t i=0; i < future_object_names.size(); i++) {
+        auto partial_names = future_object_names[i].get();
+        to_return.insert(to_return.end(), partial_names.begin(), partial_names.end());
+    }
+    return to_return;
+}
+
 std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest) {
     std::vector<std::string> prefixes = generate_prefixes(earliest, latest);
     std::vector<std::future<std::vector<std::string>>> object_names;
