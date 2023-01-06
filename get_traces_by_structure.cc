@@ -55,8 +55,6 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
         std::cout << "trace status code " << trace.status().code() << std::endl;
         return trace.status();
     }
-    stop = boost::posix_time::microsec_clock::local_time();
-    dur = stop-start;
     std::string cleaned_trace = strip_from_the_end(trace.value().substr(0, trace->size()), '\n');
     auto valid = check_examplar_validity(cleaned_trace, query_trace, ts);
     if (!valid.ok()) {
@@ -66,7 +64,6 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
         traces_by_structure empty;
         return empty;
     }
-    print_update("Time to retrieve first obj: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     auto root_service_name = get_root_service_name(trace.value());
     start_batches= boost::posix_time::microsec_clock::local_time();
     for (auto batch_name : all_object_names) {
@@ -78,6 +75,7 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
             return status;
         }
     }
+    stop = boost::posix_time::microsec_clock::local_time();
     dur = stop-start;
     print_update("Time for read object and get data: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     return ts;
