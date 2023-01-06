@@ -105,15 +105,16 @@ StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure 
     // here, we list all the objects in the bucket, because there is only one
     // object per prefix
     std::vector<std::future<StatusOr<traces_by_structure>>> future_traces_by_struct;
+    start = boost::posix_time::microsec_clock::local_time();
     std::vector<std::string> bucket_objs = list_objects_in_bucket(client, list_bucket_name);
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop-start;
+    print_update("Time to list: " + std::to_string(dur.total_milliseconds()) + "\n", true);
     for (std::string& prefix : bucket_objs) {
         future_traces_by_struct.push_back(pool.submit(read_object_and_determine_if_fits_query,
             std::ref(query_trace), std::ref(list_bucket_name), prefix, std::ref(all_object_names), start_time, end_time, client
         ));
     }
-    stop = boost::posix_time::microsec_clock::local_time();
-    dur = stop-start;
-    print_update("Time to list: " + std::to_string(dur.total_milliseconds()) + "\n", true);
     /*
     for (int i=0; i<5; i++) {
 	    std::cout << "tasks queued: " << pool.get_tasks_queued() << std::endl;
