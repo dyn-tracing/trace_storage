@@ -265,7 +265,7 @@ int main(int argc, char* argv[]) {
 
     std::vector<time_t> times(n, 0);
     for (int i = 0; i < n; i++) {
-        auto time_taken = perform_query(data, false, 1670796531, 1670829563, &client);
+        auto time_taken = perform_query(data, true, 1670796531, 1670829563, &client);
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;
     }

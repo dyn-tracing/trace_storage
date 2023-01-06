@@ -10,7 +10,7 @@ StatusOr<traces_by_structure> get_traces_by_structure(
 
     std::vector<std::future<StatusOr<std::vector<traces_by_structure>>>> response_futures;
     StatusOr<std::vector<traces_by_structure>> data_fulfilling_query = filter_data_by_query(
-        query_trace, start_time, end_time, client);
+        query_trace, start_time, end_time, verbose, client);
     if (!data_fulfilling_query.ok()) {
         std::cerr << "couldn't get data fulflling query" << std::endl;
         return data_fulfilling_query.status();
@@ -42,9 +42,8 @@ std::string get_root_service_name(const std::string &trace) {
 // Returns empty string if doesn't fit query
 StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_structure &query_trace,
     std::string &bucket_name, std::string object_name, std::vector<std::string> &all_object_names,
-    time_t start_time, time_t end_time, gcs::Client* client) {
+    time_t start_time, time_t end_time, bool verbose, gcs::Client* client) {
 
-    bool verbose = false;
     boost::posix_time::ptime start, stop, start_batches;
     start = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration dur;
@@ -69,9 +68,6 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
     }
     print_update("Time to retrieve first obj: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     auto root_service_name = get_root_service_name(trace.value());
-    stop = boost::posix_time::microsec_clock::local_time();
-    dur = stop-start;
-    print_update("Time for everything except getting data: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     start_batches= boost::posix_time::microsec_clock::local_time();
     for (auto batch_name : all_object_names) {
         auto status = get_traces_by_structure_data(
@@ -82,28 +78,24 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
             return status;
         }
     }
-    stop = boost::posix_time::microsec_clock::local_time();
-    dur = stop-start_batches;
-    print_update("Time for batches: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     dur = stop-start;
     print_update("Time for read object and get data: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     return ts;
 }
 
-StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure &query_trace, time_t start_time, time_t end_time, gcs::Client* client) {
+StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure &query_trace, time_t start_time, time_t end_time, bool verbose, gcs::Client* client) {
 
     boost::posix_time::ptime start, stop, start_batches, start_list_objects;
     start = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration dur;
-
 
     start = boost::posix_time::microsec_clock::local_time();
     std::string list_bucket_name = std::string(LIST_HASHES_BUCKET_PREFIX) + BUCKETS_SUFFIX;
     std::vector<std::string> all_object_names = get_batches_between_timestamps(client, start_time, end_time);
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop-start;
-    print_update("Time to get all object names: " + std::to_string(dur.total_milliseconds()) + "\n", true);
-    BS::thread_pool pool(700);
+    print_update("Time to get all object names: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
+    BS::thread_pool pool(800);
     std::vector<traces_by_structure> to_return;
 
     // here, we list all the objects in the bucket, because there is only one
@@ -113,19 +105,17 @@ StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure 
     std::vector<std::string> bucket_objs = list_objects_in_bucket(client, list_bucket_name);
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop-start_list_objects;
-    print_update("Time to list: " + std::to_string(dur.total_milliseconds()) + "\n", true);
+    print_update("Time to list: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     for (std::string& prefix : bucket_objs) {
         future_traces_by_struct.push_back(pool.submit(read_object_and_determine_if_fits_query,
-            std::ref(query_trace), std::ref(list_bucket_name), prefix, std::ref(all_object_names), start_time, end_time, client
+            std::ref(query_trace), std::ref(list_bucket_name), prefix, std::ref(all_object_names), start_time, end_time, verbose, client
         ));
     }
-    /*
     for (int i=0; i<5; i++) {
 	    std::cout << "tasks queued: " << pool.get_tasks_queued() << std::endl;
 	    std::cout << "tasks running: " << pool.get_tasks_running() << std::endl;
 	    sleep(1);
     }
-    */
     for (int64_t i=0; i < future_traces_by_struct.size(); i++) {
         StatusOr<traces_by_structure> cur_traces_by_structure = future_traces_by_struct[i].get();
         if (!cur_traces_by_structure.ok()) {
@@ -136,7 +126,7 @@ StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure 
     }
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop-start;
-    print_update("Time for filter data by query: " + std::to_string(dur.total_milliseconds()) + "\n", true);
+    print_update("Time for filter data by query: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     return to_return;
 }
 

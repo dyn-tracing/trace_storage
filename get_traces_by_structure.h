@@ -152,5 +152,5 @@ Status get_traces_by_structure_data(
     time_t start_time, time_t end_time,
     traces_by_structure& to_return
 );
-StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure &query_trace, time_t start_time, time_t end_time, gcs::Client* client);
+StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure &query_trace, time_t start_time, time_t end_time, bool verbose, gcs::Client* client);
 #endif  // BY_STRUCT_H_ // NOLINT
