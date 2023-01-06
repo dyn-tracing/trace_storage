@@ -240,7 +240,7 @@ int64_t perform_trace_query(std::string trace_id, time_t start_time, time_t end_
 int main(int argc, char* argv[]) {
     auto client = gcs::Client();
 
-    QueryData data = four_fan_out();
+    QueryData data = duration_condition();
     int n = 1;
     if (argc > 1) {
         n = std::stoi(argv[1]);

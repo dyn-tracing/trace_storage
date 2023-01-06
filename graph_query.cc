@@ -72,10 +72,15 @@ std::vector<std::string> query(
 
     std::cout << "intersection size is " << intersection.size() << std::endl;
 
+    // At this point, we should switch from creating threads by need (per pool)
+    // to creating threads from a pool, since the number of batches may be
+    // very large
+
+    BS::thread_pool pool(500);
     std::vector<std::future<std::vector<std::string>>> results_futures;
     results_futures.reserve(intersection.size());
     for (auto &map : intersection) {
-        results_futures.push_back(std::async(std::launch::async,
+        results_futures.push_back(pool.submit(
                 brute_force_per_batch, map.first, map.second, struct_results.value(),
                 conditions, ret, query_trace,
                 client));
