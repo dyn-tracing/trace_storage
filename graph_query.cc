@@ -76,7 +76,7 @@ std::vector<std::string> query(
     // to creating threads from a pool, since the number of batches may be
     // very large
 
-    BS::thread_pool pool(500);
+    BS::thread_pool pool(100);
     std::vector<std::future<std::vector<std::string>>> results_futures;
     results_futures.reserve(intersection.size());
     for (auto &map : intersection) {

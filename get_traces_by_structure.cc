@@ -93,7 +93,7 @@ StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure 
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop-start;
     print_update("Time to get all object names: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
-    BS::thread_pool pool(800);
+    BS::thread_pool pool(200);
     std::vector<traces_by_structure> to_return;
 
     // here, we list all the objects in the bucket, because there is only one
