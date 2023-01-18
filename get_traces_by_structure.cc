@@ -84,6 +84,10 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
 std::unordered_set<std::string> get_hashes_for_microservice(std::string microservice, gcs::Client* client) {
     std::string hash_by_microservice_bucket_name = std::string(HASHES_BY_SERVICE_BUCKET_PREFIX) + BUCKETS_SUFFIX;
     std::unordered_set<std::string> to_return;
+    boost::posix_time::ptime start, stop, start_list_objects;
+    boost::posix_time::time_duration dur;
+
+    start = boost::posix_time::microsec_clock::local_time();
     for (auto&& object_metadata : client->ListObjects(hash_by_microservice_bucket_name, gcs::Prefix(microservice))) {
         if (!object_metadata) {
             throw std::runtime_error(object_metadata.status().message());
@@ -92,6 +96,10 @@ std::unordered_set<std::string> get_hashes_for_microservice(std::string microser
         std::string hash = split_by_string(object_metadata->name(), slash)[1];
         to_return.insert(hash);
     }
+    stop = boost::posix_time::microsec_clock::local_time();
+    dur = stop-start;
+    std::cout << "time for listing hashes of microservices : " <<  dur.total_milliseconds() << std::endl;
+    //print_update("Time for listing hashes of microservice: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     return to_return;
 }
 
@@ -174,11 +182,13 @@ StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure 
             std::ref(query_trace), std::ref(list_bucket_name), prefix, std::ref(all_object_names), start_time, end_time, verbose, client
         ));
     }
+    /*
     for (int i=0; i<5; i++) {
 	    std::cout << "tasks queued: " << pool.get_tasks_queued() << std::endl;
 	    std::cout << "tasks running: " << pool.get_tasks_running() << std::endl;
 	    sleep(1);
     }
+    */
     for (int64_t i=0; i < future_traces_by_struct.size(); i++) {
         StatusOr<traces_by_structure> cur_traces_by_structure = future_traces_by_struct[i].get();
         if (!cur_traces_by_structure.ok()) {
