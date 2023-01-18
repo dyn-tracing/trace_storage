@@ -81,14 +81,13 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
     return ts;
 }
 
-std::unordered_set<std::string> get_hashes_for_microservice(std::string microservice, gcs::Client* client) {
+std::unordered_set<std::string> get_hashes_for_microservice_with_prefix(std::string microservice,
+    std::string prefix, gcs::Client* client) {
+
     std::string hash_by_microservice_bucket_name = std::string(HASHES_BY_SERVICE_BUCKET_PREFIX) + BUCKETS_SUFFIX;
     std::unordered_set<std::string> to_return;
-    boost::posix_time::ptime start, stop, start_list_objects;
-    boost::posix_time::time_duration dur;
-
-    start = boost::posix_time::microsec_clock::local_time();
-    for (auto&& object_metadata : client->ListObjects(hash_by_microservice_bucket_name, gcs::Prefix(microservice))) {
+    for (auto&& object_metadata : client->ListObjects(hash_by_microservice_bucket_name,
+        gcs::Prefix(microservice+"/"+prefix))) {
         if (!object_metadata) {
             throw std::runtime_error(object_metadata.status().message());
         }
@@ -96,6 +95,31 @@ std::unordered_set<std::string> get_hashes_for_microservice(std::string microser
         std::string hash = split_by_string(object_metadata->name(), slash)[1];
         to_return.insert(hash);
     }
+    return to_return;
+}
+
+
+std::unordered_set<std::string> get_hashes_for_microservice(std::string microservice, gcs::Client* client) {
+    std::unordered_set<std::string> to_return;
+    boost::posix_time::ptime start, stop, start_list_objects;
+    boost::posix_time::time_duration dur;
+
+    start = boost::posix_time::microsec_clock::local_time();
+    BS::thread_pool pool(20);
+    std::vector<std::future<std::unordered_set<std::string>>> future_hashes;
+    for (int64_t i = 0; i < 10; i++) {
+        for (int64_t j = 0; j < 10; j++) {
+            std::string new_prefix = std::to_string(i) + std::to_string(j);
+            future_hashes.push_back(pool.submit(get_hashes_for_microservice_with_prefix,
+                microservice, new_prefix, client));
+        }
+    }
+    for (int64_t i=0; i < future_hashes.size(); i++) {
+        for (auto &hash : future_hashes[i].get()) {
+            to_return.insert(hash);
+        }
+    }
+
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop-start;
     std::cout << "time for listing hashes of microservices : " <<  dur.total_milliseconds() << std::endl;
