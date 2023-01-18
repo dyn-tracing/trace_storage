@@ -81,8 +81,22 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
     return ts;
 }
 
+std::unordered_set<std::string> get_hashes_for_microservice(std::string microservice, gcs::Client* client) {
+    std::string hash_by_microservice_bucket_name = std::string(HASHES_BY_SERVICE_BUCKET_PREFIX) + BUCKETS_SUFFIX;
+    std::unordered_set<std::string> to_return;
+    for (auto&& object_metadata : client->ListObjects(hash_by_microservice_bucket_name, gcs::Prefix(microservice))) {
+        if (!object_metadata) {
+            throw std::runtime_error(object_metadata.status().message());
+        }
+        // name is service / hash
+        std::string hash = split_by_string(object_metadata->name(), slash)[1];
+        to_return.insert(hash);
+    }
+    return to_return;
+}
+
 std::vector<std::string> get_potential_prefixes(trace_structure &query_trace, bool verbose, gcs::Client* client) {
-    boost::posix_time::ptime start, stop, start_batches, start_list_objects;
+    boost::posix_time::ptime start, stop, start_list_objects;
     start = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration dur;
     // If we know one or more microservice names, find their hashes and
@@ -106,16 +120,14 @@ std::vector<std::string> get_potential_prefixes(trace_structure &query_trace, bo
         return bucket_objs;
     }
 
-    std::unordered_map<std::string, int64_t> hash_to_count;
-    std::string hash_by_microservice_bucket_name = std::string(HASHES_BY_SERVICE_BUCKET_PREFIX) + BUCKETS_SUFFIX;
+    BS::thread_pool pool(20);
+    std::vector<std::future<std::unordered_set<std::string>>> future_hashes;
     for (std::string& service_name : service_names) {
-        std::vector<std::string> hashes_for_microservice;
-        for (auto&& object_metadata : client->ListObjects(hash_by_microservice_bucket_name, gcs::Prefix(service_name))) {
-            if (!object_metadata) {
-                throw std::runtime_error(object_metadata.status().message());
-            }
-            // name is service / hash
-            std::string hash = split_by_string(object_metadata->name(), slash)[1];
+        future_hashes.push_back(pool.submit(get_hashes_for_microservice, service_name, client));
+    }
+    std::unordered_map<std::string, int64_t> hash_to_count;
+    for (int64_t i=0; i < future_hashes.size(); i++) {
+        for (auto & hash : future_hashes[i].get()) {
             if (hash_to_count.count(hash) == 0) {
                 hash_to_count[hash] = 1;
             } else {
