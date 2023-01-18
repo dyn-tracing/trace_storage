@@ -35,6 +35,7 @@ const char BUCKETS_SUFFIX[] = "-quest-test-parallel-2csvs";
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
 const char TRACE_HASHES_BUCKET_PREFIX[] = "tracehashes";
 const char LIST_HASHES_BUCKET_PREFIX[] = "list-hashes";
+const char HASHES_BY_SERVICE_BUCKET_PREFIX[] = "hashes-by-service";
 
 // regarding the hack of changing buckets to folders
 const char SERVICES_BUCKET_PREFIX[] = "microservices";
@@ -42,6 +43,7 @@ const int TRACE_ID_LENGTH = 32;
 const int SPAN_ID_LENGTH = 16;
 const int element_count = 10000;
 const char hyphen[] = "-";
+const char slash[] = "/";
 const char newline[] = "\n";
 const char colon[] = ":";
 

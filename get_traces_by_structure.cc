@@ -81,14 +81,67 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
     return ts;
 }
 
+std::vector<std::string> get_potential_prefixes(trace_structure &query_trace, bool verbose, gcs::Client* client) {
+    boost::posix_time::ptime start, stop, start_batches, start_list_objects;
+    start = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration dur;
+    // If we know one or more microservice names, find their hashes and
+    // intersect them.
+    std::vector<std::string> service_names;
+    for (auto &pair : query_trace.node_names) {
+        if (pair.second != "*") {
+            service_names.push_back(pair.second);
+        }
+    }
+
+    if (service_names.size() == 0) {
+        std::string list_bucket_name = std::string(LIST_HASHES_BUCKET_PREFIX) + BUCKETS_SUFFIX;
+        // If we do not know any microservice names, simply return all objects
+        // in the list bucket.
+        start_list_objects = boost::posix_time::microsec_clock::local_time();
+        std::vector<std::string> bucket_objs = list_objects_in_bucket(client, list_bucket_name);
+        stop = boost::posix_time::microsec_clock::local_time();
+        dur = stop-start_list_objects;
+        print_update("Time to list: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
+        return bucket_objs;
+    }
+
+    std::unordered_map<std::string, int64_t> hash_to_count;
+    std::string hash_by_microservice_bucket_name = std::string(HASHES_BY_SERVICE_BUCKET_PREFIX) + BUCKETS_SUFFIX;
+    for (std::string& service_name : service_names) {
+        std::vector<std::string> hashes_for_microservice;
+        for (auto&& object_metadata : client->ListObjects(hash_by_microservice_bucket_name, gcs::Prefix(service_name))) {
+            if (!object_metadata) {
+                throw std::runtime_error(object_metadata.status().message());
+            }
+            // name is service / hash
+            std::string hash = split_by_string(object_metadata->name(), slash)[1];
+            if (hash_to_count.count(hash) == 0) {
+                hash_to_count[hash] = 1;
+            } else {
+                hash_to_count[hash]++;
+            }
+        }
+    }
+
+    std::vector<std::string> to_return;
+    // get hashes from hash to count
+    for (auto & pair : hash_to_count) {
+        if (pair.second == service_names.size()) {
+            to_return.push_back(pair.first);
+        }
+    }
+    return to_return;
+}
+
 StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure &query_trace, time_t start_time, time_t end_time, bool verbose, gcs::Client* client) {
+    std::string list_bucket_name = std::string(LIST_HASHES_BUCKET_PREFIX) + BUCKETS_SUFFIX;
 
     boost::posix_time::ptime start, stop, start_batches, start_list_objects;
     start = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration dur;
 
     start = boost::posix_time::microsec_clock::local_time();
-    std::string list_bucket_name = std::string(LIST_HASHES_BUCKET_PREFIX) + BUCKETS_SUFFIX;
     std::vector<std::string> all_object_names = get_batches_between_timestamps(client, start_time, end_time);
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop-start;
@@ -98,12 +151,12 @@ StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure 
 
     // here, we list all the objects in the bucket, because there is only one
     // object per prefix
+    std::vector<std::string> bucket_objs = get_potential_prefixes(query_trace, verbose, client);
     std::vector<std::future<StatusOr<traces_by_structure>>> future_traces_by_struct;
-    start_list_objects = boost::posix_time::microsec_clock::local_time();
-    std::vector<std::string> bucket_objs = list_objects_in_bucket(client, list_bucket_name);
-    stop = boost::posix_time::microsec_clock::local_time();
-    dur = stop-start_list_objects;
-    print_update("Time to list: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
+
+
+    // Here, rather than listing all objects in the list bucket, we instead
+    // find the hashes by the microservice names.
     for (std::string& prefix : bucket_objs) {
         future_traces_by_struct.push_back(pool.submit(read_object_and_determine_if_fits_query,
             std::ref(query_trace), std::ref(list_bucket_name), prefix, std::ref(all_object_names), start_time, end_time, verbose, client
