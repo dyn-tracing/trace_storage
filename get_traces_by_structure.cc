@@ -99,7 +99,8 @@ std::unordered_set<std::string> get_hashes_for_microservice_with_prefix(std::str
 }
 
 
-std::unordered_set<std::string> get_hashes_for_microservice(std::string microservice, gcs::Client* client) {
+std::unordered_set<std::string> get_hashes_for_microservice(std::string microservice, bool verbose,
+			gcs::Client* client) {
     std::unordered_set<std::string> to_return;
     boost::posix_time::ptime start, stop, start_list_objects;
     boost::posix_time::time_duration dur;
@@ -154,7 +155,7 @@ std::vector<std::string> get_potential_prefixes(trace_structure &query_trace, bo
     BS::thread_pool pool(10);
     std::vector<std::future<std::unordered_set<std::string>>> future_hashes;
     for (std::string& service_name : service_names) {
-        future_hashes.push_back(pool.submit(get_hashes_for_microservice, service_name, client));
+        future_hashes.push_back(pool.submit(get_hashes_for_microservice, service_name, verbose, client));
     }
     std::unordered_map<std::string, int64_t> hash_to_count;
     for (int64_t i=0; i < future_hashes.size(); i++) {
