@@ -112,6 +112,9 @@ bool is_spans_bucket(std::string bucket) {
     if (true == has_prefix(bucket, LIST_HASHES_BUCKET_PREFIX)) {
         return false;
     }
+    if (true == has_prefix(bucket, HASHES_BY_SERVICE_BUCKET_PREFIX)) {
+        return false;
+    }
     return true;
 }
 

@@ -97,6 +97,8 @@ std::unordered_set<std::string> get_hashes_for_microservice_with_prefix(std::str
             hash_by_microservice_bucket_name, object_metadata->name(), client);
         if (!hashes) {
             std::cerr << "problem" << std::endl;
+	    std::cerr << "help: status is " << hashes.status() << std::endl;
+	    std::cerr << "when reading from bucket " << hash_by_microservice_bucket_name << "for object " << object_metadata->name() << std::endl; 
         }
         for (auto &hash : split_by_string(hashes.value(), newline)) {
             if (hash != "") {
