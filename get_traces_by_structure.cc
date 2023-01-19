@@ -108,13 +108,14 @@ std::unordered_set<std::string> get_hashes_for_microservice_with_prefix(std::str
 }
 
 
-std::unordered_set<std::string> get_hashes_for_microservice(std::string microservice, gcs::Client* client) {
+std::unordered_set<std::string> get_hashes_for_microservice(std::string microservice, bool verbose,
+			gcs::Client* client) {
     std::unordered_set<std::string> to_return;
     boost::posix_time::ptime start, stop, start_list_objects;
     boost::posix_time::time_duration dur;
 
     start = boost::posix_time::microsec_clock::local_time();
-    BS::thread_pool pool(20);
+    BS::thread_pool pool(30);
     std::vector<std::future<std::unordered_set<std::string>>> future_hashes;
     for (int64_t i = 0; i < 10; i++) {
         for (int64_t j = 0; j < 10; j++) {
@@ -131,8 +132,7 @@ std::unordered_set<std::string> get_hashes_for_microservice(std::string microser
 
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop-start;
-    std::cout << "time for listing hashes of microservices : " <<  dur.total_milliseconds() << std::endl;
-    //print_update("Time for listing hashes of microservice: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
+    print_update("Time for listing hashes of microservice: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
     return to_return;
 }
 
@@ -161,10 +161,10 @@ std::vector<std::string> get_potential_prefixes(trace_structure &query_trace, bo
         return bucket_objs;
     }
 
-    BS::thread_pool pool(20);
+    BS::thread_pool pool(10);
     std::vector<std::future<std::unordered_set<std::string>>> future_hashes;
     for (std::string& service_name : service_names) {
-        future_hashes.push_back(pool.submit(get_hashes_for_microservice, service_name, client));
+        future_hashes.push_back(pool.submit(get_hashes_for_microservice, service_name, verbose, client));
     }
     std::unordered_map<std::string, int64_t> hash_to_count;
     for (int64_t i=0; i < future_hashes.size(); i++) {
