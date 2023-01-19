@@ -1,7 +1,8 @@
 
-FOLDER='results'
+FOLDER='batched_index'
 cd ../${FOLDER}
-python3 ../analyze_results/process_results.py
+cp ../analyze_results/process_results.py .
+python3 process_results.py
 cp processed.csv ../analyze_results/
 cd ../../microservices_env/send_alibaba_data_to_gcs
 python3 count_traces.py
