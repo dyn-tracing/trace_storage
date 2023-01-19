@@ -91,9 +91,18 @@ std::unordered_set<std::string> get_hashes_for_microservice_with_prefix(std::str
         if (!object_metadata) {
             throw std::runtime_error(object_metadata.status().message());
         }
+        // Okay, now read everything here.
         // name is service / hash
-        std::string hash = split_by_string(object_metadata->name(), slash)[1];
-        to_return.insert(hash);
+        StatusOr<std::string> hashes = read_object(
+            hash_by_microservice_bucket_name, object_metadata->name(), client);
+        if (!hashes) {
+            std::cerr << "problem" << std::endl;
+        }
+        for (auto &hash : split_by_string(hashes.value(), newline)) {
+            if (hash != "") {
+                to_return.insert(hash);
+            }
+        }
     }
     return to_return;
 }
