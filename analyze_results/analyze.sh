@@ -1,5 +1,5 @@
 
-FOLDER='batched_index'
+FOLDER='batched_index_new'
 cd ../${FOLDER}
 cp ../analyze_results/process_results.py .
 python3 process_results.py
@@ -10,4 +10,3 @@ python3 count_bytes.py
 cp traces_count.csv ../../trace_storage/analyze_results/
 cp bytes_count.csv ../../trace_storage/analyze_results/
 
-python3 plot_graph.py
