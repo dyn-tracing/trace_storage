@@ -1,30 +1,36 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+import csv
 
 def import_csv(filename):
     with open(filename) as csvfile:
         spamreader = csv.reader(csvfile)
-        to_return = []
+        nums = []
 
         for row in spamreader:
-            to_return.extend(row)
+            nums.extend(row)
+
+        to_return = []
+        for i in range(len(nums)):
+            if (i+1) % 5 == 0:
+                print("i is ", i)
+                to_return.append(int(nums[i]))
+
     return to_return
 
 def import_query_data(query):
-    with open(filename) as csvfile:
+    with open("processed.csv") as csvfile:
         spamreader = csv.reader(csvfile)
         latencies = []
 
         for row in spamreader:
             if query in row[1]:
-                latencies.append((row[0], row[2]))
+                latencies.append((int(row[0]), row[2]))
 
         latencies.sort()
         to_return_lat = []
         for l in latencies:
-            to_return_lat.append(l[1])
-        import pdb; pdb.set_trace()
+            to_return_lat.append(float(l[1]))
         return to_return_lat
 
 # We make two graphs - latency by num traces, latency by bytes.
@@ -39,14 +45,17 @@ for query in queries:
 
 fig, ax = plt.subplots()
 
-plt.plot(bytes_count, new_x_duration, label = "duration", linestyle='--', marker='o', color='b')
-plt.plot(bytes_count, new_x_fanout, label = "fanout", linestyle='--', marker='o', color='r')
-plt.plot(bytes_count, new_x_one_other_call, label = "one other call", linestyle='--', marker='o', color='g')
-plt.plot(bytes_count, new_x_height, label = "height", linestyle='--', marker='o', color='c')
+for query in range(len(queries)):
+    plt.plot(bytes_count, latencies[query], label = queries[query])
+
+#plt.plot(bytes_count, new_x_duration, label = "duration", linestyle='--', marker='o', color='b')
+#plt.plot(bytes_count, new_x_fanout, label = "fanout", linestyle='--', marker='o', color='r')
+#plt.plot(bytes_count, new_x_one_other_call, label = "one other call", linestyle='--', marker='o', color='g')
+#plt.plot(bytes_count, new_x_height, label = "height", linestyle='--', marker='o', color='c')
 plt.title("AliBaba Query Latencies")
-plt.ylabel("Latency (s)")
-plt.xlabel("Number of AliBaba Traces (in thousands)")
-plt.ylim(0, 60)
+plt.ylabel("Latency (ms)")
+plt.xlabel("Bytes of AliBaba Data")
+#plt.ylim(0, 60)
 plt.legend()
 plt.show()
 plt.savefig('graph.png')
