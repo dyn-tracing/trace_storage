@@ -13,7 +13,6 @@ def import_csv(filename):
         to_return = []
         for i in range(len(nums)):
             if (i+1) % 5 == 0:
-                print("i is ", i)
                 to_return.append(int(nums[i]))
 
     return to_return
@@ -30,12 +29,15 @@ def import_query_data(query):
         latencies.sort()
         to_return_lat = []
         for l in latencies:
-            to_return_lat.append(float(l[1]))
+            to_return_lat.append(float(l[1])/1000.0) # get into seconds
         return to_return_lat
 
 # We make two graphs - latency by num traces, latency by bytes.
 bytes_count = import_csv("bytes_count.csv")
+bytes_count = [x*0.000001 for x in bytes_count] # convert to MB
+
 traces_count = import_csv("traces_count.csv")
+traces_count = [x/1000.0 for x in traces_count] # convert to thousands
 
 
 queries = ["duration", "fanout", "one_call", "height"]
@@ -43,18 +45,19 @@ latencies = []
 for query in queries:
     latencies.append(import_query_data(query))
 
-fig, ax = plt.subplots()
+fig, axs = plt.subplots(2)
 
 for query in range(len(queries)):
-    plt.plot(bytes_count, latencies[query], label = queries[query])
+    axs[0].plot(bytes_count, latencies[query], label = queries[query])
+    axs[1].plot(traces_count, latencies[query], label = queries[query])
 
 #plt.plot(bytes_count, new_x_duration, label = "duration", linestyle='--', marker='o', color='b')
 #plt.plot(bytes_count, new_x_fanout, label = "fanout", linestyle='--', marker='o', color='r')
 #plt.plot(bytes_count, new_x_one_other_call, label = "one other call", linestyle='--', marker='o', color='g')
 #plt.plot(bytes_count, new_x_height, label = "height", linestyle='--', marker='o', color='c')
-plt.title("AliBaba Query Latencies")
-plt.ylabel("Latency (ms)")
-plt.xlabel("Bytes of AliBaba Data")
+axs[0].set(xlabel='Bytes of AliBaba Data (MB)', ylabel='Latency (s)')
+axs[1].set(xlabel='Number of Traces (Thousands)', ylabel='Latency (s)')
+fig.tight_layout()
 #plt.ylim(0, 60)
 plt.legend()
 plt.show()
