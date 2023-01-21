@@ -1,8 +1,8 @@
 
 url='http://alitrip.oss-cn-zhangjiakou.aliyuncs.com/TraceData'
-FOLDER='batched_index_new'
+FOLDER='batched_index_seventy'
 mkdir ./${FOLDER}
-for VAR in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+for VAR in {1..70}
 do
 	if [[ ${VAR} -eq 1 ]]
 	then
