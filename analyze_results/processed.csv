@@ -11,15 +11,3 @@ number_of_csvs,query,median_time(ms)
 15,15fanout,5335.0
 15,15height,6394.5
 15,15one_call,18819.0
-20,20duration,5556.5
-20,20fanout,6437.5
-20,20height,8146.5
-20,20one_call,24104.0
-25,25duration,6904.5
-25,25fanout,7597.0
-25,25height,9579.5
-25,25one_call,28766.5
-30,30duration,7011.0
-30,30fanout,8514.5
-30,30height,10432.0
-30,30one_call,42409.5
