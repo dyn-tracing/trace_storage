@@ -3,7 +3,10 @@ csv_hdr = ["number_of_csvs", "query", "median_time(ms)"]
 
 queries = ["duration", "fanout", "height", "one_call"]
 
-all_files = [5, 10, 15]
+all_files = []
+for i in range(1, 71):
+    if i%5 == 0:
+        all_files.append(i)
 #all_files = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 
 results = ",".join(csv_hdr) + "\n"
