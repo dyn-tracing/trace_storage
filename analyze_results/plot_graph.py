@@ -12,7 +12,7 @@ def import_csv(filename):
 
         to_return = []
         for i in range(len(nums)):
-            if (i+1) % 5 == 0:
+            if (i+1) % 5 == 0 or i == 29:
                 to_return.append(int(nums[i]))
 
     return to_return
@@ -44,7 +44,6 @@ queries = ["duration", "fanout", "one_call", "height"]
 latencies = []
 for query in queries:
     latencies.append(import_query_data(query))
-
 fig, axs = plt.subplots(2)
 
 for query in range(len(queries)):
