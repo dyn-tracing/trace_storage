@@ -11,8 +11,12 @@ def import_csv(filename):
             nums.extend(row)
 
         to_return = []
+        # the reason for the weirdness at the end is that I did every 5,
+        # but 144 isn't divisible by 5, so I did it once we had all data in the
+        # system. Then 22 and 30 were messed up so I added that and did it again
+        # So now we have two tacked on and the end that aren't divisible by 5
         for i in range(len(nums)):
-            if (i+1) % 5 == 0 or i == 29:
+            if (i+1) % 5 == 0 or i == 141 or i == 143: # want to include the last one
                 to_return.append(int(nums[i]))
 
     return to_return
@@ -24,7 +28,10 @@ def import_query_data(query):
 
         for row in spamreader:
             if query in row[1]:
-                latencies.append((int(row[0]), row[2]))
+                if row[0] == "last":
+                    latencies.append((145, row[2]))
+                else:
+                    latencies.append((int(row[0]), row[2]))
 
         latencies.sort()
         to_return_lat = []
