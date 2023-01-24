@@ -12,7 +12,7 @@ def import_csv(filename):
 
         to_return = []
         for i in range(len(nums)):
-            if (i+1) % 5 == 0:
+            if (i+1) % 5 == 0 or i == 29:
                 to_return.append(int(nums[i]))
 
     return to_return
@@ -44,7 +44,6 @@ queries = ["duration", "fanout", "one_call", "height"]
 latencies = []
 for query in queries:
     latencies.append(import_query_data(query))
-
 fig, axs = plt.subplots(2)
 
 for query in range(len(queries)):
@@ -57,8 +56,16 @@ for query in range(len(queries)):
 #plt.plot(bytes_count, new_x_height, label = "height", linestyle='--', marker='o', color='c')
 axs[0].set(xlabel='Bytes of AliBaba Data (MB)', ylabel='Latency (s)')
 axs[1].set(xlabel='Number of Traces (Thousands)', ylabel='Latency (s)')
-fig.tight_layout()
+#fig.tight_layout()
 #plt.ylim(0, 60)
-plt.legend()
+
+for ax in axs:
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0 + box.height * 0.15,
+                 box.width, box.height * 0.85])
+
+axs[0].set_title("Structural Query Latencies on AliBaba Data")
+axs[1].legend(loc='upper center', ncol=4, bbox_to_anchor=(0.5, -0.3), fancybox=True, shadow=True)
+
+plt.savefig('graph.pdf')
 plt.show()
-plt.savefig('graph.png')
