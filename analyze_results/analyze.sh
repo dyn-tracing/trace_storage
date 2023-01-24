@@ -1,5 +1,5 @@
 
-FOLDER='batched_index_thirty'
+FOLDER='batched_index_all'
 cd ../${FOLDER}
 cp ../analyze_results/process_results.py .
 python3 process_results.py

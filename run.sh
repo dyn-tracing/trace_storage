@@ -1,10 +1,10 @@
 
 url='http://alitrip.oss-cn-zhangjiakou.aliyuncs.com/TraceData'
-FOLDER='batched_index_seventy'
+FOLDER='batched_index_all'
 mkdir ./${FOLDER}
-for VAR in {1..70}
+for VAR in {16..144}
 do
-	if [[ ${VAR} -eq 1 ]]
+	if [[ ${VAR} -eq 16 ]]
 	then
 		cd ../microservices_env/send_alibaba_data_to_gcs
 	fi

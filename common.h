@@ -30,7 +30,7 @@ const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
 const char PROJECT_ID[] = "dynamic-tracing";
 const char BUCKETS_LOCATION[] = "us-central1";
 
-const char BUCKETS_SUFFIX[] = "-quest-batched-70csv";
+const char BUCKETS_SUFFIX[] = "-quest-batched-145csv";
 
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
 const char TRACE_HASHES_BUCKET_PREFIX[] = "tracehashes";
