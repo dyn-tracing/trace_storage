@@ -20,8 +20,8 @@ StatusOr<traces_by_structure> get_traces_by_structure(
 
     for (int64_t i=0; i < data_fulfilling_query->size(); i++) {
         merge_traces_by_struct(data_fulfilling_query.value()[i], &to_return);
-
     }
+
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop - start;
     print_update("Time to go through structural filter: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
@@ -51,7 +51,8 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
     traces_by_structure ts;
     StatusOr<std::string> trace = read_object(bucket_name, object_name, client);
     if (!trace.ok()) {
-        std::cout << "could not read trace" << "with bucket name " << bucket_name << "and object name " << object_name << std::endl;
+        std::cout << "could not read trace" << "with bucket name " << bucket_name
+            << "and object name " << object_name << std::endl;
         std::cout << "trace status code " << trace.status().code() << std::endl;
         return trace.status();
     }
@@ -65,7 +66,7 @@ StatusOr<traces_by_structure> read_object_and_determine_if_fits_query(trace_stru
         return empty;
     }
     auto root_service_name = get_root_service_name(trace.value());
-    start_batches= boost::posix_time::microsec_clock::local_time();
+    start_batches = boost::posix_time::microsec_clock::local_time();
     for (auto batch_name : all_object_names) {
         auto status = get_traces_by_structure_data(
             client, object_name, batch_name,
@@ -98,7 +99,8 @@ std::unordered_set<std::string> get_hashes_for_microservice_with_prefix(std::str
         if (!hashes) {
             std::cerr << "problem" << std::endl;
 	        std::cerr << "help: status is " << hashes.status() << std::endl;
-	        std::cerr << "when reading from bucket " << hash_by_microservice_bucket_name << "for object " << object_metadata->name() << std::endl;
+	        std::cerr << "when reading from bucket " << hash_by_microservice_bucket_name
+                << "for object " << object_metadata->name() << std::endl;
         }
         for (auto &hash : split_by_string(hashes.value(), newline)) {
             if (hash != "") {
@@ -134,7 +136,8 @@ std::unordered_set<std::string> get_hashes_for_microservice(std::string microser
 
     stop = boost::posix_time::microsec_clock::local_time();
     dur = stop-start;
-    print_update("Time for listing hashes of microservice: " + std::to_string(dur.total_milliseconds()) + "\n", verbose);
+    print_update("Time for listing hashes of microservice: " +
+        std::to_string(dur.total_milliseconds()) + "\n", verbose);
     return to_return;
 }
 
@@ -189,7 +192,8 @@ std::vector<std::string> get_potential_prefixes(trace_structure &query_trace, bo
     return to_return;
 }
 
-StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure &query_trace, time_t start_time, time_t end_time, bool verbose, gcs::Client* client) {
+StatusOr<std::vector<traces_by_structure>> filter_data_by_query(
+    trace_structure &query_trace, time_t start_time, time_t end_time, bool verbose, gcs::Client* client) {
     std::string list_bucket_name = std::string(LIST_HASHES_BUCKET_PREFIX) + BUCKETS_SUFFIX;
 
     boost::posix_time::ptime start, stop, start_batches, start_list_objects;
@@ -215,8 +219,8 @@ StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure 
     // find the hashes by the microservice names.
     for (std::string& prefix : bucket_objs) {
         future_traces_by_struct.push_back(pool.submit(read_object_and_determine_if_fits_query,
-            std::ref(query_trace), std::ref(list_bucket_name), prefix, std::ref(all_object_names), start_time, end_time, verbose, client
-        ));
+            std::ref(query_trace), std::ref(list_bucket_name), prefix, std::ref(all_object_names),
+            start_time, end_time, verbose, client));
     }
     /*
     for (int i=0; i<5; i++) {
