@@ -23,7 +23,7 @@ const char SPAN_ID[] = "span.id";
 const char SPAN_ID_BUCKET[] = "span-id";
 const char TRACE_ID[] = "trace.id";
 const char TRACE_ID_BUCKET[] = "trace-id";
-const int branching_factor = 10;
+const int branching_factor = 20;
 
 // Leaf struct
 struct Leaf {

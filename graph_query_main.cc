@@ -23,6 +23,29 @@ std::string fetch_obj_name_from_index(std::string trace_id, int start_time, int 
     return "";
 }
 
+QueryData plain_trace_id_query() {
+    QueryData query;
+    query.graph.num_nodes = 1;
+    query.graph.node_names.insert(std::make_pair(0, "frontend"));
+
+    query_condition condition1;
+    condition1.node_index = 0;
+    condition1.type = int_value;
+    get_value_func condition_1_union;
+    condition_1_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
+    condition1.func = condition_1_union;
+    condition1.node_property_value = "b83b2deb88a6e20424d89985c2bf97b7";
+    query.conditions.push_back(condition1);
+
+    query.ret.node_index = 0;
+    query.ret.type = bytes_value;
+    get_value_func ret_union;
+    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::span_id;
+
+    query.ret.func = ret_union;
+    return query;
+}
+
 QueryData trace_id_query() {
     QueryData query;
     // query trace structure
@@ -91,6 +114,23 @@ QueryData service_calls_one_other() {
     query.graph.num_nodes = 2;
     query.graph.node_names.insert(std::make_pair(0, "OryxGreenSmoke"));
     query.graph.node_names.insert(std::make_pair(1, "WolfTowerGray"));
+
+    query.graph.edges.insert(std::make_pair(0, 1));
+
+    query.ret.node_index = 0;
+    query.ret.type = bytes_value;
+    get_value_func ret_union;
+    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
+    query.ret.func = ret_union;
+
+    return query;
+}
+
+QueryData service_calls_one_other_online_boutique() {
+    QueryData query;
+    query.graph.num_nodes = 2;
+    query.graph.node_names.insert(std::make_pair(0, "frontend"));
+    query.graph.node_names.insert(std::make_pair(1, "adservice"));
 
     query.graph.edges.insert(std::make_pair(0, 1));
 
@@ -260,12 +300,18 @@ int main(int argc, char* argv[]) {
         } else if (q == "height") {
             data = height_at_least_four();
             std::cout << "Running height_at_least_four()" << std::endl;
+        } else if (q == "trace_id") {
+            data = plain_trace_id_query();
+            std::cout << "Running plain trace ID query" << std::endl;
+        } else if (q == "ob") {
+            data = service_calls_one_other_online_boutique();
+            std::cout << "Running service_calls_one_other_online_boutique()" << std::endl;
         }
     }
 
     std::vector<time_t> times(n, 0);
     for (int i = 0; i < n; i++) {
-        auto time_taken = perform_query(data, false, 1670796531, 1670829563, &client);
+        auto time_taken = perform_query(data, true, 1674666130, 1674666131, &client);
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;
     }
