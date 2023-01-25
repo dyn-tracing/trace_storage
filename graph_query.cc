@@ -37,7 +37,7 @@ std::vector<std::string> query(
                 earliest_last_updated = std::get<1>(indexed);
             }
             index_results_futures.push_back(std::async(std::launch::async, get_traces_by_indexed_condition,
-            start_time, end_time, &conditions[i], i_type, client));
+                start_time, end_time, &conditions[i], i_type, client));
         }
     }
     print_progress(0, "Retrieving indices", verbose);

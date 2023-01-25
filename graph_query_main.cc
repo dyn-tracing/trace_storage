@@ -35,6 +35,7 @@ QueryData plain_trace_id_query() {
     condition_1_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
     condition1.func = condition_1_union;
     condition1.node_property_value = "b83b2deb88a6e20424d89985c2bf97b7";
+    condition1.property_name = "trace-id";
     condition1.comp = Equal_to;
     query.conditions.push_back(condition1);
 
