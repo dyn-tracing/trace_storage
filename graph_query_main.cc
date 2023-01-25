@@ -302,9 +302,6 @@ int main(int argc, char* argv[]) {
         } else if (q == "height") {
             data = height_at_least_four();
             std::cout << "Running height_at_least_four()" << std::endl;
-        } else if (q == "trace_id") {
-            data = plain_trace_id_query();
-            std::cout << "Running plain trace ID query" << std::endl;
         } else if (q == "ob") {
             data = service_calls_one_other_online_boutique();
             std::cout << "Running service_calls_one_other_online_boutique()" << std::endl;
@@ -313,7 +310,12 @@ int main(int argc, char* argv[]) {
 
     std::vector<time_t> times(n, 0);
     for (int i = 0; i < n; i++) {
-        auto time_taken = perform_query(data, true, 1674666130, 1674666131, &client);
+        int64_t time_taken;
+        if (argc > 2 && std::string(argv[2]) == "trace_id") {
+            time_taken = perform_trace_query("b83b2deb88a6e20424d89985c2bf97b7", 1674666130, 1674666131, &client);
+        } else {
+            time_taken = perform_query(data, true, 1674666130, 1674666131, &client);
+        }
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;
     }
