@@ -30,17 +30,18 @@ QueryData plain_trace_id_query() {
 
     query_condition condition1;
     condition1.node_index = 0;
-    condition1.type = int_value;
+    condition1.type = bytes_value;
     get_value_func condition_1_union;
     condition_1_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
     condition1.func = condition_1_union;
     condition1.node_property_value = "b83b2deb88a6e20424d89985c2bf97b7";
+    condition1.comp = Equal_to;
     query.conditions.push_back(condition1);
 
     query.ret.node_index = 0;
     query.ret.type = bytes_value;
     get_value_func ret_union;
-    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::span_id;
+    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
 
     query.ret.func = ret_union;
     return query;
