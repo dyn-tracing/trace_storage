@@ -37,7 +37,7 @@ std::vector<std::string> query(
                 earliest_last_updated = std::get<1>(indexed);
             }
             index_results_futures.push_back(std::async(std::launch::async, get_traces_by_indexed_condition,
-            start_time, end_time, &conditions[i], i_type, client));
+                start_time, end_time, &conditions[i], i_type, client));
         }
     }
     print_progress(0, "Retrieving indices", verbose);
@@ -50,6 +50,7 @@ std::vector<std::string> query(
             std::cerr << "yooo" << std::endl;
             std::cerr << res.status().message() << std::endl;
         } else {
+	std::cout << "index results size is " << res.value().size() << std::endl;
             index_results.push_back(res.value());
         }
         print_progress((i+1.0)/(index_results_futures.size()+1.0), "Retrieving indices", verbose);
@@ -72,10 +73,15 @@ std::vector<std::string> query(
 
     std::cout << "intersection size is " << intersection.size() << std::endl;
 
+    // At this point, we should switch from creating threads by need (per pool)
+    // to creating threads from a pool, since the number of batches may be
+    // very large
+
+    BS::thread_pool pool(100);
     std::vector<std::future<std::vector<std::string>>> results_futures;
     results_futures.reserve(intersection.size());
     for (auto &map : intersection) {
-        results_futures.push_back(std::async(std::launch::async,
+        results_futures.push_back(pool.submit(
                 brute_force_per_batch, map.first, map.second, struct_results.value(),
                 conditions, ret, query_trace,
                 client));
@@ -223,7 +229,7 @@ StatusOr<std::tuple<index_type, time_t>> is_indexed(const query_condition *condi
         if (kv.first == "bucket_type") {
             if (kv.second == "bloom_index") {
                 bloom_index = true;
-            } else if (kv.first == "folder_index") {
+            } else if (kv.second == "folder_index") {
                 folder_index = true;
             }
         }

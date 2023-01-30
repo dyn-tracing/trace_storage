@@ -23,6 +23,31 @@ std::string fetch_obj_name_from_index(std::string trace_id, int start_time, int 
     return "";
 }
 
+QueryData plain_trace_id_query() {
+    QueryData query;
+    query.graph.num_nodes = 1;
+    query.graph.node_names.insert(std::make_pair(0, "frontend"));
+
+    query_condition condition1;
+    condition1.node_index = 0;
+    condition1.type = bytes_value;
+    get_value_func condition_1_union;
+    condition_1_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
+    condition1.func = condition_1_union;
+    condition1.node_property_value = "b83b2deb88a6e20424d89985c2bf97b7";
+    condition1.property_name = "trace-id";
+    condition1.comp = Equal_to;
+    query.conditions.push_back(condition1);
+
+    query.ret.node_index = 0;
+    query.ret.type = bytes_value;
+    get_value_func ret_union;
+    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
+
+    query.ret.func = ret_union;
+    return query;
+}
+
 QueryData trace_id_query() {
     QueryData query;
     // query trace structure
@@ -101,6 +126,54 @@ QueryData service_calls_one_other() {
     query.ret.func = ret_union;
 
     return query;
+}
+
+QueryData service_calls_one_other_online_boutique() {
+    QueryData query;
+    query.graph.num_nodes = 2;
+    query.graph.node_names.insert(std::make_pair(0, "frontend"));
+    query.graph.node_names.insert(std::make_pair(1, "adservice"));
+
+    query.graph.edges.insert(std::make_pair(0, 1));
+
+    query.ret.node_index = 0;
+    query.ret.type = bytes_value;
+    get_value_func ret_union;
+    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
+    query.ret.func = ret_union;
+
+    return query;
+}
+
+QueryData use_folders_index() {
+    QueryData query;
+    query.graph.num_nodes = 2;
+    query.graph.node_names.insert(std::make_pair(0, "OryxGreenSmoke"));
+    query.graph.node_names.insert(std::make_pair(1, "WolfTowerGray"));
+
+    query.graph.edges.insert(std::make_pair(0, 1));
+
+    query_condition condition1;
+    condition1.node_index = 0;
+    condition1.type = string_value;
+    get_value_func condition_1_union;
+    condition1.func = condition_1_union;
+    condition1.node_property_value = "501";
+    condition1.comp = Equal_to;
+    condition1.property_name = "http.status_code";
+    condition1.is_latency_condition = false;
+    condition1.is_attribute_condition = true;
+
+    query.conditions.push_back(condition1);
+
+    query.ret.node_index = 0;
+    query.ret.type = bytes_value;
+    get_value_func ret_union;
+    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
+    query.ret.func = ret_union;
+
+    return query;
+
 }
 
 // done
@@ -240,7 +313,7 @@ int64_t perform_trace_query(std::string trace_id, time_t start_time, time_t end_
 int main(int argc, char* argv[]) {
     auto client = gcs::Client();
 
-    QueryData data = four_fan_out();
+    QueryData data = duration_condition();
     int n = 1;
     if (argc > 1) {
         n = std::stoi(argv[1]);
@@ -260,12 +333,23 @@ int main(int argc, char* argv[]) {
         } else if (q == "height") {
             data = height_at_least_four();
             std::cout << "Running height_at_least_four()" << std::endl;
-        }
+        } else if (q == "ob") {
+            data = service_calls_one_other_online_boutique();
+            std::cout << "Running service_calls_one_other_online_boutique()" << std::endl;
+        } else if (q == "folders_index") {
+		data = use_folders_index();
+		std::cout << "running use_folders_index()" << std::endl;
+	}
     }
 
     std::vector<time_t> times(n, 0);
     for (int i = 0; i < n; i++) {
-        auto time_taken = perform_query(data, false, 1670796531, 1670829563, &client);
+        int64_t time_taken;
+        if (argc > 2 && std::string(argv[2]) == "trace_id") {
+            time_taken = perform_trace_query("b83b2deb88a6e20424d89985c2bf97b7", 1674666130, 1674666131, &client);
+        } else {
+            time_taken = perform_query(data, false, 1670864144, 1670864145, &client);
+        }
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;
     }

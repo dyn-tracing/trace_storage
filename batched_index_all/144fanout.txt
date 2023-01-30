@@ -1,0 +1,55 @@
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //:graph_query (0 packages loaded, 0 targets configured)
+INFO: Analyzed target //:graph_query (0 packages loaded, 0 targets configured).
+INFO: Found 1 target...
+[0 / 3] [Prepa] BazelWorkspaceStatusAction stable-status.txt
+Target //:graph_query up-to-date:
+  bazel-bin/graph_query
+INFO: Elapsed time: 0.272s, Critical Path: 0.01s
+INFO: 1 process: 1 internal.
+INFO: Build completed successfully, 1 total action
+INFO: Running command line: bazel-bin/graph_query 10 fanout
+INFO: Build completed successfully, 1 total action
+Running four_fan_out()
+intersection size is 2
+Total results: 80
+Time Taken: 29862 ms
+
+intersection size is 2
+Total results: 80
+Time Taken: 28073 ms
+
+intersection size is 2
+Total results: 80
+Time Taken: 28510 ms
+
+intersection size is 2
+Total results: 80
+Time Taken: 28063 ms
+
+intersection size is 2
+Total results: 80
+Time Taken: 27433 ms
+
+intersection size is 2
+Total results: 80
+Time Taken: 27203 ms
+
+intersection size is 2
+Total results: 80
+Time Taken: 27217 ms
+
+intersection size is 2
+Total results: 80
+Time Taken: 28096 ms
+
+intersection size is 2
+Total results: 80
+Time Taken: 28272 ms
+
+intersection size is 2
+Total results: 80
+Time Taken: 28747 ms
+
+Median: 28084.5

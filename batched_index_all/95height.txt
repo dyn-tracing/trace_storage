@@ -1,0 +1,55 @@
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //:graph_query (0 packages loaded, 0 targets configured)
+INFO: Analyzed target //:graph_query (0 packages loaded, 0 targets configured).
+INFO: Found 1 target...
+[0 / 3] [Prepa] BazelWorkspaceStatusAction stable-status.txt
+Target //:graph_query up-to-date:
+  bazel-bin/graph_query
+INFO: Elapsed time: 0.276s, Critical Path: 0.01s
+INFO: 1 process: 1 internal.
+INFO: Build completed successfully, 1 total action
+INFO: Running command line: bazel-bin/graph_query 10 height
+INFO: Build completed successfully, 1 total action
+Running height_at_least_four()
+intersection size is 0
+Total results: 0
+Time Taken: 25668 ms
+
+intersection size is 0
+Total results: 0
+Time Taken: 21954 ms
+
+intersection size is 0
+Total results: 0
+Time Taken: 21162 ms
+
+intersection size is 0
+Total results: 0
+Time Taken: 20845 ms
+
+intersection size is 0
+Total results: 0
+Time Taken: 21340 ms
+
+intersection size is 0
+Total results: 0
+Time Taken: 20892 ms
+
+intersection size is 0
+Total results: 0
+Time Taken: 21775 ms
+
+intersection size is 0
+Total results: 0
+Time Taken: 22048 ms
+
+intersection size is 0
+Total results: 0
+Time Taken: 23536 ms
+
+intersection size is 0
+Total results: 0
+Time Taken: 23404 ms
+
+Median: 21864.5

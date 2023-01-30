@@ -30,10 +30,12 @@ const char BUCKET_TYPE_LABEL_VALUE_FOR_SPAN_BUCKETS[] = "microservice";
 const char PROJECT_ID[] = "dynamic-tracing";
 const char BUCKETS_LOCATION[] = "us-central1";
 
-const char BUCKETS_SUFFIX[] = "-quest-hopefully-final";
+const char BUCKETS_SUFFIX[] = "-quest-evaluate-indices";
 
 const char TRACE_STRUCT_BUCKET_PREFIX[] = "dyntraces";
 const char TRACE_HASHES_BUCKET_PREFIX[] = "tracehashes";
+const char LIST_HASHES_BUCKET_PREFIX[] = "list-hashes";
+const char HASHES_BY_SERVICE_BUCKET_PREFIX[] = "hashes-by-service";
 
 // regarding the hack of changing buckets to folders
 const char SERVICES_BUCKET_PREFIX[] = "microservices";
@@ -41,6 +43,7 @@ const int TRACE_ID_LENGTH = 32;
 const int SPAN_ID_LENGTH = 16;
 const int element_count = 10000;
 const char hyphen[] = "-";
+const char slash[] = "/";
 const char newline[] = "\n";
 const char colon[] = ":";
 
@@ -88,6 +91,7 @@ std::map<std::string, std::vector<std::string>> get_root_service_to_trace_ids_ma
 std::string extract_any_trace(std::vector<std::string>& trace_ids, std::string& object_content);
 std::string extract_trace_from_traces_object(const std::string &trace_id, std::string& object_content);
 std::vector<std::string> get_batches_between_timestamps(gcs::Client* client, time_t earliest, time_t latest);
+std::vector<std::string> list_objects_in_bucket(gcs::Client* client, std::string bucket_name);
 time_t get_lowest_time_val(gcs::Client* client);
 
 /// **************** GCS processing ********************************

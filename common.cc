@@ -109,6 +109,12 @@ bool is_spans_bucket(std::string bucket) {
         return false;
     }
 
+    if (true == has_prefix(bucket, LIST_HASHES_BUCKET_PREFIX)) {
+        return false;
+    }
+    if (true == has_prefix(bucket, HASHES_BY_SERVICE_BUCKET_PREFIX)) {
+        return false;
+    }
     return true;
 }
 
@@ -424,6 +430,36 @@ std::vector<std::string> get_list_result(gcs::Client* client, std::string prefix
         } else {
             to_return.push_back(name);
         }
+    }
+    return to_return;
+}
+
+std::vector<std::string> list_objects_in_bucket_by_prefix(gcs::Client* client,
+    const std::string& bucket_name, const std::string prefix) {
+    std::vector<std::string> to_return;
+    for (auto&& object_metadata : client->ListObjects(bucket_name, gcs::Prefix(prefix))) {
+        if (!object_metadata) {
+            throw std::runtime_error(object_metadata.status().message());
+        }
+        to_return.push_back(object_metadata->name());
+    }
+    return to_return;
+}
+
+std::vector<std::string> list_objects_in_bucket(gcs::Client* client, std::string bucket_name) {
+    std::vector<std::future<std::vector<std::string>>> future_object_names;
+    BS::thread_pool pool(500);
+    for (int64_t i = 0; i < 10; i++) {
+        for (int64_t j = 0; j < 10; j++) {
+            std::string new_prefix = std::to_string(i) + std::to_string(j);
+            future_object_names.push_back(pool.submit(
+                list_objects_in_bucket_by_prefix, client, bucket_name, new_prefix));
+        }
+    }
+    std::vector<std::string> to_return;
+    for (int64_t i=0; i < future_object_names.size(); i++) {
+        auto partial_names = future_object_names[i].get();
+        to_return.insert(to_return.end(), partial_names.begin(), partial_names.end());
     }
     return to_return;
 }

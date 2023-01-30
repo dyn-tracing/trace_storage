@@ -7,6 +7,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <unordered_set>
 #include "common.h"
 
 const char ASTERISK_SERVICE[] = "NONE";
@@ -142,4 +143,16 @@ StatusOr<std::vector<traces_by_structure>> filter_by_query(std::string batch_nam
     std::vector<std::pair<std::string, std::string>> &prefix_to_trace_ids,
     trace_structure query_trace, int start_time, int end_time,
     const std::vector<std::string>& all_object_names, bool verbose, gcs::Client* client);
+StatusOr<bool> check_examplar_validity(
+    std::string examplar, trace_structure query_trace, traces_by_structure& to_return);
+Status get_traces_by_structure_data(
+    gcs::Client* client,
+    std::string prefix,
+    std::string batch_name,
+    std::string root_service_name,
+    time_t start_time, time_t end_time,
+    traces_by_structure& to_return
+);
+StatusOr<std::vector<traces_by_structure>> filter_data_by_query(trace_structure &query_trace,
+    time_t start_time, time_t end_time, bool verbose, gcs::Client* client);
 #endif  // BY_STRUCT_H_ // NOLINT

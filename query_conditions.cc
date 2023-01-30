@@ -74,9 +74,7 @@ bool does_condition_hold(const ot::Span* sp, const query_condition condition) {
     }
     switch (condition.type) {
         case string_value: {
-            std::cout << "In string val" << std::endl;
             const std::string span_value = (sp->*condition.func.string_func)();
-            std::cout << "In2 string val" << std::endl;
             switch (condition.comp) {
                 case Equal_to:
                     return span_value.compare(condition.node_property_value) == 0;
@@ -101,7 +99,13 @@ bool does_condition_hold(const ot::Span* sp, const query_condition condition) {
         }
         case int_value: {
             const int span_val = (sp->*condition.func.int_func)();
-            const int cond_val = std::stoi(condition.node_property_value);
+            int cond_val;
+            try {
+                cond_val = std::stoi(condition.node_property_value);
+            } catch (std::invalid_argument) {
+                std::cerr << "Are you sure this is an int value? " << std::endl;
+                throw std::invalid_argument("int value was specified, probably not an int value");
+            }
             switch (condition.comp) {
                 case Equal_to: return span_val == cond_val;
                 case Less_than: return span_val < cond_val;

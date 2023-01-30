@@ -8,6 +8,7 @@ int64_t count_objects_size(std::string bucket_name, gcs::Client* client) {
     for (auto& object_metadata : client ->ListObjects(bucket_name)) {
         if (!object_metadata) {
             std::cerr << "Error in getting object" << std::endl;
+            std::cerr << "tried to get from bucket " << bucket_name << std::endl;
             exit(1);
         }
         count += object_metadata->size();
@@ -19,7 +20,8 @@ int64_t count_objects_in_bucket(std::string bucket_name, gcs::Client* client) {
     int64_t count = 0;
     for (auto& object_metadata : client ->ListObjects(bucket_name)) {
         if (!object_metadata) {
-            std::cerr << "Error in getting object" << std::endl;
+            std::cerr << "Error in listing object" << std::endl;
+            std::cerr << "tried to get bucket name " << bucket_name << std::endl;
             exit(1);
         }
 
@@ -31,9 +33,7 @@ int64_t count_objects_in_bucket(std::string bucket_name, gcs::Client* client) {
 
 int64_t count_objects(gcs::Client* client, bool size) {
     std::vector<std::string> bucket_prefixes = {
-        "frontend", "adservice", "cartservice", "checkoutservice", "currencyservice",
-        "emailservice", "paymentservice", "productcatalogservice", "recommendationservice",
-        "rediscart", "shippingservice",
+        "hashes-by-service", "list-hashes", "microservices",
         "dyntraces", "tracehashes"
     };
 
