@@ -50,6 +50,7 @@ std::vector<std::string> query(
             std::cerr << "yooo" << std::endl;
             std::cerr << res.status().message() << std::endl;
         } else {
+	std::cout << "index results size is " << res.value().size() << std::endl;
             index_results.push_back(res.value());
         }
         print_progress((i+1.0)/(index_results_futures.size()+1.0), "Retrieving indices", verbose);
@@ -228,7 +229,7 @@ StatusOr<std::tuple<index_type, time_t>> is_indexed(const query_condition *condi
         if (kv.first == "bucket_type") {
             if (kv.second == "bloom_index") {
                 bloom_index = true;
-            } else if (kv.first == "folder_index") {
+            } else if (kv.second == "folder_index") {
                 folder_index = true;
             }
         }

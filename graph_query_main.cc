@@ -145,6 +145,37 @@ QueryData service_calls_one_other_online_boutique() {
     return query;
 }
 
+QueryData use_folders_index() {
+    QueryData query;
+    query.graph.num_nodes = 2;
+    query.graph.node_names.insert(std::make_pair(0, "OryxGreenSmoke"));
+    query.graph.node_names.insert(std::make_pair(1, "WolfTowerGray"));
+
+    query.graph.edges.insert(std::make_pair(0, 1));
+
+    query_condition condition1;
+    condition1.node_index = 0;
+    condition1.type = string_value;
+    get_value_func condition_1_union;
+    condition1.func = condition_1_union;
+    condition1.node_property_value = "501";
+    condition1.comp = Equal_to;
+    condition1.property_name = "http.status_code";
+    condition1.is_latency_condition = false;
+    condition1.is_attribute_condition = true;
+
+    query.conditions.push_back(condition1);
+
+    query.ret.node_index = 0;
+    query.ret.type = bytes_value;
+    get_value_func ret_union;
+    ret_union.bytes_func = &opentelemetry::proto::trace::v1::Span::trace_id;
+    query.ret.func = ret_union;
+
+    return query;
+
+}
+
 // done
 QueryData duration_condition() {
     QueryData query;
@@ -305,7 +336,10 @@ int main(int argc, char* argv[]) {
         } else if (q == "ob") {
             data = service_calls_one_other_online_boutique();
             std::cout << "Running service_calls_one_other_online_boutique()" << std::endl;
-        }
+        } else if (q == "folders_index") {
+		data = use_folders_index();
+		std::cout << "running use_folders_index()" << std::endl;
+	}
     }
 
     std::vector<time_t> times(n, 0);
@@ -314,7 +348,7 @@ int main(int argc, char* argv[]) {
         if (argc > 2 && std::string(argv[2]) == "trace_id") {
             time_taken = perform_trace_query("b83b2deb88a6e20424d89985c2bf97b7", 1674666130, 1674666131, &client);
         } else {
-            time_taken = perform_query(data, true, 1674666130, 1674666131, &client);
+            time_taken = perform_query(data, false, 1670864144, 1670864145, &client);
         }
         std::cout << "Time Taken: " << time_taken << " ms\n" << std::endl;
         times[i] = time_taken;

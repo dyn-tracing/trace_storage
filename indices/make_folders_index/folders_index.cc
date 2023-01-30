@@ -10,7 +10,6 @@ int update_index(gcs::Client* client, time_t last_updated, std::string indexed_a
 	std::vector<std::string> trace_struct_object_names = get_all_object_names(
         std::string(TRACE_STRUCT_BUCKET_PREFIX) + std::string(BUCKETS_SUFFIX), client);
 	trace_struct_object_names = sort_object_names_on_start_time(trace_struct_object_names);
-
 	int thread_pool_size = 500;
 	for (uint64_t i=0; i < trace_struct_object_names.size(); i=i+thread_pool_size) {
 		update_index_batched(client, last_updated, indexed_attribute, span_buckets_names,
@@ -170,13 +169,19 @@ std::unordered_map<std::string, std::vector<std::string>> calculate_attr_to_trac
 	std::string span_bucket_name, std::string object_name, std::string indexed_attribute, gcs::Client* client
 ) {
 	std::unordered_map<std::string, std::vector<std::string>> response;  // attr_val_to_vec_of_traceids
-	std::string raw_span_bucket_obj_content = read_object(span_bucket_name, object_name, client).value();
-	if (raw_span_bucket_obj_content.length() < 1) {
+	StatusOr<std::string> raw_span_bucket_obj_content = read_object(span_bucket_name, object_name, client);
+	if (!raw_span_bucket_obj_content.ok()) {
+		if (raw_span_bucket_obj_content.status().code() == ::google::cloud::StatusCode::kNotFound) {
+			return response;
+		}
+		return response;
+	}
+	if (raw_span_bucket_obj_content->length() < 1) {
 		return response;
 	}
 
 	opentelemetry::proto::trace::v1::TracesData trace_data;
-	bool ret = trace_data.ParseFromString(raw_span_bucket_obj_content);
+	bool ret = trace_data.ParseFromString(raw_span_bucket_obj_content.value());
 	if (false == ret) {
 		std::cerr << "Error in calculate_attr_to_trace_ids_map:ParseFromString" << std::endl;
 		exit(1);
